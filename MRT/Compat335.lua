@@ -82,6 +82,23 @@ if type(UnitNameUnmodified) ~= "function" then
     return UnitName(unit)
   end
 end
+if type(securecallfunction) ~= "function" then
+  local function _forward(ok, ...)
+    if ok then
+      return ...
+    end
+    local handler = type(geterrorhandler) == "function" and geterrorhandler() or nil
+    if handler then
+      handler(...)
+    end
+  end
+  function securecallfunction(func, ...)
+    if type(func) ~= "function" then
+      return
+    end
+    return _forward(pcall(func, ...))
+  end
+end
 if type(UnitSpellHaste) ~= "function" then
   function UnitSpellHaste(unit)
     if unit == "player" and type(GetCombatRatingBonus) == "function" then
