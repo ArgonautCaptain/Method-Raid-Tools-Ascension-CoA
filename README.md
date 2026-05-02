@@ -18,6 +18,10 @@ loads cleanly on a 3.3.5a client without `LoadOutOfDate`.
 > as `NAME_PLATE_UNIT_ADDED`, `C_NamePlate.*`, `C_VoiceChat.*` work natively).
 > The addon detects native APIs and skips its shims when they are present.
 
+
+![Uploading image.png…]()
+
+
 ---
 
 ## WeakAura — Kaze MRT Timer (backported)
