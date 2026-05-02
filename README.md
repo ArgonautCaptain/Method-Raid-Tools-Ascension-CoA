@@ -19,8 +19,7 @@ loads cleanly on a 3.3.5a client without `LoadOutOfDate`.
 > The addon detects native APIs and skips its shims when they are present.
 
 
-![Uploading mrt-window.png…]()
-
+<img width="1337" height="1007" alt="mrt-window" src="https://github.com/user-attachments/assets/379fe914-7ea4-45f1-9c9a-45df918a7414" />
 
 
 ---
