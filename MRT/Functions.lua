@@ -867,19 +867,24 @@ end
 
 
 function ExRT.F.IsPlayerRLorOfficer(unitName)
-	local shortName = ExRT.F.delUnitNameServer(unitName)
-	for i=1,GetNumGroupMembers() do
+	if type(unitName) ~= "string" or unitName == "" then return end
+	local shortName = ExRT.F.delUnitNameServer(unitName) or unitName
+	local nGroup = (GetNumGroupMembers and GetNumGroupMembers() or 0)
+	for i=1,nGroup do
 		local name,rank = GetRaidRosterInfo(i)
-		if UnitIsUnit(unitName,"raid"..i) or UnitIsUnit(shortName,"raid"..i) then
-			if rank > 0 then
-				return rank
-			else
-				return false
+		if name then
+			local nameShort = ExRT.F.delUnitNameServer(name) or name
+			if name == unitName or name == shortName
+				or nameShort == unitName or nameShort == shortName
+				or UnitIsUnit(unitName,"raid"..i) or UnitIsUnit(shortName,"raid"..i) then
+				if rank and rank > 0 then
+					return rank
+				else
+					return false
+				end
 			end
 		end
 	end
-
-
 end
 
 function ExRT.F.GetPlayerParty(unitName)
