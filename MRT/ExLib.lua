@@ -1149,6 +1149,9 @@ do
 	end
 	function Templates:ExRTInputBoxTemplate(parent)
 		local self = CreateFrame("EditBox",nil,parent)
+		if self.SetAutoFocus then self:SetAutoFocus(false) end
+		if self.ClearFocus then self:ClearFocus() end
+		if self.EnableKeyboard then self:EnableKeyboard(false) end
 		self:EnableMouse(true)
 
 		self.Left = self:CreateTexture(nil,"BACKGROUND")
@@ -1186,6 +1189,9 @@ do
 	end
 	function Templates:ExRTInputBoxModernTemplate(parent)
 		local self = CreateFrame("EditBox",nil,parent, BackdropTemplateMixin and "BackdropTemplate")
+		if self.SetAutoFocus then self:SetAutoFocus(false) end
+		if self.ClearFocus then self:ClearFocus() end
+		if self.EnableKeyboard then self:EnableKeyboard(false) end
 		self:EnableMouse(true)
 
 		Templates:Border(self,0.24,0.25,0.3,1,1)

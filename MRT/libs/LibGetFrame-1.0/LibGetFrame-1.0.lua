@@ -3,6 +3,9 @@ local MINOR_VERSION = 57
 if not LibStub then
   error(MAJOR_VERSION .. " requires LibStub.")
 end
+if LibStub.libs and LibStub.libs[MAJOR_VERSION] and LibStub.minors and LibStub.minors[MAJOR_VERSION] then
+  return
+end
 local lib = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not lib then
   return

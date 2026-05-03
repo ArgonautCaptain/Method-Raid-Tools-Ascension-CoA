@@ -1,5 +1,9 @@
 
 local MAJOR, MINOR = "CallbackHandler-1.0", 8
+
+if LibStub and LibStub.libs and LibStub.libs[MAJOR] and LibStub.minors and LibStub.minors[MAJOR] then
+	return
+end
 local CallbackHandler = LibStub:NewLibrary(MAJOR, MINOR)
 
 if not CallbackHandler then return end

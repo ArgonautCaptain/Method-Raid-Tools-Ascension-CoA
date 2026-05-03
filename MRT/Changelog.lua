@@ -1,7 +1,11 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
-v5.0.0-WotLK335a
+v.5.0.0-WotLK335a
+* CallbackHandler conflict fix
+* NumPad input fix
+
+v.5.0.0-WotLK335a
 * All modules have been backported
 * Timers from DBM have been added to Reminder
 * Caps for collecting Fight Log have been updated

@@ -5,8 +5,8 @@ local GlobalAddonName, MRT = ...
 _G.MRT = MRT
 _G.ExRT = MRT
 
-MRT.V = 5000
-MRT.VString = "v5.0.0"
+MRT.V = 5001
+MRT.VString = "v5.0.1"
 MRT.T = "R"
 
 MRT.Slash = {}
@@ -1107,6 +1107,10 @@ end
 
 
 local prefix_sorted = {"EXRTADD","MRTADDA","MRTADDB","MRTADDC","MRTADDD","MRTADDE","MRTADDF","MRTADDG","MRTADDH","MRTADDI"}
+local mrt_prefix_lookup = {}
+for i = 1, #prefix_sorted do
+	mrt_prefix_lookup[prefix_sorted[i]] = true
+end
 
 local sendPending = {}
 local sendPrev = {0}
@@ -1174,8 +1178,11 @@ local function send(self)
 end
 
 local specialOpt = nil
-SendAddonMessage = function (...)
-	local entry = {...}
+SendAddonMessage = function (prefix, ...)
+	if type(prefix) ~= "string" or not mrt_prefix_lookup[prefix] then
+		return _SendAddonMessage(prefix, ...)
+	end
+	local entry = {prefix, ...}
 	if type(specialOpt)=="table" then
 		if type(specialOpt.maxPer5Sec)=="number" then
 			entry.maxPer5Sec = specialOpt.maxPer5Sec

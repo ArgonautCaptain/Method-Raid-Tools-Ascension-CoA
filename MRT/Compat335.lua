@@ -99,6 +99,30 @@ if type(securecallfunction) ~= "function" then
     return _forward(pcall(func, ...))
   end
 end
+do
+  if type(LibStub) == "table" and type(LibStub.libs) == "table"
+     and type(debug) == "table"
+     and type(debug.getupvalue) == "function"
+     and type(debug.setupvalue) == "function" then
+    local lib = LibStub.libs["CallbackHandler-1.0"]
+    if type(lib) == "table" and type(lib.New) == "function" then
+      for i = 1, 64 do
+        local name, val = debug.getupvalue(lib.New, i)
+        if not name then break end
+        if name == "Dispatch" and type(val) == "function" then
+          for j = 1, 64 do
+            local n2, v2 = debug.getupvalue(val, j)
+            if not n2 then break end
+            if n2 == "securecallfunction" and v2 == nil and type(securecallfunction) == "function" then
+              debug.setupvalue(val, j, securecallfunction)
+            end
+          end
+          break
+        end
+      end
+    end
+  end
+end
 if type(UnitSpellHaste) ~= "function" then
   function UnitSpellHaste(unit)
     if unit == "player" and type(GetCombatRatingBonus) == "function" then

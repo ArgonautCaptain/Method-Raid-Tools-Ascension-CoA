@@ -571,6 +571,9 @@ END_README --]]
 local MAJOR, MINOR = "LibSerialize", 5
 local LibSerialize
 if LibStub then
+    if LibStub.libs and LibStub.libs[MAJOR] and LibStub.minors and LibStub.minors[MAJOR] then
+        return
+    end
     LibSerialize = LibStub:NewLibrary(MAJOR, MINOR)
     if not LibSerialize then return end -- This version is already loaded.
 else
