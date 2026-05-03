@@ -4295,6 +4295,8 @@ do
 			else
 				start, duration = GetSpellCooldown(spellID)
 			end
+			if type(start) ~= "number" then start = 0 end
+			if type(duration) ~= "number" then duration = 0 end
 			if (start ~= prevStart[spellID] or duration ~= prevDur[spellID]) and (duration == 0 or duration > 2) then
 				prevStart[spellID] = start
 				prevDur[spellID] = duration
@@ -7331,14 +7333,18 @@ function module.options:Load()
 		optColSet.chkEnable:SetChecked(VColOpt.enabled)
 		optColSet.chkGeneral:SetChecked(VColOpt.frameGeneral)
 
-		optColSet.sliderLinesNum:SetValue(VColOpt.frameLines or defOpt.frameLines)
-		optColSet.sliderAlpha:SetValue(VColOpt.frameAlpha or defOpt.frameAlpha)
-		optColSet.sliderScale:SetValue(VColOpt.frameScale or defOpt.frameScale)
-		optColSet.sliderWidth:SetValue(VColOpt.frameWidth or defOpt.frameWidth)
-		optColSet.sliderColsInCol:SetValue(VColOpt.frameColumns or defOpt.frameColumns)
-		optColSet.sliderBetweenLines:SetValue(VColOpt.frameBetweenLines or defOpt.frameBetweenLines)
-		optColSet.sliderBlackBack:SetValue(VColOpt.frameBlackBack or defOpt.frameBlackBack)
-		optColSet.dropDownStrata:SetText(VColOpt.frameStrata or defOpt.frameStrata)
+		local frameOpt = VColOpt
+		if not isGeneralTab and VColOpt.frameGeneral then
+			frameOpt = VMRT.ExCD2.colSet[module.db.maxColumns + 1] or VColOpt
+		end
+		optColSet.sliderLinesNum:SetValue(frameOpt.frameLines or defOpt.frameLines)
+		optColSet.sliderAlpha:SetValue(frameOpt.frameAlpha or defOpt.frameAlpha)
+		optColSet.sliderScale:SetValue(frameOpt.frameScale or defOpt.frameScale)
+		optColSet.sliderWidth:SetValue(frameOpt.frameWidth or defOpt.frameWidth)
+		optColSet.sliderColsInCol:SetValue(frameOpt.frameColumns or defOpt.frameColumns)
+		optColSet.sliderBetweenLines:SetValue(frameOpt.frameBetweenLines or defOpt.frameBetweenLines)
+		optColSet.sliderBlackBack:SetValue(frameOpt.frameBlackBack or defOpt.frameBlackBack)
+		optColSet.dropDownStrata:SetText(frameOpt.frameStrata or defOpt.frameStrata)
 		if VColOpt.ATF and not VColOpt.frameStrata then
 			optColSet.dropDownStrata:SetText("Auto")
 		end
@@ -7703,25 +7709,50 @@ function module.options:Load()
 		ExRT.lib.SetAlphas(VMRT.ExCD2.colSet[module.options.optColTabs.selected].frameGeneral and module.options.optColTabs.selected ~= (module.db.maxColumns + 1) and 0.5 or 1,module.options.optColSet.sliderLinesNum,module.options.optColSet.sliderAlpha,module.options.optColSet.sliderScale,module.options.optColSet.sliderWidth,module.options.optColSet.sliderColsInCol,module.options.optColSet.sliderBetweenLines,module.options.optColSet.sliderBlackBack,module.options.optColSet.butToCenter,module.options.optColSet.dropDownStrata,module.options.optColSet.textdropDownStrata)
 	end
 
+	local function getActiveFrameOpt()
+		local sel = module.options.optColTabs and module.options.optColTabs.selected
+		if not sel then return nil, nil end
+		local VColOpt = VMRT.ExCD2.colSet[sel]
+		if not VColOpt then return nil, nil end
+		local isGeneralTab = sel == (module.db.maxColumns + 1)
+		if not isGeneralTab and VColOpt.frameGeneral then
+			local genOpt = VMRT.ExCD2.colSet[module.db.maxColumns + 1]
+			return genOpt or VColOpt, VColOpt
+		end
+		return VColOpt, VColOpt
+	end
+
 	self.optColSet.sliderLinesNum = ELib:Slider(self.optColSet.superTabFrame.tab[1],L.cd2lines):Size(400):Point("TOP",0,-50):Range(1,module.db.maxLinesInCol):SetObey(true):OnChange(function(self,event)
+		if module.options.optColSet.LOCK then return end
 		event = event - event%1
-		currColOpt.frameLines = event
+		local target = getActiveFrameOpt()
+		if not target then return end
+		target.frameLines = event
+		if currColOpt and currColOpt == target then currColOpt.frameLines = event end
 		self.tooltipText = event
 		self:tooltipReload(self)
 		module:ReloadAllSplits()
 	end)
 
 	self.optColSet.sliderWidth = ELib:Slider(self.optColSet.superTabFrame.tab[1],L.cd2width):Size(400):Point("TOP",0,-85):Range(1,400):SetObey(true):OnChange(function(self,event)
+		if module.options.optColSet.LOCK then return end
 		event = event - event%1
-		currColOpt.frameWidth = event
+		local target = getActiveFrameOpt()
+		if not target then return end
+		target.frameWidth = event
+		if currColOpt and currColOpt == target then currColOpt.frameWidth = event end
 		self.tooltipText = event
 		self:tooltipReload(self)
 		module:ReloadAllSplits()
 	end)
 
 	self.optColSet.sliderAlpha = ELib:Slider(self.optColSet.superTabFrame.tab[1],L.cd2alpha):Size(400):Point("TOP",0,-120):Range(0,100):SetObey(true):OnChange(function(self,event)
+		if module.options.optColSet.LOCK then return end
 		event = event - event%1
-		currColOpt.frameAlpha = event
+		local target = getActiveFrameOpt()
+		if not target then return end
+		target.frameAlpha = event
+		if currColOpt and currColOpt == target then currColOpt.frameAlpha = event end
 		self.tooltipText = event
 		self:tooltipReload(self)
 		module:ReloadAllSplits()
@@ -7730,36 +7761,47 @@ function module.options:Load()
 	self.optColSet.sliderScale = ELib:Slider(self.optColSet.superTabFrame.tab[1],L.cd2scale):Size(400):Point("TOP",0,-155):Range(5,200):SetObey(true):OnChange(function(self,event)
 		if module.options.optColSet.LOCK then return end
 		event = event - event%1
-		local sel = module.options.optColTabs and module.options.optColTabs.selected
-		local VColOpt = sel and VMRT.ExCD2.colSet[sel]
-		if not VColOpt then return end
-		if VColOpt.frameScale == event then return end
-		VColOpt.frameScale = event
-		if currColOpt then currColOpt.frameScale = event end
+		local target = getActiveFrameOpt()
+		if not target then return end
+		if target.frameScale == event then return end
+		target.frameScale = event
+		if currColOpt and currColOpt == target then currColOpt.frameScale = event end
 		self.tooltipText = event
 		self:tooltipReload(self)
 		module:ReloadAllSplits("ScaleFix")
 	end)
 
 	self.optColSet.sliderColsInCol = ELib:Slider(self.optColSet.superTabFrame.tab[1],L.cd2ColSetColsInCol):Size(400):Point("TOP",0,-190):Range(1,module.db.maxLinesInCol):SetObey(true):OnChange(function(self,event)
+		if module.options.optColSet.LOCK then return end
 		event = event - event%1
-		currColOpt.frameColumns = event
+		local target = getActiveFrameOpt()
+		if not target then return end
+		target.frameColumns = event
+		if currColOpt and currColOpt == target then currColOpt.frameColumns = event end
 		self.tooltipText = event
 		self:tooltipReload(self)
 		module:ReloadAllSplits()
 	end)
 
 	self.optColSet.sliderBetweenLines = ELib:Slider(self.optColSet.superTabFrame.tab[1],L.cd2ColSetBetweenLines):Size(400):Point("TOP",0,-225):Range(0,20):SetObey(true):OnChange(function(self,event)
+		if module.options.optColSet.LOCK then return end
 		event = event - event%1
-		currColOpt.frameBetweenLines = event
+		local target = getActiveFrameOpt()
+		if not target then return end
+		target.frameBetweenLines = event
+		if currColOpt and currColOpt == target then currColOpt.frameBetweenLines = event end
 		self.tooltipText = event
 		self:tooltipReload(self)
 		module:ReloadAllSplits()
 	end)
 
 	self.optColSet.sliderBlackBack = ELib:Slider(self.optColSet.superTabFrame.tab[1],L.cd2BlackBack):Size(400):Point("TOP",0,-260):Range(0,100):SetObey(true):OnChange(function(self,event)
+		if module.options.optColSet.LOCK then return end
 		event = event - event%1
-		currColOpt.frameBlackBack = event
+		local target = getActiveFrameOpt()
+		if not target then return end
+		target.frameBlackBack = event
+		if currColOpt and currColOpt == target then currColOpt.frameBlackBack = event end
 		self.tooltipText = event
 		self:tooltipReload(self)
 		module:ReloadAllSplits()

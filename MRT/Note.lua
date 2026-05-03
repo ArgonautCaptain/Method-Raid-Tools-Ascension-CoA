@@ -1731,13 +1731,14 @@ function module.options:Load()
 	self.OtherIconsFrame.ScrollFrame = ELib:ScrollFrame(self.OtherIconsFrame):Size(self.OtherIconsFrame:GetWidth()-10,self.OtherIconsFrame:GetHeight()-25):Point("TOP",0,-20):Height(500)
 
 	local function CreateOtherIcon(pointX,pointY,texture,iconText)
-		local self = CreateFrame("Button", nil,self.OtherIconsFrame.ScrollFrame.C)
+		local self = CreateFrame("Button", nil,module.options.OtherIconsFrame.ScrollFrame.C)
 		self:SetSize(18,18)
 		self:SetPoint("TOPLEFT",pointX,pointY)
 		self.texture = self:CreateTexture(nil, "ARTWORK")
 		self.texture:SetTexture(texture)
 		self.texture:SetAllPoints()
-		self:RegisterForClicks("LeftButtonDown")
+		self:EnableMouse(true)
+		self:RegisterForClicks("AnyUp")
 		self.iconText = iconText
 		self:SetScript("OnClick", AddTextToEditBox)
 		return self
@@ -1745,8 +1746,6 @@ function module.options:Load()
 	self.OtherIconsFrame.CreateOtherIcon = CreateOtherIcon
 
 	self.OtherIconsFrame.OnShow = function(self)
-	self.OnShow = nil
-
 	local line, inLine = 1, 0
 
 	if self._iconButtons then
@@ -3868,7 +3867,7 @@ end
 
 function module:addonMessage(sender, prefix, ...)
 	if prefix == "multiline" then
-		if VMRT.Note.OnlyPromoted and IsInRaid() and not MRT.F.IsPlayerRLorOfficer(sender) then
+		if VMRT.Note.OnlyPromoted and IsInRaid() and MRT.F.IsPlayerRLorOfficer(sender) == false then
 			return
 		end
 
@@ -3898,7 +3897,7 @@ function module:addonMessage(sender, prefix, ...)
 			WeakAuras.ScanEvents("MRT_NOTE_UPDATE")
 		end
 	elseif prefix == "multiline_add" then
-		if VMRT.Note.OnlyPromoted and IsInRaid() and not MRT.F.IsPlayerRLorOfficer(sender) then
+		if VMRT.Note.OnlyPromoted and IsInRaid() and MRT.F.IsPlayerRLorOfficer(sender) == false then
 			return
 		end
 		local msgIndex,encounterID,noteName = ...
@@ -4213,7 +4212,7 @@ local function LoadNoteForBossID(bossID)
 
 			module.allframes:UpdateText()
 			module.frame:UpdateOptionsText()
-		elseif VMRT.Note.BossAutoLoadSendAsRL and MRT.F.IsPlayerRLorOfficer("player") == 2 then
+		elseif VMRT.Note.BossAutoLoadSendAsRL and ((UnitIsGroupLeader and UnitIsGroupLeader("player")) or MRT.F.IsPlayerRLorOfficer(UnitName("player")) == 2) then
 			module.frame:Save(noteID)
 		else
 			module.frame:SetTo(noteID)

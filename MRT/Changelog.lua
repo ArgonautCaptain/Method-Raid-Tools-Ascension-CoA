@@ -1,6 +1,16 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+v5.0.4-WotLK335a
+* ExCD2: nil-safety in SPELL_UPDATE_COOLDOWN (GetSpellCooldown can return nil for spells not in spellbook on 3.3.5a, causing "attempt to compare number with nil")
+* Note: OnlyPromoted receive filter now rejects only when sender rank is explicitly known to be 0 (== false). Previously rejected nil/unknown ranks too, causing leader's note to be silently dropped on receivers when GetRaidRosterInfo returned nil for sender's rank.
+* Note: IsPlayerRLorOfficer now case-insensitive and falls back to UnitIsGroupLeader/Assistant for player's own name, fixing leader-detection issues on raid roster races.
+* Note: BossAutoLoadSendAsRL now also accepts UnitIsGroupLeader("player") in addition to roster-rank check.
+* Note: Other Icons buttons explicitly EnableMouse + RegisterForClicks("AnyUp"); rebuild on every popup show (was cached after first show, blocking later clicks if first show happened during scale/parent transition).
+* ExCD2: per-column Scale/Lines/Width/Alpha/Cols/BetweenLines/BlackBack sliders now properly redirect to General settings while "Use General" is checked, so dragging them on a column tab is no longer a no-op (previously wrote to per-column slot that ColApplyStyle ignored).
+* Reminder/ExCD2: WarmUpSpell now caches "unknown" spellIDs to avoid repeated SetHyperlink tooltip scans (caused 15-20s freeze when selecting Timeline boss / spell list with many invalid spell entries).
+* ExLib: EditBox / EditBoxModern templates now ClearFocus() on OnHide so closing a frame with a focused edit box no longer captures Esc key globally (fixed Esc not opening main menu after 5-10 minutes of UI use).
+
 v5.0.3-WotLK335a
 * Other Icons popup expanded with WotLK spell set (lust/raid CDs/tank CDs/healer externals/Hand of/personals/DPS CDs/interrupts/utility/raid buffs/ICC mechanics)
 * Other Icons popup now follows global addon scale (VMRT.Addon.Scale)
@@ -8,6 +18,7 @@ v5.0.3-WotLK335a
 * ExCD2: fixed test mode crash on character window (math.random class index out of range on 3.3.5a)
 * ExCD2: General-tab Scale slider now writes through to the saved frameScale (was lost when slider fired before tab init); ReloadAllSplits no longer drops the final rate-limited value while dragging
 * ExCD2: Raid Cooldown spec gating relaxed - spell tables are still organized by spec, but a known spell is shown for any spec as long as the spell DB has data in any spec column (lookup falls back through 4..8)
+* Note: hardened ExRT.F.IsPlayerRLorOfficer with direct roster-name comparison (UnitIsUnit-by-name was unreliable on some 3.3.5a clients, causing leader/officer notes to be silently rejected by the OnlyPromoted receive filter)
 * UPM bridge inlined
 
 v5.0.2-WotLK335a

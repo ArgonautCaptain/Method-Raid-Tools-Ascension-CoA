@@ -869,13 +869,19 @@ end
 function ExRT.F.IsPlayerRLorOfficer(unitName)
 	if type(unitName) ~= "string" or unitName == "" then return end
 	local shortName = ExRT.F.delUnitNameServer(unitName) or unitName
+	local lcUnitName = unitName:lower()
+	local lcShortName = shortName:lower()
 	local nGroup = (GetNumGroupMembers and GetNumGroupMembers() or 0)
 	for i=1,nGroup do
 		local name,rank = GetRaidRosterInfo(i)
 		if name then
 			local nameShort = ExRT.F.delUnitNameServer(name) or name
+			local lcName = name:lower()
+			local lcNameShort = nameShort:lower()
 			if name == unitName or name == shortName
 				or nameShort == unitName or nameShort == shortName
+				or lcName == lcUnitName or lcName == lcShortName
+				or lcNameShort == lcUnitName or lcNameShort == lcShortName
 				or UnitIsUnit(unitName,"raid"..i) or UnitIsUnit(shortName,"raid"..i) then
 				if rank and rank > 0 then
 					return rank
@@ -883,6 +889,13 @@ function ExRT.F.IsPlayerRLorOfficer(unitName)
 					return false
 				end
 			end
+		end
+	end
+	if unitName == (UnitName and UnitName("player") or "") or shortName == (UnitName and UnitName("player") or "") then
+		if (GetNumRaidMembers and GetNumRaidMembers() or 0) > 0 then
+			if UnitIsGroupLeader and UnitIsGroupLeader("player") then return 2 end
+			if UnitIsGroupAssistant and UnitIsGroupAssistant("player") then return 1 end
+			return false
 		end
 	end
 end
@@ -2861,7 +2874,7 @@ function ExRT.F.GetEncountersList(onlyRaid,onlyActual,reverse,onlyDung)
 end
 
 do
-	local cacheName, cacheTex = {}, {}
+	local cacheName, cacheTex, cacheUnknown = {}, {}, {}
 	local scantip, scantipName = nil, "MRTSpellScanTooltip"
 	local function ensureScan()
 		if scantip then return scantip end
@@ -2874,15 +2887,25 @@ do
 		spellID = tonumber(spellID)
 		if not spellID then return end
 		if cacheName[spellID] and cacheTex[spellID] then return end
+		if cacheUnknown[spellID] then return end
+		local n0, _, tex0 = GetSpellInfo(spellID)
+		if n0 and n0 ~= "" then cacheName[spellID] = n0 end
+		if tex0 then cacheTex[spellID] = tex0 end
+		if cacheName[spellID] and cacheTex[spellID] then return end
 		local t = ensureScan()
 		t:ClearLines()
 		if GetSpellLink then pcall(GetSpellLink, spellID) end
 		if GetSpellTexture then
-			local tex0 = GetSpellTexture(spellID)
-			if tex0 then cacheTex[spellID] = tex0 end
+			local tex1 = GetSpellTexture(spellID)
+			if tex1 then cacheTex[spellID] = tex1 end
 		end
 		local ok = pcall(t.SetHyperlink, t, "spell:"..spellID)
-		if not ok then return end
+		if not ok then
+			if not cacheName[spellID] and not cacheTex[spellID] then
+				cacheUnknown[spellID] = true
+			end
+			return
+		end
 		local line = _G[scantipName.."TextLeft1"]
 		local name = line and line:GetText()
 		if name and name ~= "" then
@@ -2894,6 +2917,9 @@ do
 			tex = t2
 		end
 		if tex then cacheTex[spellID] = tex end
+		if not cacheName[spellID] and not cacheTex[spellID] then
+			cacheUnknown[spellID] = true
+		end
 	end
 
 	function ExRT.F.GetSpellTextureSafe(spellID)

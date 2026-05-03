@@ -1147,6 +1147,11 @@ do
 	local function OnEditFocusGained(self)
 		self:HighlightText()
 	end
+	local function OnHide(self)
+		if self.HasFocus and self:HasFocus() and self.ClearFocus then
+			self:ClearFocus()
+		end
+	end
 	function Templates:ExRTInputBoxTemplate(parent)
 		local self = CreateFrame("EditBox",nil,parent)
 		if self.SetAutoFocus then self:SetAutoFocus(false) end
@@ -1183,6 +1188,7 @@ do
 		self:SetScript("OnEscapePressed",OnEscapePressed)
 		self:SetScript("OnEditFocusLost",OnEditFocusLost)
 		self:SetScript("OnEditFocusGained",OnEditFocusGained)
+		self:HookScript("OnHide",OnHide)
 
 		return self
 	end
