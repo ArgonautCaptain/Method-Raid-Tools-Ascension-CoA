@@ -700,13 +700,17 @@ function module.main:CHAT_MSG_WHISPER(msg, user, special)
 		return
 	end
 	msg = string.lower(msg):trim()
-	if ((msg and module.db.invWordsArray[msg]) or (module.db.invWordsArray["ANYKEYWORD"] and not UnitName(user))) and (not VMRT.InviteTool.OnlyGuild or UnitInGuild(user)) then
+	local matchedKeyword = (msg and module.db.invWordsArray[msg]) or (module.db.invWordsArray["ANYKEYWORD"] and not UnitName(user))
+	if not matchedKeyword then return end
+	if not VMRT.InviteTool.OnlyGuild or UnitInGuild(user) then
 		if not IsInRaid() and GetNumGroupMembers() == 5 then
 			C_PartyInfo_ConvertToRaid()
 		end
 		InviteUnit(user)
-	elseif ((msg and module.db.invWordsArray[msg]) or (module.db.invWordsArray["ANYKEYWORD"] and not UnitName(user))) and VMRT.InviteTool.OnlyGuild and (GetNumGuildMembers() or 0) == 0 and special ~= -578 then
-		C_GuildInfo_GuildRoster()
+	elseif VMRT.InviteTool.OnlyGuild and special ~= -578 then
+		if C_GuildInfo_GuildRoster then
+			pcall(C_GuildInfo_GuildRoster)
+		end
 		C_Timer.After(2,function()
 			module.main:CHAT_MSG_WHISPER(msg, user, -578)
 		end)

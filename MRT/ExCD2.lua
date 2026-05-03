@@ -3955,7 +3955,7 @@ do
 			module.options.chkSplit:SetChecked(VMRT.ExCD2.SplitOpt)
 			module.options.chkNoRaid:SetChecked(VMRT.ExCD2.NoRaid)
 			module.options.categories:Update()
-			module.options.categories.buttons[1]:Click()
+			module.options:ClickPlayerClassCategoryOrFirst()
 			module.options.optColTabs.tabs[module.db.maxColumns+3].currentName:UpdateText()
 			module.options.optColTabs.tabs[module.db.maxColumns+3]:UpdateAutoTexts()
 			if module.options.optColTabs.selected <= module.db.maxColumns + 1 then
@@ -5614,6 +5614,8 @@ function module.options:Load()
 	if ExRT.isClassic then
 		local WOTLK_HIDE_CATEGORIES = {
 
+			"ALL", "ENABLED", "FAV",
+
 			"RAID", "DEFTAR", "RES", "RAIDSPEED",
 
 			"DPS", "HEAL", "HEALUTIL", "DEF", "DEFTANK", "IMMUNITY",
@@ -5627,6 +5629,7 @@ function module.options:Load()
 				cat.isHidden = true
 			end
 		end
+		wipe(self.CATEGORIES_DEF)
 	end
 
 	self.categories = ELib:ScrollFrame(self.tab.tabs[1]):Point("TOPLEFT",0,0):Size(100,589)
@@ -7291,8 +7294,24 @@ function module.options:Load()
 	end
 
 
+	function self:ClickPlayerClassCategoryOrFirst()
+		local _, playerClass = UnitClass and UnitClass("player")
+		if playerClass and self.categories and self.categories.buttons then
+			for i=1,#self.categories.buttons do
+				local b = self.categories.buttons[i]
+				if b and b:IsShown() and b.category == playerClass then
+					b:Click()
+					return
+				end
+			end
+		end
+		if self.categories and self.categories.buttons and self.categories.buttons[1] then
+			self.categories.buttons[1]:Click()
+		end
+	end
+
 	self.categories:Update()
-	self.categories.buttons[1]:Click()
+	self:ClickPlayerClassCategoryOrFirst()
 
 
 	self.optColHeader = ELib:Text(self.tab.tabs[2],L.cd2ColSet):Size(560,20):Point(15+80,-8)
@@ -11015,9 +11034,9 @@ if ExRT.isLK then
 		{871,	"WARRIOR,DEF,DEFTANK",	3,	nil,	nil,	nil,	{871,	300,	12}},
 		{1161,	"WARRIOR,TAUNT",	1,	{1161,	180,	6}},
 		{12809,	"WARRIOR,CC",	1,	nil,	nil,	nil,	{12809,	30,	5}},
-		{676,	"WARRIOR,UTIL",	1,	nil,	{676,	60,	10},	nil,	{676,	60,	10}},
+		{676,	"WARRIOR,UTIL",	1,	{676,	60,	10}},
 		{55694,	"WARRIOR,DEF",	1,	nil,	nil,	{55694,	180,	10},	nil},
-		{1719,	"WARRIOR,DPS",	3,	nil,	{1719,	300,	12},	{1719,	300,	12},	nil},
+		{1719,	"WARRIOR,DPS",	3,	{1719,	300,	12}},
 		{46924,	"WARRIOR,DPS",	3,	nil,	{46924,	90,	6},	nil,	nil},
 		{20252,	"WARRIOR,UTIL",	1,	nil,	nil,	{20252,	30,	0},	nil},
 		{3411,	"WARRIOR,UTIL",	1,	nil,	nil,	nil,	{3411,	30,	0}},
@@ -11070,9 +11089,9 @@ if ExRT.isLK then
 		{66233,	"PALADIN,DEFTANK,DEF",	3,	nil,	nil,	{66233,	120,	10},	nil},
 		{31789,	"PALADIN,TAUNT",	1,	nil,	nil,	{31789,	8,	0},	nil},
 		{31935,	"PALADIN,KICK,DPS",	1,	nil,	nil,	{31935,	30,	0},	nil},
-		{2812,	"PALADIN,DPS",	1,	nil,	nil,	{2812,	30,	0},	{2812,	30,	0}},
+		{2812,	"PALADIN,DPS",	1,	{2812,	30,	0}},
 		{53595,	"PALADIN,DEFTANK,DPS",	1,	nil,	nil,	{53595,	6,	0},	nil},
-		{24275,	"PALADIN,DPS",	1,	nil,	{24275,	6,	0},	nil,	{24275,	6,	0}},
+		{24275,	"PALADIN,DPS",	1,	{24275,	6,	0}},
 
 
 		{16190,	"SHAMAN,HEAL,RAID",	3,	nil,	nil,	nil,	{16190,	300,	12}},
@@ -11121,7 +11140,7 @@ if ExRT.isLK then
 		{13809,	"HUNTER,UTIL",	1,	{13809,	30,	30}},
 		{34600,	"HUNTER,UTIL",	1,	{34600,	30,	30}},
 		{1499,	"HUNTER,CC",	1,	{1499,	30,	10}},
-		{53271,	"HUNTER,UTIL",	1,	nil,	{53271,	60,	4},	nil,	{53271,	60,	4}},
+		{53271,	"HUNTER,UTIL",	1,	nil,	{53271,	60,	4}},
 		{23989,	"HUNTER,UTIL",	3,	nil,	nil,	{23989,	180,	0},	nil},
 		{13813,	"HUNTER,DPS",	1,	{13813,	30,	30}},
 		{13795,	"HUNTER,DPS",	1,	{13795,	30,	30}},

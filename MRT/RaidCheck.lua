@@ -1709,6 +1709,8 @@ if ExRT.isClassic then
 	local _Tex = (ExRT.F and ExRT.F.GetSpellTextureSafe) or GetSpellTexture
 	RCW_iconsListDebugIcons[1] = _Tex(33257) or "Interface\\Icons\\INV_Misc_Food_64"
 	RCW_iconsListDebugIcons[2] = _Tex(53755) or "Interface\\Icons\\INV_Potion_118"
+	RCW_iconsListHeaders[1] = "Food"
+	RCW_iconsListHeaders[2] = "Flask"
 	RCW_iconsListWide[2] = true
 	for i=3,#RCW_iconsList do
 		RCW_iconsList[i] = nil
@@ -1718,7 +1720,7 @@ if ExRT.isClassic then
 	if ExRT.isBC then
 		RCW_liveToClassicDiff = RCW_liveToClassicDiff + 1
 		RCW_iconsList[#RCW_iconsList+1] = "scrolls"
-		RCW_iconsListHeaders[#RCW_iconsList] = "Scrolls"
+		RCW_iconsListHeaders[#RCW_iconsList] = "Scr"
 		RCW_iconsListDebugIcons[#RCW_iconsList] = 134943
 		RCW_iconsListWide[#RCW_iconsList] = true
 	end
@@ -1728,7 +1730,7 @@ if ExRT.isClassic then
 		RCW_iconsListDebugIcons[#RCW_iconsList] = module.db.classicBuffs[i][3]
 	end
 	RCW_iconsList[#RCW_iconsList+1] = "dur"
-	RCW_iconsListHeaders[#RCW_iconsList] = DURABILITY or "Durability"
+	RCW_iconsListHeaders[#RCW_iconsList] = "Dur"
 	RCW_iconsListDebugIcons[#RCW_iconsList] = 132281
 
 	for k,v in pairs(RCW_iconsListWide) do

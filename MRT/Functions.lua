@@ -802,16 +802,31 @@ function ExRT.F.tohex(num,size)
 end
 
 function ExRT.F.UnitInGuild(unit)
-	local sunit = ExRT.F.delUnitNameServer(unit)
+	if type(unit) ~= "string" or unit == "" then return false end
+	local sunit = ExRT.F.delUnitNameServer(unit) or unit
+	local lcUnit = unit:lower()
+	local lcSUnit = sunit:lower()
 	local gplayers = GetNumGuildMembers() or 0
+	if gplayers == 0 and GuildRoster then
+		pcall(GuildRoster)
+	end
+	gplayers = GetNumGuildMembers() or 0
 	for i=1,gplayers do
 		local name = GetGuildRosterInfo(i)
-		if name and ExRT.F.delUnitNameServer(name) == sunit then
-			return true
+		if name then
+			local sname = ExRT.F.delUnitNameServer(name) or name
+			if name == unit or name == sunit or sname == unit or sname == sunit
+				or name:lower() == lcUnit or name:lower() == lcSUnit
+				or sname:lower() == lcUnit or sname:lower() == lcSUnit then
+				return true
+			end
 		end
 	end
-	if UnitIsInMyGuild(unit) or UnitIsInMyGuild(sunit) then
-		return true
+	if UnitIsInMyGuild then
+		local ok1, r1 = pcall(UnitIsInMyGuild, unit)
+		if ok1 and r1 then return true end
+		local ok2, r2 = pcall(UnitIsInMyGuild, sunit)
+		if ok2 and r2 then return true end
 	end
 	return false
 end
