@@ -1,6 +1,7 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+<<<<<<< HEAD
 v5.0.3-WotLK335a
 * Other Icons popup expanded with WotLK spell set (lust/raid CDs/tank CDs/healer externals/Hand of/personals/DPS CDs/interrupts/utility/raid buffs/ICC mechanics)
 * Other Icons popup now follows global addon scale (VMRT.Addon.Scale)
@@ -14,6 +15,8 @@ v5.0.2-WotLK335a
 * Interface Options click reopens /mrt
 * UnifiedProfileManager profile bridge
 
+=======
+>>>>>>> 1506f055de1f77ebdce614adc5c9e7b9a27700ad
 v5.0.1-WotLK335a
 * CallbackHandler conflict fix
 * NumPad input fix
