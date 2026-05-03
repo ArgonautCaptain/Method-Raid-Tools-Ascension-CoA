@@ -752,6 +752,17 @@ function module.options:Load()
 		dot:Show()
 		return dot
 	end
+	-- 3.3.5a client built-in raid worldmap textures. Each tile path is
+	-- "<file><N>" (no extension) for N in 1..(cols*rows). Override these
+	-- entries here if a particular client build ships different filenames —
+	-- failed tiles render as transparent without breaking adjacent ones.
+	local CLASSIC_RAID_MAPS = {
+		[1001] = { file = "Interface\\WorldMap\\Naxxramas\\Naxxramas",                 cols = 4, rows = 3, tileW = 256, tileH = 256 },
+		[1010] = { file = "Interface\\WorldMap\\Ulduar\\Ulduar",                       cols = 4, rows = 3, tileW = 256, tileH = 256 },
+		[1030] = { file = "Interface\\WorldMap\\IcecrownCitadel\\IcecrownCitadel",     cols = 4, rows = 3, tileW = 256, tileH = 256 },
+		[1050] = { file = "Interface\\WorldMap\\OnyxiasLair\\OnyxiasLair",             cols = 4, rows = 3, tileW = 256, tileH = 256 },
+	}
+
 	local function SetBackground(background,centerX,centerY,scale)
 		for b,_ in pairs(backgrounds) do
 			b:Hide()
@@ -797,6 +808,28 @@ function module.options:Load()
 			b:SetPoint("TOPLEFT",0,0)
 			return b
 		elseif type(background) == 'number' then
+			local md = CLASSIC_RAID_MAPS[background]
+			if md then
+				local widthCount, heightCount = md.cols, md.rows
+				local layerW, layerH = md.cols * md.tileW, md.rows * md.tileH
+
+				scale = scale or 1
+
+				local adjustX = self.main:GetWidth()  / 2 - layerW * (centerX or 0.5) * scale
+				local adjustY = self.main:GetHeight() / 2 - layerH * (centerY or 0.5) * scale
+
+				for i=1,heightCount do
+					for j=1,widthCount do
+						local p = (i-1)*widthCount + j
+						local t = GetBackground()
+						t:SetSize(md.tileW*scale, md.tileH*scale)
+						t:ClearAllPoints()
+						t:SetPoint("TOPLEFT", self.main.C, "TOPLEFT", adjustX + md.tileW*(j-1)*scale, -(i-1)*md.tileH*scale - adjustY)
+						t:SetTexture(md.file .. p)
+					end
+				end
+				return
+			end
 			local layers = C_Map.GetMapArtLayers(background)
 			if layers and layers[1] then
 				local layerInfo = layers[1]
@@ -852,71 +885,13 @@ function module.options:Load()
 		{L.NoteColorBlue:lower(),{{.5,.5,1,1}}},
 		{L.NoteColorYellow:lower(),{{1,1,.5,1}}},
 		[1000] = {"None WotLK",{}},
-		[1001] = {"Naxxramas — Arachnid",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/naxx_arachnid"}},
-		[1002] = {"Naxxramas — Plague",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/naxx_plague"}},
-		[1003] = {"Naxxramas — Military",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/naxx_militairy"}},
-		[1004] = {"Naxxramas — Construct",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/naxx_construct"}},
-		[1005] = {"Naxxramas — Sapph/KT",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/naxx_sapp_kel"}},
-		[1006] = {"Naxxramas — Overview",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/naxx"}},
-		[1010] = {"Ulduar 1 (Flame Leviathan)",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld1"}},
-		[1011] = {"Ulduar 2 (Razorscale)",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld2"}},
-		[1012] = {"Ulduar 3 (XT-002)",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld3"}},
-		[1013] = {"Ulduar 4 (Assembly)",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld4"}},
-		[1014] = {"Ulduar 5 (Kologarn)",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld5"}},
-		[1015] = {"Ulduar 6 (Auriaya)",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld6"}},
-		[1016] = {"Ulduar 7 (Hodir)",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld7"}},
-		[1017] = {"Ulduar 8 (Thorim)",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld8"}},
-		[1018] = {"Ulduar 9 (Freya)",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld9"}},
-		[1019] = {"Ulduar 10 (Mimiron)",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld10"}},
-		[1020] = {"Ulduar 11 (Vezax)",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld11"}},
-		[1021] = {"Ulduar 12 (Yogg-Saron)",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld12"}},
-		[1022] = {"Ulduar 13",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld13"}},
-		[1023] = {"Ulduar 14",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld14"}},
-		[1024] = {"Ulduar 15 (Algalon)",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/uld15"}},
-		[1030] = {"Icecrown Citadel 1",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc1"}},
-		[1031] = {"Icecrown Citadel 2",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc2"}},
-		[1032] = {"Icecrown Citadel 3",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc3"}},
-		[1033] = {"Icecrown Citadel 4",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc4"}},
-		[1034] = {"Icecrown Citadel 5",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc5"}},
-		[1035] = {"Icecrown Citadel 6",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc6"}},
-		[1036] = {"Icecrown Citadel 7",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc7"}},
-		[1037] = {"Icecrown Citadel 8",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc8"}},
-		[1038] = {"Icecrown Citadel 9",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc9"}},
-		[1039] = {"Icecrown Citadel 10",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc10"}},
-		[1040] = {"Icecrown Citadel 11",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc11"}},
-		[1041] = {"Icecrown Citadel 12",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc12"}},
-		[1042] = {"Icecrown Citadel 13",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc13"}},
-		[1043] = {"Icecrown Citadel 14",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/icc14"}},
-		[1050] = {"Onyxia's Lair",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/ony"}},
-		[1051] = {"Molten Core",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/mc"}},
-		[1052] = {"Zul'Gurub",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/zg"}},
-		[1053] = {"Ruins of AQ20",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/aq20"}},
-		[1054] = {"Temple of AQ40",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/aq40"}},
-		[1055] = {"AQ40 — C'Thun",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/aq40_cthun"}},
-		[1056] = {"AQ40 — Entrance",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/aq40_entrance"}},
-		[1060] = {"Black Temple 1",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bt1"}},
-		[1061] = {"Black Temple 2",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bt2"}},
-		[1062] = {"Black Temple 3",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bt3"}},
-		[1063] = {"Black Temple 4",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bt4"}},
-		[1064] = {"Black Temple 5",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bt5"}},
-		[1065] = {"Black Temple 6",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bt6"}},
-		[1066] = {"Black Temple 7",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bt7"}},
-		[1067] = {"Black Temple 8",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bt8"}},
-		[1070] = {"Battle for Mount Hyjal",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/hyj"}},
-		[1071] = {"Gruul's Lair",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/gruul"}},
-		[1072] = {"Magtheridon's Lair",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/mag"}},
-		[1073] = {"Serpentshrine Cavern",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/sc"}},
-		[1074] = {"Tempest Keep",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/tk"}},
-		[1075] = {"Sunwell Plateau 1",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/sw1"}},
-		[1076] = {"Sunwell Plateau 2",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/sw2"}},
-		[1080] = {"Blackwing Lair — Razorgore",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bwl_razorgore"}},
-		[1081] = {"Blackwing Lair — Vael",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bwl_vaelastrasz"}},
-		[1082] = {"Blackwing Lair — Broodlord",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bwl_broodlord"}},
-		[1083] = {"Blackwing Lair — Firemaw",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bwl_firemaw"}},
-		[1084] = {"Blackwing Lair — Ebonroc",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bwl_ebonroc"}},
-		[1085] = {"Blackwing Lair — Flamegor",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bwl_flamegor"}},
-		[1086] = {"Blackwing Lair — Chromaggus",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bwl_chromaggus"}},
-		[1087] = {"Blackwing Lair — Nefarian",{"Interface/AddOns/"..GlobalAddonName.."/mediaclassic/bwl_nefarian"}},
+		-- Numeric IDs route through CLASSIC_RAID_MAPS above and assemble
+		-- 12-tile worldmap textures shipped with the 3.3.5a client. The
+		-- addon no longer ships its own raid map textures.
+		[1001] = {"Naxxramas",{1001}},
+		[1010] = {"Ulduar",{1010}},
+		[1030] = {"Icecrown Citadel",{1030}},
+		[1050] = {"Onyxia's Lair",{1050}},
 	}
 
 
@@ -926,27 +901,10 @@ function module.options:Load()
 	}
 	if ExRT.isLK then
 		ExRT.F.table_add(mapsSorted,{
-			{"Icecrown Citadel",1030,1031,1032,1033,1034,1035,1036,1037,1038,1039,1040,1041,1042,1043},
-			{"Ulduar",1010,1011,1012,1013,1014,1015,1016,1017,1018,1019,1020,1021,1022,1023,1024},
-			{"Naxxramas",1001,1002,1003,1004,1005,1006},
+			{"Icecrown Citadel",1030},
+			{"Ulduar",1010},
+			{"Naxxramas",1001},
 			{"Onyxia's Lair",1050},
-		})
-	end
-	if ExRT.isBC then
-		ExRT.F.table_add(mapsSorted,{
-			{"Sunwell Plateau",1075,1076},
-			{"Battle for Mount Hyjal",1070},
-			{"Black Temple",1060,1061,1062,1063,1064,1065,1066,1067},
-			{"Tempest Keep",1074},
-			{"Serpentshrine Cavern",1073},
-			{"Gruul's Lair",1071},
-			{"Magtheridon's Lair",1072},
-			{"Blackwing Lair",1080,1081,1082,1083,1084,1085,1086,1087},
-			{"Molten Core",1051},
-			{"Onyxia",1050},
-			{"Zul'Gurub",1052},
-			{"Ruins of AQ20",1053},
-			{"Temple of AQ40",1054,1055,1056},
 		})
 	end
 	for i=1,#mapsSorted do
