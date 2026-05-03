@@ -198,7 +198,6 @@ MRT.Options.InBlizzardInterface:SetScript("OnShow",function (self)
 		end
 	end
 	MRT.Options:Open()
-	self:SetScript("OnShow",nil)
 end)
 
 MRT.Options.InBlizzardInterface.button = ELib:Button(MRT.Options.InBlizzardInterface,"Method Raid Tools",0):Size(400,25):Point("TOP",0,-100):OnClick(function ()

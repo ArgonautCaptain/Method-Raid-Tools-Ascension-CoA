@@ -123,8 +123,43 @@ function module:timer(elapsed)
 		elseif module.frame.encounter and not IsEncounterInProgress() then
 			module.frame.encounter = nil
 
-			if VMRT.Timers.OnlyInCombat and not module.frame.inCombat then
+			if VMRT.Timers.OnlyInCombat and not module.frame.inCombat and not module.frame.groupInCombat then
 				module.frame:Hide()
+			end
+		end
+
+		module.frame._groupCombatPoll = (module.frame._groupCombatPoll or 0) + (elapsed or 0)
+		if module.frame._groupCombatPoll >= 0.5 then
+			module.frame._groupCombatPoll = 0
+			local groupInCombat = false
+			local n = (GetNumGroupMembers and GetNumGroupMembers()) or 0
+			if n == 0 then
+				groupInCombat = UnitAffectingCombat("player") and true or false
+			elseif IsInRaid and IsInRaid() then
+				for i=1,n do
+					if UnitAffectingCombat("raid"..i) then
+						groupInCombat = true
+						break
+					end
+				end
+			else
+				if UnitAffectingCombat("player") then
+					groupInCombat = true
+				else
+					for i=1,(n-1) do
+						if UnitAffectingCombat("party"..i) then
+							groupInCombat = true
+							break
+						end
+					end
+				end
+			end
+			module.frame.groupInCombat = groupInCombat or nil
+
+			if not groupInCombat and not module.frame.inCombat and not module.frame.encounter then
+				if VMRT.Timers.OnlyInCombat and module.frame:IsShown() and (not module.frame._lastCombatExit or (GetTime() - module.frame._lastCombatExit) > 5) then
+					module.frame:Hide()
+				end
 			end
 		end
 	end
@@ -319,7 +354,7 @@ function module.options:Load()
 	self.chkOnlyInCombat = ELib:Check(self.TabTimerFrame,L.TimerOnlyInCombat,VMRT.Timers.OnlyInCombat):Point(5,-30):OnClick(function(self)
 		if self:GetChecked() then
 			VMRT.Timers.OnlyInCombat = true
-			if not (module.frame.inCombat or module.frame.encounter) then
+			if not (module.frame.inCombat or module.frame.encounter or module.frame.groupInCombat) then
 				module.frame:Hide()
 			end
 		else
@@ -556,10 +591,15 @@ function module.main:ADDON_LOADED()
 end
 
 function module.main:PLAYER_REGEN_DISABLED()
-	if not module.frame.encounter and module.frame.total >= 0 then
+	local now = GetTime()
+	local lastExit = module.frame._lastCombatExit
+	local recentlyExited = lastExit and (now - lastExit) <= 5
+
+	if not module.frame.encounter and not module.frame.groupInCombat and not recentlyExited and module.frame.total >= 0 then
 		module.frame.total = 0
 	end
 	module.frame.inCombat = true
+	module.frame._lastCombatExit = nil
 
 	if VMRT.Timers.OnlyInCombat then
 		module.frame:Show()
@@ -568,8 +608,9 @@ end
 
 function module.main:PLAYER_REGEN_ENABLED()
 	module.frame.inCombat = nil
+	module.frame._lastCombatExit = GetTime()
 
-	if VMRT.Timers.OnlyInCombat and not module.frame.encounter then
+	if VMRT.Timers.OnlyInCombat and not module.frame.encounter and not module.frame.groupInCombat then
 		module.frame:Hide()
 	end
 end
@@ -640,7 +681,7 @@ do
 
 	local function timerType1(self,elapsed)
 		tmr2 = tmr2 + elapsed
-		if tmr2 > 0.05 and (self.inCombat or self.encounter or self.total < 0) then
+		if tmr2 > 0.05 and (self.inCombat or self.encounter or self.groupInCombat or self.total < 0) then
 			self.total = self.total + tmr2
 			self.txt:SetFormattedText("%2.2d:%2.2d\.%1.1d",abs(self.total)/60,abs(self.total)%60,(abs(self.total)*10)%10)
 			tmr2 = 0
@@ -706,7 +747,7 @@ do
 
 	local function timerType2(self,elapsed)
 		tmr2 = tmr2 + elapsed
-		if tmr2 > 0.05 and (self.inCombat or self.encounter or self.total < 0) then
+		if tmr2 > 0.05 and (self.inCombat or self.encounter or self.groupInCombat or self.total < 0) then
 			self.total = self.total + tmr2
 			self.txt:SetFormattedText("%1.1d:",abs(self.total)/60)
 			self.txt_s:SetFormattedText("%2.2d",abs(self.total)%60)

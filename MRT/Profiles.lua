@@ -476,3 +476,129 @@ function module:TextToProfile(str,uncompressed)
 
 	StaticPopup_Show("EXRT_PROFILES_IMPORT")
 end
+
+do
+	local function mrtToUpmCharKey(mrtKey)
+		if type(mrtKey) ~= "string" then return mrtKey end
+		local sep = mrtKey:find("-", 1, true)
+		if not sep then return mrtKey end
+		return mrtKey:sub(1, sep-1) .. " - " .. mrtKey:sub(sep+1)
+	end
+
+	local function buildBridgeSV()
+		local out = {profiles = {}, profileKeys = {}}
+		out.profiles["default"] = {}
+		if type(VMRT) == "table" then
+			if type(VMRT.Profiles) == "table" then
+				for name in pairs(VMRT.Profiles) do
+					if type(name) == "string" then
+						out.profiles[name] = {}
+					end
+				end
+			end
+			if type(VMRT.Profile) == "string" then
+				out.profiles[VMRT.Profile] = out.profiles[VMRT.Profile] or {}
+			end
+			if type(VMRT.ProfileKeys) == "table" then
+				for mrtKey, profileName in pairs(VMRT.ProfileKeys) do
+					if type(mrtKey) == "string" and type(profileName) == "string" then
+						out.profileKeys[mrtToUpmCharKey(mrtKey)] = profileName
+					end
+				end
+			end
+		end
+		if type(ExRT) == "table" and type(ExRT.SDB) == "table" and type(ExRT.SDB.charKey) == "string" then
+			local upmKey = mrtToUpmCharKey(ExRT.SDB.charKey)
+			if type(VMRT) == "table" and type(VMRT.Profile) == "string" then
+				out.profileKeys[upmKey] = VMRT.Profile
+			end
+		end
+		return out
+	end
+
+	local f = CreateFrame("Frame")
+	f:RegisterEvent("PLAYER_LOGIN")
+	f:SetScript("OnEvent", function(self)
+		self:UnregisterAllEvents()
+
+		if type(LibStub) ~= "table" and type(LibStub) ~= "function" then return end
+		local AceDB
+		local ok, lib = pcall(LibStub, "AceDB-3.0", true)
+		if ok then AceDB = lib end
+		if type(AceDB) ~= "table" or type(AceDB.New) ~= "function" then return end
+
+		if type(VMRT) ~= "table" then return end
+
+		_G.VMRT_UPMBridge = buildBridgeSV()
+
+		local bridgeDB
+		local ok2, db = pcall(AceDB.New, AceDB, "VMRT_UPMBridge")
+		if ok2 then bridgeDB = db end
+		if type(bridgeDB) ~= "table" or type(bridgeDB.RegisterCallback) ~= "function" then return end
+
+		local mrtCharKey = type(ExRT) == "table" and type(ExRT.SDB) == "table" and ExRT.SDB.charKey or nil
+		local upmCharKey = type(mrtCharKey) == "string" and mrtToUpmCharKey(mrtCharKey) or nil
+
+		bridgeDB.RegisterCallback(bridgeDB, "OnProfileChanged", function(_, _, newProfileKey)
+			if type(newProfileKey) ~= "string" then return end
+			if type(VMRT) ~= "table" then return end
+			if type(mrtCharKey) ~= "string" then return end
+			if VMRT.Profile == newProfileKey then return end
+
+			VMRT.ProfileKeys = type(VMRT.ProfileKeys) == "table" and VMRT.ProfileKeys or {}
+			VMRT.Profiles = type(VMRT.Profiles) == "table" and VMRT.Profiles or {}
+			VMRT.ProfileKeys[mrtCharKey] = newProfileKey
+			if newProfileKey ~= "default" then
+				VMRT.Profiles[newProfileKey] = VMRT.Profiles[newProfileKey] or {}
+			end
+
+			if type(ReloadUI) == "function" then
+				ReloadUI()
+			end
+		end)
+
+		bridgeDB.RegisterCallback(bridgeDB, "OnNewProfile", function(_, _, newProfileKey)
+			if type(newProfileKey) ~= "string" or newProfileKey == "default" then return end
+			if type(VMRT) ~= "table" then return end
+			VMRT.Profiles = type(VMRT.Profiles) == "table" and VMRT.Profiles or {}
+			VMRT.Profiles[newProfileKey] = VMRT.Profiles[newProfileKey] or {}
+		end)
+
+		bridgeDB.RegisterCallback(bridgeDB, "OnProfileDeleted", function(_, _, deletedProfileKey)
+			if type(deletedProfileKey) ~= "string" or deletedProfileKey == "default" then return end
+			if type(VMRT) ~= "table" then return end
+			if type(VMRT.Profiles) == "table" then
+				VMRT.Profiles[deletedProfileKey] = nil
+			end
+			if type(VMRT.ProfileKeys) == "table" then
+				for k, v in pairs(VMRT.ProfileKeys) do
+					if v == deletedProfileKey then
+						VMRT.ProfileKeys[k] = "default"
+					end
+				end
+			end
+		end)
+
+		bridgeDB.RegisterCallback(bridgeDB, "OnProfileCopied", function(_, _, sourceProfileKey)
+			if type(sourceProfileKey) ~= "string" then return end
+			if type(VMRT) ~= "table" or type(VMRT.Profiles) ~= "table" then return end
+			if type(upmCharKey) ~= "string" then return end
+			local destProfileKey = bridgeDB.sv and bridgeDB.sv.profileKeys and bridgeDB.sv.profileKeys[upmCharKey]
+			if type(destProfileKey) ~= "string" or destProfileKey == sourceProfileKey then return end
+			local source = VMRT.Profiles[sourceProfileKey]
+			if type(source) ~= "table" then return end
+			local clone = {}
+			for k, v in pairs(source) do clone[k] = v end
+			VMRT.Profiles[destProfileKey] = clone
+		end)
+
+		bridgeDB.RegisterCallback(bridgeDB, "OnProfileReset", function()
+			if type(VMRT) ~= "table" or type(mrtCharKey) ~= "string" then return end
+			VMRT.ProfileKeys = type(VMRT.ProfileKeys) == "table" and VMRT.ProfileKeys or {}
+			VMRT.ProfileKeys[mrtCharKey] = "default"
+			if type(ReloadUI) == "function" then
+				ReloadUI()
+			end
+		end)
+	end)
+end

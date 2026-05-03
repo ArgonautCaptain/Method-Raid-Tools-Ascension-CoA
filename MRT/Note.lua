@@ -573,7 +573,21 @@ function module.options:Load()
 	self:CreateTilte()
 
 	module.db.otherIconsAdditionalList = {}
-	if MRT.isBC then
+	if IS_WOTLK_335 then
+		module.db.otherIconsAdditionalList = {
+			32182, 2825, 16190, 29166, 0,
+			31821, 64843, 64901, 740, 64205, 53480, 49016, 0,
+			871, 12975, 55694, 48792, 49028, 50461, 22812, 50256, 498, 31850, 0,
+			47788, 33206, 6940, 31842, 16188, 17116, 14751, 10060, 0,
+			1022, 1044, 1038, 6940, 0,
+			642, 45438, 31224, 5277, 48707, 47585, 871, 22812, 50256, 498, 0,
+			1719, 31884, 12472, 11129, 12042, 26297, 13750, 51713, 14185, 19574, 3045, 53201, 50334, 47241, 51271, 0,
+			32375, 4987, 527, 2782, 19505, 19647, 1766, 6552, 47476, 2139, 49903, 6953, 0,
+			20484, 6201, 48788, 1850, 5384, 0,
+			21562, 1126, 1459, 6673, 469, 19506, 6346, 0,
+			69076, 71289, 72293, 70215, 72037, 70946, 71340, 70126, 70128, 72762, 69409, 70541, 68980, 0,
+		}
+	elseif MRT.isBC then
 		module.db.otherIconsAdditionalList = {
 			26983,2825,32182,16190,0,0,
 			38219,38215,36459,38246,37478,37138,37675,37640,37641,38441,38445,37764,38316,38310,38509,38280,0,
@@ -1711,6 +1725,9 @@ function module.options:Load()
 	end)
 
 	self.OtherIconsFrame = ELib:Popup(L.NoteOtherIcons):Size(300,300)
+	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then
+		ExRT.F.AddonScaleApply(self.OtherIconsFrame)
+	end
 	self.OtherIconsFrame.ScrollFrame = ELib:ScrollFrame(self.OtherIconsFrame):Size(self.OtherIconsFrame:GetWidth()-10,self.OtherIconsFrame:GetHeight()-25):Point("TOP",0,-20):Height(500)
 
 	local function CreateOtherIcon(pointX,pointY,texture,iconText)

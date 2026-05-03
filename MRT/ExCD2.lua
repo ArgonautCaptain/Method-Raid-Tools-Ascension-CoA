@@ -2547,8 +2547,10 @@ local function AfterCombatResetFunction(isArena)
 		for i=1,#_C do
 			local unitSpellData = _C[i]
 			local uSpecID = _db.specInDBase[globalGUIDs[unitSpellData.fullName] or 0]
-			if not unitSpellData.db[uSpecID] and unitSpellData.db[4] then
-				uSpecID = 4
+			if not unitSpellData.db[uSpecID] then
+				for sid = 4, 8 do
+					if unitSpellData.db[sid] then uSpecID = sid; break end
+				end
 			end
 
 			if (unitSpellData.cd > 0 and (_db.spell_afterCombatReset[unitSpellData.db[1]] or (unitSpellData.db[uSpecID] and unitSpellData.db[uSpecID][2] >= (isArena and 0 or 120) or unitSpellData.cd >= (isArena and 0 or 180)))) and (not _db.spell_afterCombatNotReset[unitSpellData.db[1]] or isArena) then
@@ -2574,7 +2576,9 @@ local function TestMode(h)
 			local data = _C[i]
 			local uSpecID = module.db.specInDBase[VMRT.ExCD2.gnGUIDs[data.fullName] or 0]
 			if not data.db[uSpecID] then
-				uSpecID = 4
+				for sid = 4, 8 do
+					if data.db[sid] then uSpecID = sid; break end
+				end
 			end
 			if data.db[uSpecID] then
 				if fastrandom(0,100) < 80 then
@@ -2768,7 +2772,7 @@ do
 			local unitSpecID = specInDBase[specID] or 4
 
 			if isTestMode or (VMRT_CDE[spellID] and
-			(db[unitSpecID] or (not db[unitSpecID] and db[4])) and
+			(db[unitSpecID] or db[4] or db[5] or db[6] or db[7] or db[8]) and
 			(not spell_isTalent[spellID] or session_gGUIDs[name][spellID]) and
 			(not spell_isPvpTalent[spellID] or (session_gGUIDs[name][spellID] and IsPvpTalentsOn(name))) and
 			(not spell_isPetAbility[spellID] or session_Pets[name] == spell_isPetAbility[spellID] or (session_Pets[name] and petsAbilities[ session_Pets[name] ] and petsAbilities[ session_Pets[name] ][1] == spell_isPetAbility[spellID]) or (type(spell_isPetAbility[spellID]) == "table" and session_Pets[name] and ExRT.F.table_find(spell_isPetAbility[spellID],session_Pets[name]))) and
@@ -3242,7 +3246,8 @@ local function GetRaidRosterInfoFix(j)
 			local _,race = UnitRace(name)
 			return name,subgroup,classFileName,level,race,online,isDead
 		end
-		local i = math.random(1,11)
+		local classCount = (module.db.classNames and #module.db.classNames) or 0
+		local i = (classCount > 0) and math.random(1, classCount) or 1
 
 		local namesList = {}
 		for unitName, specID in pairs(VMRT.ExCD2.gnGUIDs) do
@@ -3258,8 +3263,9 @@ local function GetRaidRosterInfoFix(j)
 			end
 		end
 		if #namesList == 0 or #namesList < 25 then
-			name = L.classLocalizate[module.db.classNames[i]]..tostring(j)
-			classFileName = module.db.classNames[i]
+			classFileName = module.db.classNames and module.db.classNames[i] or "WARRIOR"
+			local localized = (L.classLocalizate and L.classLocalizate[classFileName]) or classFileName or "Class"
+			name = localized..tostring(j)
 		else
 			i = math.random(1,#namesList)
 			name = namesList[i][1]
@@ -3725,10 +3731,13 @@ do
 		local fullName = data.fullName
 
 		local uSpecID = _db.specInDBase[globalGUIDs[fullName] or 0]
-		if not data.db[uSpecID] and not data.db[4] then
+		if not data.db[uSpecID] then
+			for sid = 4, 8 do
+				if data.db[sid] then uSpecID = sid; break end
+			end
+		end
+		if not data.db[uSpecID] then
 			return
-		elseif not data.db[uSpecID] then
-			uSpecID = 4
 		end
 		local spellID = data.db[uSpecID][1]
 
@@ -7719,9 +7728,14 @@ function module.options:Load()
 	end)
 
 	self.optColSet.sliderScale = ELib:Slider(self.optColSet.superTabFrame.tab[1],L.cd2scale):Size(400):Point("TOP",0,-155):Range(5,200):SetObey(true):OnChange(function(self,event)
+		if module.options.optColSet.LOCK then return end
 		event = event - event%1
-		if currColOpt.frameScale == event then return end
-		currColOpt.frameScale = event
+		local sel = module.options.optColTabs and module.options.optColTabs.selected
+		local VColOpt = sel and VMRT.ExCD2.colSet[sel]
+		if not VColOpt then return end
+		if VColOpt.frameScale == event then return end
+		VColOpt.frameScale = event
+		if currColOpt then currColOpt.frameScale = event end
 		self.tooltipText = event
 		self:tooltipReload(self)
 		module:ReloadAllSplits("ScaleFix")
@@ -10790,9 +10804,25 @@ do
 end
 
 local lastSplitsReload = 0
+local pendingSplitsReload = nil
+local pendingSplitsReloadArg = nil
 function module:ReloadAllSplits(argScaleFix)
 	local _ctime = GetTime()
 	if lastSplitsReload > _ctime then
+		if argScaleFix then
+			pendingSplitsReloadArg = argScaleFix
+		end
+		if not pendingSplitsReload and C_Timer and C_Timer.After then
+			local delay = lastSplitsReload - _ctime + 0.01
+			if delay < 0.01 then delay = 0.01 end
+			pendingSplitsReload = true
+			C_Timer.After(delay, function()
+				pendingSplitsReload = nil
+				local arg = pendingSplitsReloadArg
+				pendingSplitsReloadArg = nil
+				module:ReloadAllSplits(arg)
+			end)
+		end
 		return
 	end
 	lastSplitsReload = _ctime + 0.05

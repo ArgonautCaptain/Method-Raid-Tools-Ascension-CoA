@@ -1,11 +1,24 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
-v.5.0.0-WotLK335a
+v5.0.3-WotLK335a
+* Other Icons popup expanded with WotLK spell set (lust/raid CDs/tank CDs/healer externals/Hand of/personals/DPS CDs/interrupts/utility/raid buffs/ICC mechanics)
+* Other Icons popup now follows global addon scale (VMRT.Addon.Scale)
+* Combat timer: tracks total fight time with raid/group; solo death stops it, vanish and brief out-of-combat (<=5s) no longer resets it
+* ExCD2: fixed test mode crash on character window (math.random class index out of range on 3.3.5a)
+* ExCD2: General-tab Scale slider now writes through to the saved frameScale (was lost when slider fired before tab init); ReloadAllSplits no longer drops the final rate-limited value while dragging
+* ExCD2: Raid Cooldown spec gating relaxed - spell tables are still organized by spec, but a known spell is shown for any spec as long as the spell DB has data in any spec column (lookup falls back through 4..8)
+* UPM bridge inlined
+
+v5.0.2-WotLK335a
+* Interface Options click reopens /mrt
+* UnifiedProfileManager profile bridge
+
+v5.0.1-WotLK335a
 * CallbackHandler conflict fix
 * NumPad input fix
 
-v.5.0.0-WotLK335a
+v5.0.0-WotLK335a
 * All modules have been backported
 * Timers from DBM have been added to Reminder
 * Caps for collecting Fight Log have been updated
