@@ -752,10 +752,6 @@ function module.options:Load()
 		dot:Show()
 		return dot
 	end
-	-- 3.3.5a client built-in raid worldmap textures. Each tile path is
-	-- "<file><N>" (no extension) for N in 1..(cols*rows). Override these
-	-- entries here if a particular client build ships different filenames —
-	-- failed tiles render as transparent without breaking adjacent ones.
 	local CLASSIC_RAID_MAPS = {
 		[1001] = { file = "Interface\\WorldMap\\Naxxramas\\Naxxramas",                 cols = 4, rows = 3, tileW = 256, tileH = 256 },
 		[1010] = { file = "Interface\\WorldMap\\Ulduar\\Ulduar",                       cols = 4, rows = 3, tileW = 256, tileH = 256 },
