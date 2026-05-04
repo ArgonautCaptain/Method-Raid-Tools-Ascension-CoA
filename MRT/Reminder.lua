@@ -2773,6 +2773,11 @@ function options:Load()
 		end
 
 		if self.selected == 4 then
+			if not options.timeLine._initialPreUpdate then
+				options.timeLine._initialPreUpdate = true
+				local rTL = options.timeLineBoss:PreUpdate()
+				if rTL then options.timeLine.preload = rTL end
+			end
 			if options.timeLine.preload then
 				options.timeLine.preload()
 				options.timeLine.preload = nil
@@ -2780,6 +2785,11 @@ function options:Load()
 				options.timeLine:Update()
 			end
 		elseif self.selected == 5 then
+			if not options.assign._initialPreUpdate then
+				options.assign._initialPreUpdate = true
+				local rAS = options.assignBoss:PreUpdate()
+				if rAS then options.assign.preload = rAS end
+			end
 			if options.assign.preload then
 				options.assign.preload()
 				options.assign.preload = nil
@@ -18150,8 +18160,6 @@ function options:Load()
 		_profwrap(ELib.ScrollDropDown, "Reload", "ELib.ScrollDropDown:Reload")
 	end
 
-	local r=self.timeLineBoss:PreUpdate() if r then self.timeLine.preload = r end
-	local r=self.assignBoss:PreUpdate() if r then  self.assign.preload = r end
 	self.tab:SetTo(VMRT.Reminder2.OptSavedTabNum or 1)
 end
 

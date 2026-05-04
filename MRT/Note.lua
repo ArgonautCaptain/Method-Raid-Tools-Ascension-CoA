@@ -1728,44 +1728,23 @@ function module.options:Load()
 	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then
 		ExRT.F.AddonScaleApply(self.OtherIconsFrame)
 	end
-	self.OtherIconsFrame.ScrollFrame = ELib:ScrollFrame(self.OtherIconsFrame):Size(self.OtherIconsFrame:GetWidth()-10,self.OtherIconsFrame:GetHeight()-25):Point("TOP",0,-20):Height(500)
+	self.OtherIconsFrame.ScrollFrame = ELib:ScrollFrame(self.OtherIconsFrame):Size(self.OtherIconsFrame:GetWidth()-10,self.OtherIconsFrame:GetHeight()-25):Point("TOP",0,-20):Height(500):HideScrollOnNoScroll()
+	self.OtherIconsFrame.ScrollFrame.C:SetWidth(self.OtherIconsFrame:GetWidth()-30)
 
-	local function CreateOtherIcon(pointX,pointY,texture,iconText)
-		local self = CreateFrame("Button", nil,module.options.OtherIconsFrame.ScrollFrame.C)
-		self:SetSize(18,18)
-		self:SetPoint("TOPLEFT",pointX,pointY)
-		self.texture = self:CreateTexture(nil, "ARTWORK")
-		self.texture:SetTexture(texture)
-		self.texture:SetAllPoints()
-		self:EnableMouse(true)
-		self:RegisterForClicks("AnyUp")
-		self.iconText = iconText
-		self:SetScript("OnClick", AddTextToEditBox)
-		return self
+	local function CreateOtherIcon(parent,pointX,pointY,texture,iconText)
+		local btn = CreateFrame("Button", nil, parent)
+		btn:SetSize(18,18)
+		btn:SetPoint("TOPLEFT",pointX,pointY)
+		btn.back = btn:CreateTexture(nil, "ARTWORK")
+		btn.back:SetTexture(texture)
+		btn.back:SetPoint("TOPLEFT",1,-1)
+		btn.back:SetPoint("BOTTOMRIGHT",-1,1)
+		btn:RegisterForClicks("LeftButtonDown")
+		btn.iconText = iconText
+		btn:SetScript("OnClick", AddTextToEditBox)
+		return btn
 	end
 	self.OtherIconsFrame.CreateOtherIcon = CreateOtherIcon
-
-	self.OtherIconsFrame.OnShow = function(self)
-	local line, inLine = 1, 0
-
-	if self._iconButtons then
-		for i=1,#self._iconButtons do
-			self._iconButtons[i]:Hide()
-			self._iconButtons[i]:SetParent(nil)
-		end
-	end
-	self._iconButtons = {}
-
-	local function AddBtn(tex, txt)
-		if not tex or tex == '' then return end
-		local b = CreateOtherIcon(5+inLine*20,-2-(line-1)*20,tex,txt)
-		self._iconButtons[#self._iconButtons+1] = b
-		inLine = inLine + 1
-		if inLine > 12 then
-			line = line + 1
-			inLine = 0
-		end
-	end
 
 	local function NormalizeTexturePath(tex)
 		if not tex or tex == '' then return nil end
@@ -1779,10 +1758,23 @@ function module.options:Load()
 		return tex
 	end
 
-
-	if module.db.otherIconsAdditionalList and #module.db.otherIconsAdditionalList > 0 then
-		for i=1,#module.db.otherIconsAdditionalList do
-			local v = module.db.otherIconsAdditionalList[i]
+	self.OtherIconsFrame._iconButtons = {}
+	do
+		local parent = self.OtherIconsFrame.ScrollFrame.C
+		local list = module.db.otherIconsAdditionalList or {}
+		local line, inLine = 1, 0
+		local function AddBtn(tex, txt)
+			if not tex or tex == '' then return end
+			local b = CreateOtherIcon(parent,5+inLine*20,-2-(line-1)*20,tex,txt)
+			self.OtherIconsFrame._iconButtons[#self.OtherIconsFrame._iconButtons+1] = b
+			inLine = inLine + 1
+			if inLine > 12 then
+				line = line + 1
+				inLine = 0
+			end
+		end
+		for i=1,#list do
+			local v = list[i]
 			if v == 0 then
 				if inLine > 0 then
 					line = line + 1
@@ -1808,11 +1800,9 @@ function module.options:Load()
 				end
 			end
 		end
+		if inLine > 0 then line = line + 1 end
+		self.OtherIconsFrame.ScrollFrame:SetNewHeight( max(self.OtherIconsFrame:GetHeight()-40 , line * 20 + 4) )
 	end
-
-	if inLine > 0 then line = line + 1 end
-	module.options.OtherIconsFrame.ScrollFrame:SetNewHeight( max(module.options.OtherIconsFrame:GetHeight()-40 , line * 20 + 4) )
-end
 
 
 	self:SetScript("OnHide",function (self)

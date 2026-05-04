@@ -274,9 +274,24 @@ local function BuildLootPatternsClassic()
 	return LOOT_PATTERNS_CLASSIC
 end
 
+-- Items that are not real raid loot and shouldn't appear in the history.
+-- Includes epic-quality currency tokens (emblems, seals, trophies, shards)
+-- and epic enchanting reagents that drop from disenchant rolls.
 local EMBLEM_ITEM_IDS = {
+	-- WotLK emblems
 	[40752] = true, [40753] = true, [45624] = true,
 	[47241] = true, [49426] = true,
+	-- Other WotLK currency / token rewards
+	[43228] = true, -- Stone Keeper's Shard
+	[44990] = true, -- Champion's Seal
+	[47242] = true, -- Trophy of the Crusade
+	[52027] = true, -- Sidereal Essence (legacy currency)
+	-- Epic enchanting reagents (other reagents are <4 rarity and already filtered)
+	[20725] = true, -- Nexus Crystal
+	[22450] = true, -- Void Crystal
+	[34057] = true, -- Abyss Crystal
+	-- Epic crafting reagents
+	[49908] = true, -- Primordial Saronite
 }
 
 local lastLoot = {}
@@ -413,8 +428,17 @@ function module.options:Load()
 
 					local itemStr = (data.quantity > 1 and data.quantity.."x" or "")..itemLinkQ
 
-					if not itemIcon then
+					if not itemIcon and GetItemInfoInstant then
 						itemIcon = select(5,GetItemInfoInstant(data.itemLink))
+					end
+					if not itemIcon then
+						-- 3.3.5a: GetItemIcon(itemID) works without item cache
+						local iid = tonumber(data.itemLink:match("item:(%d+)"))
+						if iid then itemIcon = GetItemIcon(iid) end
+					end
+					if not itemIcon then
+						itemIcon = "Interface\\Icons\\INV_Misc_QuestionMark"
+						extraUpdate = true
 					end
 					itemIcon = "|T"..itemIcon..":20|t"
 
@@ -423,11 +447,19 @@ function module.options:Load()
 				end
 			end
 		end
-		if not isExtraUpdate and extraUpdate and not self.extraUpdateTimer then
-			self.extraUpdateTimer = C_Timer.NewTimer(.5,function()
-				self.extraUpdateTimer = nil
-				self:UpdateAdditional(val,true)
-			end)
+		if extraUpdate and not self.extraUpdateTimer then
+			-- Retry with growing back-off; client may need a few seconds to
+			-- stream item data from the server when it's cold-cached.
+			self._extraTries = (self._extraTries or 0) + 1
+			if self._extraTries <= 6 then
+				local delay = 0.5 * self._extraTries
+				self.extraUpdateTimer = C_Timer.NewTimer(delay,function()
+					self.extraUpdateTimer = nil
+					self:UpdateAdditional(val,true)
+				end)
+			end
+		elseif not extraUpdate then
+			self._extraTries = nil
 		end
 	end
 
@@ -525,7 +557,14 @@ function module.options:Load()
 				encounterName = ""
 			end
 
-			local class = ExRT.GDB.ClassList[tonumber(classID)]
+			-- Reverse lookup ClassID -> token (handles ClassID[DRUID]=11 vs ClassList[10]="DRUID")
+			local cid = tonumber(classID)
+			local class = ExRT.GDB.ClassList[cid]
+			if not class and cid and cid > 0 then
+				for token, id in pairs(ExRT.GDB.ClassID or {}) do
+					if id == cid then class = token break end
+				end
+			end
 			local playerNameStyle = (class and "|c"..ExRT.F.classColor(class) or "")..playerName..(rollType and RollTypeToText[rollType] or "")
 
 			quantity = tonumber(quantity)

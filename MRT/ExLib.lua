@@ -1218,6 +1218,7 @@ do
 		self:SetScript("OnEscapePressed",OnEscapePressed)
 		self:SetScript("OnEditFocusLost",OnEditFocusLost)
 		self:SetScript("OnEditFocusGained",OnEditFocusGained)
+		self:HookScript("OnHide",OnHide)
 
 		return self
 	end
@@ -2854,6 +2855,11 @@ do
 	local function EditBoxEscapePressed(self)
 		self:ClearFocus()
 	end
+	local function EditBoxOnHide(self)
+		if self.HasFocus and self:HasFocus() and self.ClearFocus then
+			self:ClearFocus()
+		end
+	end
 	local function Widget_SetText(self,text)
 		self:SetText(text or "")
 		self:SetCursorPosition(0)
@@ -3056,6 +3062,7 @@ do
 			self:SetNumeric(true)
 		end
 		self:SetScript("OnEscapePressed",EditBoxEscapePressed)
+		self:HookScript("OnHide",EditBoxOnHide)
 
 		Mod(self,
 			'Text',Widget_SetText,

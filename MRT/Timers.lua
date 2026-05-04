@@ -593,9 +593,10 @@ end
 function module.main:PLAYER_REGEN_DISABLED()
 	local now = GetTime()
 	local lastExit = module.frame._lastCombatExit
-	local recentlyExited = lastExit and (now - lastExit) <= 5
+	local recentlyExited = lastExit and (now - lastExit) <= 180
 
-	if not module.frame.encounter and not module.frame.groupInCombat and not recentlyExited and module.frame.total >= 0 then
+	local fightOngoing = module.frame.encounter or module.frame.groupInCombat or recentlyExited
+	if not fightOngoing and module.frame.total >= 0 then
 		module.frame.total = 0
 	end
 	module.frame.inCombat = true

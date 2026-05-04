@@ -416,8 +416,36 @@ local function GetUnitFrames(target, ignoredFrames)
     if type(target) ~= "string" then
       return
     end
-    if target:find("Player") then
-      target = select(6, GetPlayerInfoByGUID(target))
+    local resolved
+    if target:find("^Player") or target:find("^0x") then
+      local ok, _, _, _, _, _, name = pcall(GetPlayerInfoByGUID, target)
+      if ok and type(name) == "string" and name ~= "" then
+        resolved = name
+      end
+      if not resolved then
+        local n = (GetNumGroupMembers and GetNumGroupMembers()) or 0
+        if n > 0 and IsInRaid and IsInRaid() then
+          for i=1,n do
+            local u = "raid"..i
+            if UnitGUID(u) == target then resolved = u break end
+          end
+        elseif n > 0 then
+          if UnitGUID("player") == target then resolved = "player" end
+          if not resolved then
+            for i=1,(n-1) do
+              local u = "party"..i
+              if UnitGUID(u) == target then resolved = u break end
+            end
+          end
+        else
+          if UnitGUID("player") == target then resolved = "player" end
+        end
+      end
+      if resolved then
+        target = resolved
+      else
+        return
+      end
     else
       target = target:gsub(" .*", "")
     end

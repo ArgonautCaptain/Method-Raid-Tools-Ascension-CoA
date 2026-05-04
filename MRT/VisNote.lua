@@ -752,11 +752,102 @@ function module.options:Load()
 		dot:Show()
 		return dot
 	end
+	local function _wm(folder, name, floor, cols, rows)
+		return { file = "Interface\\WorldMap\\"..folder.."\\"..name, floor = floor or 0,
+		         cols = cols or 4, rows = rows or 3, tileW = 256, tileH = 256 }
+	end
 	local CLASSIC_RAID_MAPS = {
-		[1001] = { file = "Interface\\WorldMap\\Naxxramas\\Naxxramas",                 cols = 4, rows = 3, tileW = 256, tileH = 256 },
-		[1010] = { file = "Interface\\WorldMap\\Ulduar\\Ulduar",                       cols = 4, rows = 3, tileW = 256, tileH = 256 },
-		[1030] = { file = "Interface\\WorldMap\\IcecrownCitadel\\IcecrownCitadel",     cols = 4, rows = 3, tileW = 256, tileH = 256 },
-		[1050] = { file = "Interface\\WorldMap\\OnyxiasLair\\OnyxiasLair",             cols = 4, rows = 3, tileW = 256, tileH = 256 },
+		-- =========== WotLK ===========
+		-- Naxxramas: 6 floors, no overview
+		[1001] = _wm("Naxxramas","Naxxramas",1),
+		[1002] = _wm("Naxxramas","Naxxramas",2),
+		[1003] = _wm("Naxxramas","Naxxramas",3),
+		[1004] = _wm("Naxxramas","Naxxramas",4),
+		[1005] = _wm("Naxxramas","Naxxramas",5),
+		[1006] = _wm("Naxxramas","Naxxramas",6),
+		-- Ulduar: overview + 5 floors
+		[1010] = _wm("Ulduar","Ulduar",0),
+		[1011] = _wm("Ulduar","Ulduar",1),
+		[1012] = _wm("Ulduar","Ulduar",2),
+		[1013] = _wm("Ulduar","Ulduar",3),
+		[1014] = _wm("Ulduar","Ulduar",4),
+		[1015] = _wm("Ulduar","Ulduar",5),
+		-- Icecrown Citadel: 8 floors, no overview
+		[1031] = _wm("IcecrownCitadel","IcecrownCitadel",1),
+		[1032] = _wm("IcecrownCitadel","IcecrownCitadel",2),
+		[1033] = _wm("IcecrownCitadel","IcecrownCitadel",3),
+		[1034] = _wm("IcecrownCitadel","IcecrownCitadel",4),
+		[1035] = _wm("IcecrownCitadel","IcecrownCitadel",5),
+		[1036] = _wm("IcecrownCitadel","IcecrownCitadel",6),
+		[1037] = _wm("IcecrownCitadel","IcecrownCitadel",7),
+		[1038] = _wm("IcecrownCitadel","IcecrownCitadel",8),
+		-- Onyxia's Lair (1 floor)
+		[1050] = _wm("OnyxiasLair","OnyxiasLair",1),
+		-- Trial of the Crusader / Argent Coliseum (2 floors)
+		[1051] = _wm("TheArgentColiseum","TheArgentColiseum",1),
+		[1052] = _wm("TheArgentColiseum","TheArgentColiseum",2),
+		-- Eye of Eternity (overview + 1 floor)
+		[1053] = _wm("EyeOfEternity","EyeOfEternity",0),
+		[1054] = _wm("EyeOfEternity","EyeOfEternity",1),
+		-- Vault of Archavon (1 floor)
+		[1055] = _wm("VaultOfArchavon","VaultOfArchavon",1),
+		-- Obsidian Sanctum (overview + 1 floor)
+		[1056] = _wm("TheObsidianSanctum","TheObsidianSanctum",0),
+		[1057] = _wm("TheObsidianSanctum","TheObsidianSanctum",1),
+		-- Ruby Sanctum (overview only)
+		[1058] = _wm("TheRubySanctum","TheRubySanctum",0),
+
+		-- =========== TBC ===========
+		-- Karazhan: 17 floors (each room is its own tiny dungeon level)
+		[1070] = _wm("Karazhan","Karazhan",1),
+		[1071] = _wm("Karazhan","Karazhan",2),
+		[1072] = _wm("Karazhan","Karazhan",3),
+		[1073] = _wm("Karazhan","Karazhan",4),
+		[1074] = _wm("Karazhan","Karazhan",5),
+		[1075] = _wm("Karazhan","Karazhan",6),
+		[1076] = _wm("Karazhan","Karazhan",7),
+		[1077] = _wm("Karazhan","Karazhan",8),
+		[1078] = _wm("Karazhan","Karazhan",9),
+		[1079] = _wm("Karazhan","Karazhan",10),
+		[1080] = _wm("Karazhan","Karazhan",11),
+		[1081] = _wm("Karazhan","Karazhan",12),
+		[1082] = _wm("Karazhan","Karazhan",13),
+		[1083] = _wm("Karazhan","Karazhan",14),
+		[1084] = _wm("Karazhan","Karazhan",15),
+		[1085] = _wm("Karazhan","Karazhan",16),
+		[1086] = _wm("Karazhan","Karazhan",17),
+		-- Single-floor TBC raids
+		[1087] = _wm("GruulsLair","GruulsLair",1),
+		[1088] = _wm("MagtheridonsLair","MagtheridonsLair",1),
+		[1089] = _wm("ZulAman","ZulAman",0),
+		[1090] = _wm("CoilfangReservoir","CoilfangReservoir",1),
+		[1091] = _wm("TempestKeep","TempestKeep",1),
+		[1092] = _wm("CoTMountHyjal","CoTMountHyjal",0),
+		-- Black Temple (overview + 7 floors)
+		[1093] = _wm("BlackTemple","BlackTemple",0),
+		[1094] = _wm("BlackTemple","BlackTemple",1),
+		[1095] = _wm("BlackTemple","BlackTemple",2),
+		[1096] = _wm("BlackTemple","BlackTemple",3),
+		[1097] = _wm("BlackTemple","BlackTemple",4),
+		[1098] = _wm("BlackTemple","BlackTemple",5),
+		[1099] = _wm("BlackTemple","BlackTemple",6),
+		[1100] = _wm("BlackTemple","BlackTemple",7),
+		-- Sunwell Plateau (overview + 1 floor)
+		[1107] = _wm("SunwellPlateau","SunwellPlateau",0),
+		[1108] = _wm("SunwellPlateau","SunwellPlateau",1),
+
+		-- =========== Classic ===========
+		-- Molten Core (1 floor)
+		[1120] = _wm("MoltenCore","MoltenCore",1),
+		-- Blackwing Lair (4 floors)
+		[1121] = _wm("BlackwingLair","BlackwingLair",1),
+		[1122] = _wm("BlackwingLair","BlackwingLair",2),
+		[1123] = _wm("BlackwingLair","BlackwingLair",3),
+		[1124] = _wm("BlackwingLair","BlackwingLair",4),
+		-- Zul'Gurub / AQ20 / AQ40 (overview only)
+		[1125] = _wm("ZulGurub","ZulGurub",0),
+		[1126] = _wm("RuinsOfAhnQiraj","RuinsOfAhnQiraj",0),
+		[1127] = _wm("AhnQirajTheFallenKingdom","AhnQirajTheFallenKingdom",0),
 	}
 
 	local function SetBackground(background,centerX,centerY,scale)
@@ -809,11 +900,21 @@ function module.options:Load()
 				local widthCount, heightCount = md.cols, md.rows
 				local layerW, layerH = md.cols * md.tileW, md.rows * md.tileH
 
-				scale = scale or 1
+				-- Auto-fit the 1024x768 layer into the visible main frame
+				-- (typically ~790x535) so nothing gets clipped on the left/top.
+				-- Caller-provided scale still wins when set.
+				local mainW, mainH = self.main:GetSize()
+				if (mainW or 0) < 1 or (mainH or 0) < 1 then mainW, mainH = 790, 535 end
+				if not scale then
+					scale = math.min(mainW / layerW, mainH / layerH)
+					if scale > 1 then scale = 1 end
+				end
 
-				local adjustX = self.main:GetWidth()  / 2 - layerW * (centerX or 0.5) * scale
-				local adjustY = self.main:GetHeight() / 2 - layerH * (centerY or 0.5) * scale
+				local adjustX = mainW / 2 - layerW * (centerX or 0.5) * scale
+				local adjustY = mainH / 2 - layerH * (centerY or 0.5) * scale
 
+				-- 3.3.5a: dungeon level <floor> turns "<file>N" into "<file><floor>_N"
+				local prefix = (md.floor and md.floor > 0) and (md.file .. md.floor .. "_") or md.file
 				for i=1,heightCount do
 					for j=1,widthCount do
 						local p = (i-1)*widthCount + j
@@ -821,7 +922,7 @@ function module.options:Load()
 						t:SetSize(md.tileW*scale, md.tileH*scale)
 						t:ClearAllPoints()
 						t:SetPoint("TOPLEFT", self.main.C, "TOPLEFT", adjustX + md.tileW*(j-1)*scale, -(i-1)*md.tileH*scale - adjustY)
-						t:SetTexture(md.file .. p)
+						t:SetTexture(prefix .. p)
 					end
 				end
 				return
@@ -881,13 +982,79 @@ function module.options:Load()
 		{L.NoteColorBlue:lower(),{{.5,.5,1,1}}},
 		{L.NoteColorYellow:lower(),{{1,1,.5,1}}},
 		[1000] = {"None WotLK",{}},
-		-- Numeric IDs route through CLASSIC_RAID_MAPS above and assemble
-		-- 12-tile worldmap textures shipped with the 3.3.5a client. The
-		-- addon no longer ships its own raid map textures.
-		[1001] = {"Naxxramas",{1001}},
-		[1010] = {"Ulduar",{1010}},
-		[1030] = {"Icecrown Citadel",{1030}},
+		-- ===== WotLK =====
+		[1001] = {"Naxxramas 1",{1001}},
+		[1002] = {"Naxxramas 2",{1002}},
+		[1003] = {"Naxxramas 3",{1003}},
+		[1004] = {"Naxxramas 4",{1004}},
+		[1005] = {"Naxxramas 5",{1005}},
+		[1006] = {"Naxxramas 6",{1006}},
+		[1010] = {"Ulduar Overview",{1010}},
+		[1011] = {"Ulduar 1",{1011}},
+		[1012] = {"Ulduar 2",{1012}},
+		[1013] = {"Ulduar 3",{1013}},
+		[1014] = {"Ulduar 4",{1014}},
+		[1015] = {"Ulduar 5",{1015}},
+		[1031] = {"Icecrown Citadel 1",{1031}},
+		[1032] = {"Icecrown Citadel 2",{1032}},
+		[1033] = {"Icecrown Citadel 3",{1033}},
+		[1034] = {"Icecrown Citadel 4",{1034}},
+		[1035] = {"Icecrown Citadel 5",{1035}},
+		[1036] = {"Icecrown Citadel 6",{1036}},
+		[1037] = {"Icecrown Citadel 7",{1037}},
+		[1038] = {"Icecrown Citadel 8",{1038}},
 		[1050] = {"Onyxia's Lair",{1050}},
+		[1051] = {"Trial of the Crusader 1",{1051}},
+		[1052] = {"Trial of the Crusader 2",{1052}},
+		[1053] = {"Eye of Eternity Overview",{1053}},
+		[1054] = {"Eye of Eternity",{1054}},
+		[1055] = {"Vault of Archavon",{1055}},
+		[1056] = {"Obsidian Sanctum Overview",{1056}},
+		[1057] = {"Obsidian Sanctum",{1057}},
+		[1058] = {"Ruby Sanctum",{1058}},
+		-- ===== TBC =====
+		[1070] = {"Karazhan 1",{1070}},
+		[1071] = {"Karazhan 2",{1071}},
+		[1072] = {"Karazhan 3",{1072}},
+		[1073] = {"Karazhan 4",{1073}},
+		[1074] = {"Karazhan 5",{1074}},
+		[1075] = {"Karazhan 6",{1075}},
+		[1076] = {"Karazhan 7",{1076}},
+		[1077] = {"Karazhan 8",{1077}},
+		[1078] = {"Karazhan 9",{1078}},
+		[1079] = {"Karazhan 10",{1079}},
+		[1080] = {"Karazhan 11",{1080}},
+		[1081] = {"Karazhan 12",{1081}},
+		[1082] = {"Karazhan 13",{1082}},
+		[1083] = {"Karazhan 14",{1083}},
+		[1084] = {"Karazhan 15",{1084}},
+		[1085] = {"Karazhan 16",{1085}},
+		[1086] = {"Karazhan 17",{1086}},
+		[1087] = {"Gruul's Lair",{1087}},
+		[1088] = {"Magtheridon's Lair",{1088}},
+		[1089] = {"Zul'Aman",{1089}},
+		[1090] = {"Serpentshrine Cavern",{1090}},
+		[1091] = {"Tempest Keep",{1091}},
+		[1092] = {"Battle for Mount Hyjal",{1092}},
+		[1093] = {"Black Temple Overview",{1093}},
+		[1094] = {"Black Temple 1",{1094}},
+		[1095] = {"Black Temple 2",{1095}},
+		[1096] = {"Black Temple 3",{1096}},
+		[1097] = {"Black Temple 4",{1097}},
+		[1098] = {"Black Temple 5",{1098}},
+		[1099] = {"Black Temple 6",{1099}},
+		[1100] = {"Black Temple 7",{1100}},
+		[1107] = {"Sunwell Plateau Overview",{1107}},
+		[1108] = {"Sunwell Plateau",{1108}},
+		-- ===== Classic =====
+		[1120] = {"Molten Core",{1120}},
+		[1121] = {"Blackwing Lair 1",{1121}},
+		[1122] = {"Blackwing Lair 2",{1122}},
+		[1123] = {"Blackwing Lair 3",{1123}},
+		[1124] = {"Blackwing Lair 4",{1124}},
+		[1125] = {"Zul'Gurub",{1125}},
+		[1126] = {"Ruins of Ahn'Qiraj",{1126}},
+		[1127] = {"Temple of Ahn'Qiraj",{1127}},
 	}
 
 
@@ -897,10 +1064,34 @@ function module.options:Load()
 	}
 	if ExRT.isLK then
 		ExRT.F.table_add(mapsSorted,{
-			{"Icecrown Citadel",1030},
-			{"Ulduar",1010},
-			{"Naxxramas",1001},
-			{"Onyxia's Lair",1050},
+			-- One submenu per raid; raids with a single map are flat entries.
+			-- WotLK
+			{"Icecrown Citadel", 1031, 1032, 1033, 1034, 1035, 1036, 1037, 1038},
+			{"Ulduar", 1010, 1011, 1012, 1013, 1014, 1015},
+			{"Trial of the Crusader", 1051, 1052},
+			{"Naxxramas", 1001, 1002, 1003, 1004, 1005, 1006},
+			{"The Eye of Eternity", 1053, 1054},
+			{"The Obsidian Sanctum", 1056, 1057},
+			1058, -- The Ruby Sanctum
+			1055, -- Vault of Archavon
+			1050, -- Onyxia's Lair
+			-- TBC
+			{"Sunwell Plateau", 1107, 1108},
+			{"Black Temple", 1093, 1094, 1095, 1096, 1097, 1098, 1099, 1100},
+			1092, -- Battle for Mount Hyjal
+			1091, -- Tempest Keep
+			1090, -- Serpentshrine Cavern
+			1088, -- Magtheridon's Lair
+			1087, -- Gruul's Lair
+			1089, -- Zul'Aman
+			{"Karazhan", 1070, 1071, 1072, 1073, 1074, 1075, 1076, 1077, 1078,
+			             1079, 1080, 1081, 1082, 1083, 1084, 1085, 1086},
+			-- Classic
+			1127, -- Temple of Ahn'Qiraj
+			{"Blackwing Lair", 1121, 1122, 1123, 1124},
+			1120, -- Molten Core
+			1125, -- Zul'Gurub
+			1126, -- Ruins of Ahn'Qiraj
 		})
 	end
 	for i=1,#mapsSorted do

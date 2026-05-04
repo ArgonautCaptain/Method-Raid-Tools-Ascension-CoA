@@ -5613,9 +5613,6 @@ function module.options:Load()
 
 	if ExRT.isClassic then
 		local WOTLK_HIDE_CATEGORIES = {
-
-			"ALL", "ENABLED", "FAV",
-
 			"RAID", "DEFTAR", "RES", "RAIDSPEED",
 
 			"DPS", "HEAL", "HEALUTIL", "DEF", "DEFTANK", "IMMUNITY",
@@ -5629,7 +5626,6 @@ function module.options:Load()
 				cat.isHidden = true
 			end
 		end
-		wipe(self.CATEGORIES_DEF)
 	end
 
 	self.categories = ELib:ScrollFrame(self.tab.tabs[1]):Point("TOPLEFT",0,0):Size(100,589)
@@ -10495,14 +10491,22 @@ function module:ColApplyStyle(columnFrame,currColOpt,generalOpt,defOpt,mainWidth
 	columnFrame:SetAlpha(frameAlpha/100)
 
 	local frameScale = (not currColOpt.frameGeneral and currColOpt.frameScale) or (currColOpt.frameGeneral and generalOpt.frameScale) or defOpt.frameScale
+	local colRelScale
 	if VMRT.ExCD2.SplitOpt then
-		if argScaleFix == "ScaleFix" then
-			ExRT.F.SetScaleFix(columnFrame,frameScale/100)
-		else
-			columnFrame:SetScale(frameScale/100)
-		end
+		colRelScale = frameScale/100
 	else
-		columnFrame:SetScale(1)
+		if currColOpt.frameGeneral then
+			colRelScale = 1
+		else
+			local gScale = generalOpt.frameScale or defOpt.frameScale
+			colRelScale = ((currColOpt.frameScale or defOpt.frameScale) / gScale)
+		end
+	end
+	columnFrame.Gscale = colRelScale
+	if argScaleFix == "ScaleFix" then
+		ExRT.F.SetScaleFix(columnFrame,colRelScale)
+	else
+		columnFrame:SetScale(colRelScale)
 	end
 
 	local blackBack = (not currColOpt.frameGeneral and currColOpt.frameBlackBack) or (currColOpt.frameGeneral and generalOpt.frameBlackBack) or defOpt.frameBlackBack
@@ -10899,10 +10903,12 @@ function module:ReloadAllSplits(argScaleFix)
 		module:ColApplyStyle(columnFrame,currColOpt,generalOpt,defOpt,Width,argScaleFix)
 
 		if currColOpt.enabled and not currColOpt.ATF then
-			if columnFrame.Gheight > maxHeight then
-				maxHeight = columnFrame.Gheight
+			local gScale = columnFrame.Gscale or 1
+			local scaledH = (columnFrame.Gheight or 0) * gScale
+			if scaledH > maxHeight then
+				maxHeight = scaledH
 			end
-			Width = Width + columnFrame.Gwidth
+			Width = Width + (columnFrame.Gwidth or 0) * gScale
 		end
 	end
 	module.frame:SetWidth(Width)
