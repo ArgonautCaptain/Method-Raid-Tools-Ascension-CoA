@@ -3,7 +3,7 @@ local GlobalAddonName, ExRT = ...
 ExRT.Options.Changelog = [=[
 v5.0.4-WotLK335a
 * Fixes
-* Visual Note: Transition frol local .tga map to global .blp map for WotLK zones
+* Visual Note: Transition from local .tga map to global .blp map for WotLK zones
 
 v5.0.3-WotLK335a
 * Fixes
