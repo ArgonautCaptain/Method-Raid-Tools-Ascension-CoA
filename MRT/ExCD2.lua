@@ -1392,7 +1392,11 @@ local function BarUpdateText(self)
 	end
 
 	if barParent.textShowTargetName and barData.targetName and time >= 1 then
-		name = name .. " > "..barData.targetName
+		local tName = barData.targetName
+		if barData.targetClass then
+			tName = "|c" .. ExRT.F.classColor(barData.targetClass) .. tName .. "|r"
+		end
+		name = name .. " > " .. tName
 	end
 	if barData.specialAddText then
 		name = name .. (barData.specialAddText() or "")
@@ -1411,13 +1415,22 @@ local function BarUpdateText(self)
 	gsub_data.spell = spellName
 	gsub_data.status = offStatus
 	gsub_data.charge = chargesCount
-	gsub_data.target = barData.targetName or ""
+	local targetStr = barData.targetName or ""
+	if barData.targetClass and targetStr ~= "" then
+		targetStr = "|c" .. ExRT.F.classColor(barData.targetClass) .. targetStr .. "|r"
+	end
+	gsub_data.target = targetStr
 
 	if barParent.iconFontMode then
 		if barParent.optionIconName then
 			local n = barParent.textIconNameChars or 50
 			gsub_data.name = utf8sub(gsub_data.name, 1, n)
-			gsub_data.target = utf8sub(gsub_data.target, 1, n)
+			local rawTarget = barData.targetName or ""
+			rawTarget = utf8sub(rawTarget, 1, n)
+			if barData.targetClass and rawTarget ~= "" then
+				rawTarget = "|c" .. ExRT.F.classColor(barData.targetClass) .. rawTarget .. "|r"
+			end
+			gsub_data.target = rawTarget
 			gsub_data.name_time = time >= 1 and longtime or gsub_data.name
 			gsub_data.name_stime = time >= 1 and shorttime or gsub_data.name
 		end
@@ -2993,7 +3006,7 @@ do
 
 			if isTestMode or (VMRT_CDE[spellID] and
 			(db[unitSpecID] or db[4] or db[5] or db[6] or db[7] or db[8]) and
-			(not spell_isTalent[spellID] or session_gGUIDs[name][spellID] or spell_isRaidCD[spellID] or (name == playerName and IsSpellKnown and IsSpellKnown(spellID))) and
+			(not spell_isTalent[spellID] or session_gGUIDs[name][spellID] or (name == playerName and IsSpellKnown and IsSpellKnown(spellID))) and
 			(not spell_isPvpTalent[spellID] or (session_gGUIDs[name][spellID] and IsPvpTalentsOn(name))) and
 			(not spell_isPetAbility[spellID] or session_Pets[name] == spell_isPetAbility[spellID] or (session_Pets[name] and petsAbilities[ session_Pets[name] ] and petsAbilities[ session_Pets[name] ][1] == spell_isPetAbility[spellID]) or (type(spell_isPetAbility[spellID]) == "table" and session_Pets[name] and ExRT.F.table_find(spell_isPetAbility[spellID],session_Pets[name]))) and
 			(not spell_talentReplaceOther[spellID] or not TalentReplaceOtherCheck(spellID,name)) and
@@ -3721,6 +3734,7 @@ local function UpdateRoster()
 	if n > 0 then
 		local priorCounter = 0
 		local priorNamesToNumber = {}
+		local priorNameToIndex = {}
 		if not _db.testMode then
 			for j=1,n do
 				local name = GetRaidRosterInfoFix(j)
@@ -3729,13 +3743,21 @@ local function UpdateRoster()
 				end
 			end
 			sort(priorNamesToNumber)
+			for idx=1,#priorNamesToNumber do
+				priorNameToIndex[priorNamesToNumber[idx]] = idx
+			end
 		end
 
 		local classColorsTable = type(CUSTOM_CLASS_COLORS)=="table" and CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS
+		local classNameToIndex = {}
+		if _db.classNames then
+			for ci=1,#_db.classNames do classNameToIndex[_db.classNames[ci]] = ci end
+		end
 
 		for i=1,#_C do _C[i].sort = nil end
 		local gMax = GetRaidDiffMaxGroup()
 		local isInRaid = IsInRaid()
+		local unitsToCheckSet = {}
 		for j=1,n do
 			local name,subgroup,class,level,race,online,isDead = GetRaidRosterInfoFix(j)
 			if name and subgroup <= gMax then
@@ -3760,7 +3782,8 @@ local function UpdateRoster()
 					end
 
 					if AddThisSpell and (spellClass == class or spellClass == "ALL") and (not spellData.specialCheck or spellData.specialCheck(SpellID,name,class,race)) then
-						if not ExRT.F.table_find(status_UnitsToCheck,name) then
+						if not unitsToCheckSet[name] then
+							unitsToCheckSet[name] = true
 							status_UnitsToCheck[#status_UnitsToCheck + 1] = name
 
 							status_UnitIsDead[ name ] = isDead
@@ -3784,18 +3807,20 @@ local function UpdateRoster()
 						local getSpellColumn = module.frame.colFrame[spellColumn]
 						local prior = nil
 
+						local nameIdx = priorNameToIndex[name] or 0
+						local classIdx = classNameToIndex[class] or 0
 						if not getSpellColumn or getSpellColumn.methodsSortingRules == 1 then
-							prior = (VMRT.ExCD2.Priority[SpellID] or 50) * 1000000000000 + (SpellID or 0) * 1000000 + (ExRT.F.table_find(priorNamesToNumber,name) or 0) * 10000 + priorCounter
+							prior = (VMRT.ExCD2.Priority[SpellID] or 50) * 1000000000000 + (SpellID or 0) * 1000000 + nameIdx * 10000 + priorCounter
 						elseif getSpellColumn.methodsSortingRules == 2 then
-							prior = (VMRT.ExCD2.Priority[SpellID] or 50) * 1000000000000 + (ExRT.F.table_find(priorNamesToNumber,name) or 0) * 10000000000 + (SpellID or 0) * 10000 + priorCounter
+							prior = (VMRT.ExCD2.Priority[SpellID] or 50) * 1000000000000 + nameIdx * 10000000000 + (SpellID or 0) * 10000 + priorCounter
 						elseif getSpellColumn.methodsSortingRules == 3 then
-							prior = (VMRT.ExCD2.Priority[SpellID] or 50) * 100000000000000 + (ExRT.F.table_find(_db.classNames,class) or 0) * 1000000000000 + (SpellID or 0) * 1000000 + (ExRT.F.table_find(priorNamesToNumber,name) or 0) * 10000 + priorCounter
+							prior = (VMRT.ExCD2.Priority[SpellID] or 50) * 100000000000000 + classIdx * 1000000000000 + (SpellID or 0) * 1000000 + nameIdx * 10000 + priorCounter
 						elseif getSpellColumn.methodsSortingRules == 4 then
-							prior = (VMRT.ExCD2.Priority[SpellID] or 50) * 100000000000000 + (ExRT.F.table_find(_db.classNames,class) or 0) * 1000000000000 + (ExRT.F.table_find(priorNamesToNumber,name) or 0) * 10000000000 + (SpellID or 0) * 10000 + priorCounter
+							prior = (VMRT.ExCD2.Priority[SpellID] or 50) * 100000000000000 + classIdx * 1000000000000 + nameIdx * 10000000000 + (SpellID or 0) * 10000 + priorCounter
 						elseif getSpellColumn.methodsSortingRules == 5 then
-							prior = (ExRT.F.table_find(priorNamesToNumber,name) or 0) * 1000000000000 + (VMRT.ExCD2.Priority[SpellID] or 50) * 10000000000 + (SpellID or 0) * 10000 + priorCounter
+							prior = nameIdx * 1000000000000 + (VMRT.ExCD2.Priority[SpellID] or 50) * 10000000000 + (SpellID or 0) * 10000 + priorCounter
 						elseif getSpellColumn.methodsSortingRules == 6 then
-							prior = (ExRT.F.table_find(_db.classNames,class) or 0) * 100000000000000 + (VMRT.ExCD2.Priority[SpellID] or 50) * 1000000000000 + (ExRT.F.table_find(priorNamesToNumber,name) or 0) * 10000000000 + (SpellID or 0) * 10000 + priorCounter
+							prior = classIdx * 100000000000000 + (VMRT.ExCD2.Priority[SpellID] or 50) * 1000000000000 + nameIdx * 10000000000 + (SpellID or 0) * 10000 + priorCounter
 						end
 						local secondPrior = (VMRT.ExCD2.Priority[SpellID] or 50) * 1000000 + (SpellID or 0)
 
@@ -4014,6 +4039,12 @@ do
 		end
 
 		data.targetName = targetName
+		if targetName then
+			local _,tc = UnitClass(targetName)
+			data.targetClass = tc
+		else
+			data.targetClass = nil
+		end
 
 		data.cd = data.db[uSpecID][2]
 		data.duration = data.db[uSpecID][3]
@@ -4151,7 +4182,13 @@ do
 			data.bar:UpdateStatus()
 		end
 
-		UpdateAllData()
+		if not module.db._updateAllPending then
+			module.db._updateAllPending = true
+			C_Timer.After(0.05, function()
+				module.db._updateAllPending = nil
+				UpdateAllData()
+			end)
+		end
 
 		_db.historyUsage[#_db.historyUsage + 1] = {time(),data.db[uSpecID][1],fullName,GetEncounterTime()}
 	end

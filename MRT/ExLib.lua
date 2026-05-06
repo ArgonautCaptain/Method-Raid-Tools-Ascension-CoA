@@ -642,21 +642,41 @@ do
 			local _profSS = VMRT and VMRT.DebugReminder and VMRT.DebugReminder.ProfileShowStrata
 			local _skipFL = type(_profSS) == "table" and _profSS.SkipFrameLevel
 			local _ssThresh = (type(_profSS) == "table" and _profSS.thresholdMs) or 5
-			if not _skipFL and self.GetFrameLevel and self:GetFrameLevel() < 5000 then
+			local _wantedLevel = 5000 + (self.Level or 1) * 100
+			if not _skipFL and self.GetFrameLevel and self:GetFrameLevel() < _wantedLevel then
 				if _profSS and debugprofilestop then
 					local _t = debugprofilestop()
-					self:SetFrameLevel(5000)
+					self:SetFrameLevel(_wantedLevel)
 					local elapsed = debugprofilestop() - _t
 					if elapsed > _ssThresh then
 						print(string.format(
-							"|cffff7799[show+strata]|r [OnShow] SetFrameLevel(5000) = %.1fms",
+							"|cffff7799[show+strata]|r [OnShow] SetFrameLevel(%d) = %.1fms",
+							_wantedLevel,
 							elapsed
 						))
 					end
 				else
-					self:SetFrameLevel(5000)
+					self:SetFrameLevel(_wantedLevel)
 				end
 			end
+		if self.Buttons then
+			local parentLevel = self:GetFrameLevel() or _wantedLevel
+			for i=1,(self.MaxLines or #self.Buttons) do
+				local b = self.Buttons[i]
+				if b and b.SetFrameLevel and (b:GetFrameLevel() or 0) <= parentLevel then
+					b:SetFrameLevel(parentLevel + 2)
+				end
+				if b and b.checkButton and b.checkButton.SetFrameLevel then
+					b.checkButton:SetFrameLevel(parentLevel + 4)
+				end
+				if b and b.radioButton and b.radioButton.SetFrameLevel then
+					b.radioButton:SetFrameLevel(parentLevel + 4)
+				end
+			end
+		end
+		if self.Slider and self.Slider.SetFrameLevel then
+			self.Slider:SetFrameLevel((self:GetFrameLevel() or _wantedLevel) + 6)
+		end
 		if self.OnShow then
 			self:OnShow()
 		end
@@ -682,7 +702,7 @@ do
 	end
 	function Templates:ExRTDropDownListTemplate(parent)
 		local self = CreateFrame("Button",nil,parent)
-			self:SetFrameStrata("FULLSCREEN_DIALOG")
+			self:SetFrameStrata("TOOLTIP")
 		self:EnableMouse(true)
 		self:Hide()
 
@@ -712,14 +732,14 @@ do
 	end
 	function Templates:ExRTDropDownListModernTemplate(parent)
 		local self = CreateFrame("Button",nil,parent)
-			self:SetFrameStrata("FULLSCREEN_DIALOG")
+			self:SetFrameStrata("TOOLTIP")
 		self:EnableMouse(true)
 		self:Hide()
 
 		Templates:Border(self,0,0,0,1,1)
 
 		self.Background = self:CreateTexture(nil,"BACKGROUND")
-		SetSolidColor(self.Background,0,0,0,.9)
+		SetSolidColor(self.Background,0.04,0.04,0.06,1)
 		self.Background:SetPoint("TOPLEFT")
 		self.Background:SetPoint("BOTTOMRIGHT")
 
@@ -4947,6 +4967,7 @@ for i=1,2 do
 	dropDown:SetToplevel(true)
 	dropDown.Buttons = {}
 	dropDown.MaxLines = 0
+	dropDown.Level = i
 
 		dropDown.Slider = ELib.CreateSlider(dropDown,10,170,-15,-11,1,10,"Text",1,"TOPRIGHT",true,true)
 		dropDown.Slider:SetFrameLevel((dropDown:GetFrameLevel() or 0) + 20)

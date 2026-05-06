@@ -771,14 +771,6 @@ do
 			for spellID,specID in pairs(cooldownsModule.db.spell_autoTalent) do
 				if specID == data.spec then
 					cooldownsModule.db.session_gGUIDs[name] = {spellID,"autotalent"}
-				elseif cooldownsModule.db.spell_isRaidCD and cooldownsModule.db.spell_isRaidCD[spellID] then
-					-- Cross-spec raid CD: grant regardless of inspected spec so
-					-- e.g. a Holy Pala still gets Divine Sacrifice (Prot talent)
-					-- granted via autoTalent path. Visibility filter further
-					-- bypasses spell_isTalent gate for spell_isRaidCD anyway,
-					-- but granting here keeps session_gGUIDs consistent for
-					-- talent-cd-by-talent fixes and other downstream logic.
-					cooldownsModule.db.session_gGUIDs[name] = {spellID,"autotalent"}
 				end
 			end
 

@@ -116,12 +116,7 @@ function module:timer(elapsed)
 		if not module.frame.encounter and IsEncounterInProgress() then
 			module.frame.encounter = true
 
-			local now = GetTime()
-			local lastExit = module.frame._lastCombatExit
-			local recentlyExited = lastExit and (now - lastExit) <= 180
-			local stickyRaid = (module.frame._groupInCombatLast or 0) + 5 >= now
-			local fightOngoing = module.frame.inCombat or module.frame.groupInCombat or stickyRaid or recentlyExited
-			if not fightOngoing then
+			if not module.frame.inCombat and not module.frame.groupInCombat and module.frame.total >= 0 then
 				module.frame.total = 0
 			end
 
@@ -137,7 +132,7 @@ function module:timer(elapsed)
 		end
 
 		module.frame._groupCombatPoll = (module.frame._groupCombatPoll or 0) + (elapsed or 0)
-		if module.frame._groupCombatPoll >= 0.5 then
+		if module.frame._groupCombatPoll >= 1 then
 			module.frame._groupCombatPoll = 0
 			local groupInCombat = false
 			local n = (GetNumGroupMembers and GetNumGroupMembers()) or 0
@@ -162,18 +157,10 @@ function module:timer(elapsed)
 					end
 				end
 			end
-			local nowPoll = GetTime()
-			if groupInCombat then
-				module.frame._groupInCombatLast = nowPoll
-				module.frame.groupInCombat = true
-			elseif (module.frame._groupInCombatLast or 0) + 5 >= nowPoll then
-				module.frame.groupInCombat = true
-			else
-				module.frame.groupInCombat = nil
-			end
+			module.frame.groupInCombat = groupInCombat or nil
 
 			if not module.frame.groupInCombat and not module.frame.inCombat and not module.frame.encounter then
-				if VMRT.Timers.OnlyInCombat and module.frame:IsShown() and (not module.frame._lastCombatExit or (GetTime() - module.frame._lastCombatExit) > 5) then
+				if VMRT.Timers.OnlyInCombat and module.frame:IsShown() then
 					module.frame:Hide()
 				end
 			end
@@ -607,17 +594,10 @@ function module.main:ADDON_LOADED()
 end
 
 function module.main:PLAYER_REGEN_DISABLED()
-	local now = GetTime()
-	local lastExit = module.frame._lastCombatExit
-	local recentlyExited = lastExit and (now - lastExit) <= 180
-	local stickyRaid = (module.frame._groupInCombatLast or 0) + 5 >= now
-
-	local fightOngoing = module.frame.encounter or module.frame.groupInCombat or stickyRaid or recentlyExited
-	if not fightOngoing and module.frame.total >= 0 then
+	if not module.frame.encounter and not module.frame.groupInCombat and module.frame.total >= 0 then
 		module.frame.total = 0
 	end
 	module.frame.inCombat = true
-	module.frame._lastCombatExit = nil
 
 	if VMRT.Timers.OnlyInCombat then
 		module.frame:Show()
@@ -626,7 +606,6 @@ end
 
 function module.main:PLAYER_REGEN_ENABLED()
 	module.frame.inCombat = nil
-	module.frame._lastCombatExit = GetTime()
 
 	if VMRT.Timers.OnlyInCombat and not module.frame.encounter and not module.frame.groupInCombat then
 		module.frame:Hide()

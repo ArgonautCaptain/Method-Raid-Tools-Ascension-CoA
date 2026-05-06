@@ -134,11 +134,20 @@ function module.options:Load()
 	end)
 
 	local raidSlider = ELib:Slider(self,""):Point("TOPLEFT",mainScroll,"BOTTOMLEFT",LINE_NAME_WIDTH + 15,-3):Range(0,25):Size(VERTICALNAME_WIDTH*VERTICALNAME_COUNT):SetTo(0):OnChange(function(self,value)
-		local currPlayerCol = floor(value)
+		local currPlayerCol = floor(value or 0)
+		if currPlayerCol < 0 then currPlayerCol = 0 end
 		if currPlayerCol ~= prevPlayerCol then
 			prevPlayerCol = currPlayerCol
 			UpdatePageView()
 		end
+	end)
+	raidSlider:EnableMouseWheel(true)
+	raidSlider:SetScript("OnMouseWheel", function(self, delta)
+		local minVal,maxVal = self:GetMinMaxValues()
+		local v = (tonumber(self:GetValue()) or 0) - delta
+		if v < minVal then v = minVal end
+		if v > maxVal then v = maxVal end
+		self:SetValue(v)
 	end)
 	raidSlider.Low:Hide()
 	raidSlider.High:Hide()
@@ -720,9 +729,18 @@ function module.options:Load()
 		if #namesList <= VERTICALNAME_COUNT then
 			raidSlider:Hide()
 			prevPlayerCol = 0
+			raidSlider.__MRT_lastStep = nil
+			raidSlider:SetValue(0)
 		else
 			raidSlider:Show()
 			raidSlider:Range(0,#namesList - VERTICALNAME_COUNT)
+			local currVal = tonumber(raidSlider:GetValue()) or 0
+			local maxVal = #namesList - VERTICALNAME_COUNT
+			if currVal > maxVal then
+				raidSlider.__MRT_lastStep = nil
+				raidSlider:SetValue(maxVal)
+				prevPlayerCol = maxVal
+			end
 		end
 
 		UpdatePageView()

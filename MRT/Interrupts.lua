@@ -1750,13 +1750,13 @@ function module:GetFrame()
 
 	ELib:Border(frame,2,0,0,0,1)
 
-	frame.text = frame:CreateFontString(nil,"ARTWORK","Number12Font_o1")
+	frame.text = frame:CreateFontString(nil,"ARTWORK","GameFontNormal")
 	frame.text:SetFont(font,fontSize,"OUTLINE")
 	frame.text:SetPoint("CENTER")
 	frame.text:SetTextColor(1,0,0,1)
 	frame.text:SetText("1")
 
-	frame.nextName = frame:CreateFontString(nil,"ARTWORK","Number12Font_o1")
+	frame.nextName = frame:CreateFontString(nil,"ARTWORK","GameFontNormal")
 	frame.nextName:SetFont(fontKicker,fontKickerSize,"OUTLINE")
 	frame.nextName:SetTextColor(1,1,1,1)
 	frame.nextName:SetText("")

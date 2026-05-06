@@ -1,6 +1,11 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+v5.0.6-WotLK335a
+* Fixes
+* Note: Improved Autoloaded before Boss
+* Raid Cooldowns: Fixed spell detection (talent)
+
 v5.0.5-WotLK335a
 * Fixes
 * Raid Cooldown - Icon style new futures

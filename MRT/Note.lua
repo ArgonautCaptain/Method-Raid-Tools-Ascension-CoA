@@ -509,12 +509,76 @@ local function applyIconAlpha(text, alpha)
 			return "|T" .. table.concat(parts, ":") .. "|t"
 		elseif n == 11 then
 			return "|T" .. args .. ":" .. v .. ":" .. v .. ":" .. v .. "|t"
+		elseif n == 5 then
+			local path = parts[1]
+			local h = parts[2] or "16"
+			local w = parts[3] or h
+			local x = parts[4] or "0"
+			local y = parts[5] or "0"
+			return "|T" .. path .. ":" .. h .. ":" .. w .. ":" .. x .. ":" .. y
+				.. ":64:64:0:64:0:64:" .. v .. ":" .. v .. ":" .. v .. "|t"
 		elseif n >= 1 and n <= 3 then
 			local path = parts[1]
 			local h = parts[2] or "16"
 			local w = parts[3] or h
 			return "|T" .. path .. ":" .. h .. ":" .. w
 				.. ":0:0:64:64:0:64:0:64:" .. v .. ":" .. v .. ":" .. v .. "|t"
+		else
+			return "|T" .. args .. "|t"
+		end
+	end))
+end
+
+local function resizeAutoIcons(text, fontSize)
+	if not text or text == "" or not fontSize or fontSize <= 0 then return text end
+	local size = fontSize + 4
+	if size < 18 then size = 18 end
+	local yOff = math.floor(0.4 * fontSize - size / 2)
+	return (text:gsub("|T([^|]-)|t", function(args)
+		local parts = { strsplit(":", args) }
+		local n = #parts
+		local path = parts[1]
+		if not path or path == "" then
+			return "|T" .. args .. "|t"
+		end
+		if n >= 1 and n <= 3 then
+			local h = parts[2] and tonumber(parts[2])
+			local w = parts[3] and tonumber(parts[3])
+			if h and h ~= 0 and h ~= 16 then
+				return "|T" .. args .. "|t"
+			end
+			if w and w ~= 0 and w ~= 16 then
+				return "|T" .. args .. "|t"
+			end
+			return "|T" .. path .. ":" .. size .. ":" .. size .. ":0:" .. yOff .. ":64:64:0:64:0:64|t"
+		elseif n == 5 then
+			local h = tonumber(parts[2])
+			local w = tonumber(parts[3])
+			if h and h ~= 0 and h ~= 16 then
+				return "|T" .. args .. "|t"
+			end
+			if w and w ~= 0 and w ~= 16 then
+				return "|T" .. args .. "|t"
+			end
+			return "|T" .. path .. ":" .. size .. ":" .. size .. ":0:" .. yOff .. ":64:64:0:64:0:64|t"
+		elseif n == 11 then
+			local h = tonumber(parts[2])
+			local w = tonumber(parts[3])
+			local texW = tonumber(parts[6]) or 64
+			local texH = tonumber(parts[7]) or 64
+			local crL = tonumber(parts[8]) or 0
+			local crR = tonumber(parts[9]) or texW
+			local crT = tonumber(parts[10]) or 0
+			local crB = tonumber(parts[11]) or texH
+			if h and h ~= 0 and h ~= 16 then
+				return "|T" .. args .. "|t"
+			end
+			if w and w ~= 0 and w ~= 16 then
+				return "|T" .. args .. "|t"
+			end
+			return "|T" .. path .. ":" .. size .. ":" .. size .. ":0:" .. yOff
+				.. ":" .. texW .. ":" .. texH
+				.. ":" .. crL .. ":" .. crR .. ":" .. crT .. ":" .. crB .. "|t"
 		else
 			return "|T" .. args .. "|t"
 		end
@@ -1207,39 +1271,6 @@ function module.options:Load()
 		module.options.NotesList:Update()
 	end)
 	self.RemoveDraft:HideBorders()
-	self.chkEnableBossAutoLoadTop = ELib:Check(self.tab.tabs[1],L.NoteEnableBossAutoLoad,VMRT.Note.EnableBossAutoLoad)
-		:Tooltip(L.NoteEnableBossAutoLoadTip)
-		:Point("BOTTOM",self.DuplicateDraft,"TOP",0,6):Point("RIGHT",self.tab.tabs[1],"RIGHT",-6,0)
-		:OnClick(function(self)
-			if self:GetChecked() then
-				VMRT.Note.EnableBossAutoLoad = true
-			else
-				VMRT.Note.EnableBossAutoLoad = nil
-			end
-			if module.options.chkEnableBossAutoLoad then
-				module.options.chkEnableBossAutoLoad:SetChecked(VMRT.Note.EnableBossAutoLoad)
-			end
-			if module.options.dropDownBossAutoLoadType then
-				module.options.dropDownBossAutoLoadType:SetText(L["NoteEnableBossAutoLoadType"..(VMRT.Note.BossAutoLoadType or 3)])
-			end
-			if module.options.autoLoadDropdown and module.options.autoLoadDropdown.UpdateText then
-				module.options.autoLoadDropdown:UpdateText(VMRT.Note.AutoLoad[0])
-			end
-		end)
-
-	local function MRT_ApplyCheckboxLabelLeft(chk)
-		if not chk then return end
-		local label = chk.text or chk.Text
-		if not label then return end
-		label:ClearAllPoints()
-		label:SetPoint("RIGHT", chk, "LEFT", -4, 0)
-		label:SetJustifyH("RIGHT")
-	end
-	MRT_ApplyCheckboxLabelLeft(self.chkEnableBossAutoLoadTop)
-	if self.chkEnableBossAutoLoadTop and not self.chkEnableBossAutoLoadTop.__mrtLabelHooked then
-		self.chkEnableBossAutoLoadTop.__mrtLabelHooked = true
-		self.chkEnableBossAutoLoadTop:HookScript("OnShow", function(self) MRT_ApplyCheckboxLabelLeft(self) end)
-	end
 
 	self.DraftName = ELib:Edit(self.tab.tabs[1]):Size(0,18):Tooltip(L.NoteDraftName):Text(VMRT.Note.DefName or L.messageTab1):Point("TOPLEFT",self.NotesList,"TOPRIGHT",8,0):Point("RIGHT",self.RemoveDraft,"LEFT",-5,0):BackgroundText(L.NoteDraftName):OnChange(function(self,isUser)
 		self:BackgroundTextCheck()
@@ -2484,7 +2515,7 @@ function module.options:Load()
 	end)
 
 
-	if MRT.isClassic then
+	if MRT.isClassic and not MRT.isLK then
 		self.dropDownBossAutoLoadType:Hide()
 		self.chkEnableBossAutoLoad:Hide()
 		self.chkBossAutoLoadSend:Hide()
@@ -3210,7 +3241,6 @@ function module.options:Load()
 		self.chkTimersOnlyMy:SetChecked(VMRT.Note.TimerOnlyMy)
 
 		self.chkEnableBossAutoLoad:SetChecked(VMRT.Note.EnableBossAutoLoad)
-		if self.chkEnableBossAutoLoadTop then self.chkEnableBossAutoLoadTop:SetChecked(VMRT.Note.EnableBossAutoLoad) end
 		self.dropDownBossAutoLoadType:SetText(L["NoteEnableBossAutoLoadType"..(VMRT.Note.BossAutoLoadType or 3)])
 		self.chkBossAutoLoadSend:SetChecked(VMRT.Note.BossAutoLoadSendAsRL)
 		self.chkBossAutoLoadPersonal:SetChecked(VMRT.Note.BossAutoLoadPersonal)
@@ -3281,11 +3311,13 @@ local function NoteWindow_UpdateFont(self)
 	local align = VMRT and VMRT.Note and ((VMRT.Note.TextAlign == 2 and "RIGHT") or (VMRT.Note.TextAlign == 3 and "CENTER")) or "LEFT"
 	local isValidFont = self.text:SetFont(font,size,outline)
 	self.text:SetJustifyH(align)
+	if self.text.SetSpacing then self.text:SetSpacing(2) end
 
 	local c = 2
 	while self["text"..c] do
 		self["text"..c]:SetFont(font,size,outline)
 		self["text"..c]:SetJustifyH(align)
+		if self["text"..c].SetSpacing then self["text"..c]:SetSpacing(2) end
 		c = c + 1
 	end
 
@@ -3306,6 +3338,8 @@ local function NoteWindow_UpdateText(self,onlyTimerUpdate)
 	module.db.glowStatus = nil
 
 	local text = txtWithIcons(self, self:GetRawText(), onlyTimerUpdate)
+	local fontSize = VMRT and VMRT.Note and VMRT.Note.FontSize or 12
+	text = resizeAutoIcons(text, fontSize)
 	text = applyIconAlpha(text, VMRT and VMRT.Note and VMRT.Note.Alpha)
 
 	local c = 2

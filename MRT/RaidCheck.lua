@@ -2025,10 +2025,10 @@ function module.frame:UpdateCols()
 			header = ELib:Text(module.frame.headers,"",10):Color(1,1,1)
 			module.frame.headers[idx] = header
 		end
-		local prev = module.frame.headers[idx-1]
-		local offsetX = 30 + (RCW_iconsListWide[idx-1] and 15 or 0) + (RCW_iconsListWide[idx] and 15 or 0)
+		local getX = module.frame.headers.getHeaderColumnX
+		local x = getX and getX(idx) or 155
 		header:ClearAllPoints()
-		header:SetPoint("BOTTOMLEFT", prev, "BOTTOMLEFT", offsetX, 0)
+		header:SetPoint("BOTTOMLEFT", module.frame, "TOPLEFT", x, -50)
 		header.__columnIndex = idx
 		if module.frame.headers.hookHeader then
 			module.frame.headers:hookHeader(header)
@@ -2354,14 +2354,21 @@ do
 	local headers = CreateFrame("Frame",nil,module.frame.maximized)
 	module.frame.headers = headers
 
+	local HEADER_BASE_X = 155
+	local HEADER_BASE_Y = -50
+	local function getHeaderColumnX(idx)
+		local x = HEADER_BASE_X
+		for j = 2, idx do
+			x = x + 30 + (RCW_iconsListWide[j-1] and 15 or 0) + (RCW_iconsListWide[j] and 15 or 0)
+		end
+		return x
+	end
+	headers.getHeaderColumnX = getHeaderColumnX
+
 	for i,key in pairs(RCW_iconsListHeaders) do
 		headers[i] = ELib:Text(headers,key,10):Color(1,1,1)
 		headers[i].__columnIndex = i
-		if i == 1 then
-			headers[i]:Point("BOTTOMLEFT",module.frame,"TOPLEFT",155,-50)
-		else
-			headers[i]:Point("BOTTOMLEFT",headers[i-1],"BOTTOMLEFT",30+(RCW_iconsListWide[i-1] and 15 or 0)+(RCW_iconsListWide[i] and 15 or 0),0)
-		end
+		headers[i]:Point("BOTTOMLEFT",module.frame,"TOPLEFT",getHeaderColumnX(i),HEADER_BASE_Y)
 	end
 
 	local HEADER_ABBREV = {

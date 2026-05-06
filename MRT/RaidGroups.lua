@@ -177,11 +177,13 @@ function module.options:Load()
 			local guildList = {}
 			for i=1, GetNumGuildMembers() do
 				local name, _, rankIndex, level, _, _, _, _, _, _, class = GetGuildRosterInfo(i)
-				if select(2,strsplit("-",name)) == ExRT.SDB.realmKey then
-					name = strsplit("-",name)
-				end
-				if not inList[name] and (level or 0) >= myLvl then
-					guildList[#guildList+1] = {name,class,rankIndex,"|cffbbbbbb["..rankIndex.."]|r "..name}
+				if name then
+					if select(2,strsplit("-",name)) == ExRT.SDB.realmKey then
+						name = strsplit("-",name)
+					end
+					if not inList[name] and (level or 0) >= myLvl then
+						guildList[#guildList+1] = {name,class,rankIndex,"|cffbbbbbb["..rankIndex.."]|r "..name}
+					end
 				end
 			end
 			sort(guildList,function(a,b)
@@ -201,7 +203,7 @@ function module.options:Load()
 		else
 			for i=1,GetNumGroupMembers() do
 				local name = GetRaidRosterInfo(i)
-				if not inList[name] then
+				if name and not inList[name] then
 					if not name:find("%-") or not inList[strsplit("-",name)] then
 						notInList[#notInList+1] = name
 					end
@@ -284,7 +286,9 @@ function module.options:Load()
 
 		for i=1,GetNumGroupMembers() do
 			local name, rank, subgroup = GetRaidRosterInfo(i)
-			tinsert(roster[subgroup],name)
+			if name and subgroup and roster[subgroup] then
+				tinsert(roster[subgroup],name)
+			end
 		end
 
 		for i=1,8 do

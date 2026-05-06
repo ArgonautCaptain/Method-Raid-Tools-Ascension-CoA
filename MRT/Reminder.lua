@@ -3337,14 +3337,6 @@ function options:Load()
 
 	function options:ImportToHistory(res)
 		wipe(module.db.historySession)
-		if not VMRT.Reminder2.HistoryMPlusSessionEnabled then
-			for i=#res,1,-1 do
-				if #res[i] > 0 and res[i][1][2] == 22 then
-					tinsert(module.db.historySession, 1, res[i])
-					tremove(res, i)
-				end
-			end
-		end
 
 		module.db.history = res
 		if VMRT.Reminder2.HistorySession then
@@ -17873,23 +17865,34 @@ function options:Load()
 	end)
 	ELib:Text(self.optionWidgets.tabs[3],L.ReminderHeight..":",11):Point("RIGHT",self.sliderBarHeight,"LEFT",-5,0):Color(1,.82,0,1):Right()
 
-	local function dropDownBarTextureSetValue(_,arg1)
+	local function dropDownBarTextureSetValue(_,arg1,arg2)
 		ELib:DropDownClose()
 		VMRT.Reminder2.BarTexture = arg1
+		if self.dropDownBarTexture then
+			self.dropDownBarTexture:SetText(arg2 or "default")
+		end
 		module:UpdateVisual()
 	end
+
+	local _defaultBarTexturePath = [[Interface\AddOns\MRT\media\bar17.tga]]
+	local _currentBarTexturePath = VMRT.Reminder2.BarTexture or _defaultBarTexturePath
+	local _currentBarTextureName = VMRT.Reminder2.BarTexture and nil or "default"
 
 	self.dropDownBarTexture = ELib:DropDown(self.optionWidgets.tabs[3],350,10):Size(320):Point("TOPLEFT",self.sliderBarHeight,"BOTTOMLEFT",0,-15):SetText(""):AddText("|cffffce00"..L.cd2OtherSetTexture..":")
 	self.dropDownBarTexture.List[1] = {
 		text = "default",
+		arg2 = "default",
 		func = dropDownBarTextureSetValue,
 		justifyH = "CENTER" ,
-		texture = [[Interface\AddOns\MRT\media\bar17.tga]],
+		texture = _defaultBarTexturePath,
 	}
 	do
 		local textureMedia = ExRT.F.GetSharedMediaList("statusbar", ExRT.F.textureList)
 		for i = 1, #textureMedia do
 			local entry = textureMedia[i]
+			if not _currentBarTextureName and entry.path == _currentBarTexturePath then
+				_currentBarTextureName = entry.name
+			end
 			self.dropDownBarTexture.List[#self.dropDownBarTexture.List+1] = {
 				text = entry.name,
 				arg1 = entry.path,
@@ -17900,6 +17903,7 @@ function options:Load()
 			}
 		end
 	end
+	self.dropDownBarTexture:SetText(_currentBarTextureName or "default")
 
 	local function dropDownBarFontSetValue(_,arg1)
 		ELib:DropDownClose()
@@ -17924,19 +17928,11 @@ function options:Load()
 	end
 
 
-	self.chkHistory = ELib:Check(self.options_tab.tabs[1],L.ReminderSpellsHistory..":",VMRT.Reminder2.HistoryEnabled):Point("TOPLEFT",self.disablePopups,"BOTTOMLEFT",0,-10):Left(5):OnClick(function(self)
+	self.chkHistory = ELib:Check(self.options_tab.tabs[1],L.ReminderSpellsHistory..":",VMRT.Reminder2.HistoryEnabled):Point("TOPLEFT",self.disableChat,"BOTTOMLEFT",0,-10):Left(5):OnClick(function(self)
 		VMRT.Reminder2.HistoryEnabled = self:GetChecked()
 	end):Tooltip(L.ReminderSpellsHistoryTooltip)
 
-	self.chkHistoryMPlusDisabled = ELib:Check(self.options_tab.tabs[1],L.ReminderDisableMplusHistory..":",VMRT.Reminder2.HistoryMPlusDisabled):Point("TOPLEFT",self.chkHistory,"BOTTOMLEFT",0,-5):Left(5):OnClick(function(self)
-		if self:GetChecked() then
-			VMRT.Reminder2.HistoryMPlusDisabled = true
-		else
-			VMRT.Reminder2.HistoryMPlusDisabled = nil
-		end
-	end)
-
-	self.chkHistorySession = ELib:Check(self.options_tab.tabs[1],L.ReminderSpellsHistorySaveSession..":",VMRT.Reminder2.HistorySession):Point("TOPLEFT",self.chkHistoryMPlusDisabled,"BOTTOMLEFT",0,-5):Left(5):OnClick(function(self)
+	self.chkHistorySession = ELib:Check(self.options_tab.tabs[1],L.ReminderSpellsHistorySaveSession..":",VMRT.Reminder2.HistorySession):Point("TOPLEFT",self.chkHistory,"BOTTOMLEFT",0,-5):Left(5):OnClick(function(self)
 		VMRT.Reminder2.HistorySession = self:GetChecked()
 		if VMRT.Reminder2.HistorySession then
 			VMRT.Reminder2.history = module.db.history
@@ -17945,15 +17941,7 @@ function options:Load()
 		end
 	end)
 
-	self.chkHistoryMPlusSessionDisabled = ELib:Check(self.options_tab.tabs[1],L.ReminderDisableSavingMplusHistory..":",not VMRT.Reminder2.HistoryMPlusSessionEnabled):Tooltip(L.ReminderDisableSavingMplusHistoryTip):Point("TOPLEFT",self.chkHistorySession,"BOTTOMLEFT",0,-5):Left(5):OnClick(function(self)
-		if self:GetChecked() then
-			VMRT.Reminder2.HistoryMPlusSessionEnabled = nil
-		else
-			VMRT.Reminder2.HistoryMPlusSessionEnabled = true
-		end
-	end)
-
-	self.chkHistorySync = ELib:Check(self.options_tab.tabs[1],L.ReminderHistorySync..":",VMRT.Reminder2.HistorySync):Point("TOPLEFT",self.chkHistoryMPlusSessionDisabled,"BOTTOMLEFT",0,-5):Left(5):OnClick(function(self)
+	self.chkHistorySync = ELib:Check(self.options_tab.tabs[1],L.ReminderHistorySync..":",VMRT.Reminder2.HistorySync):Point("TOPLEFT",self.chkHistorySession,"BOTTOMLEFT",0,-5):Left(5):OnClick(function(self)
 		if self:GetChecked() then
 			VMRT.Reminder2.HistorySync = true
 		else
@@ -22488,10 +22476,6 @@ function module.main:PLAYER_REGEN_ENABLED()
 end
 
 function module:StartHistoryRecord(mode)
-	if mode == 2 and VMRT.Reminder2.HistoryMPlusDisabled then
-		return
-	end
-
 	if #module.db.historyNow > 0 then
 		wipe(module.db.historyNow)
 	end
@@ -22541,11 +22525,7 @@ function module:SaveHistorySegment(ignoreFightLen, difficultyID, isKill)
 				tostring(enoughLength), tostring(module:SaveHistorySegmentIsMatchDiff(difficultyID) or false)))
 		end
 		if enoughLength then
-			if not VMRT.Reminder2.HistoryMPlusSessionEnabled and module.db.historyNow[1][2] == 22 then
-				tinsert(module.db.historySession,1,module.db.historyNow)
-			else
-				tinsert(module.db.history,1,module.db.historyNow)
-			end
+			tinsert(module.db.history,1,module.db.historyNow)
 		end
 		local tosend = module.db.historyNow
 		module.db.historyNow = {}
