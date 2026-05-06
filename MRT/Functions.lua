@@ -2292,7 +2292,7 @@ ExRT.GDB.ClassSpecializationIcons = {
 	[257] = "Interface\\Icons\\Spell_Holy_GuardianSpirit",
 	[258] = "Interface\\Icons\\Spell_Shadow_ShadowWordPain",
 	[259] = "Interface\\Icons\\Ability_Rogue_DeadlyBrew",
-	[260] = "Interface\\Icons\\INV_Sword_30",
+	[260] = "Interface\\Icons\\Ability_BackStab",
 	[261] = "Interface\\Icons\\Ability_Stealth",
 	[262] = "Interface\\Icons\\Spell_Nature_Lightning",
 	[263] = "Interface\\Icons\\Spell_Shaman_ImprovedStormstrike",
@@ -2433,7 +2433,7 @@ if ExRT.isClassic then
 		[257] = {name="Holy",class=5,role="HEALER",desc="A versatile healer who can reverse damage on individuals or groups and even heal from beyond the grave.|n|nPreferred Weapon: Staff, Wand, Dagger, Mace",icon=237542},
 		[258] = {name="Shadow",class=5,role="DAMAGER",desc="Uses sinister Shadow magic and terrifying Void magic to eradicate enemies.|n|nPreferred Weapon: Staff, Wand, Dagger, Mace",icon=136207},
 		[259] = {name="Assassination",class=4,role="DAMAGER",desc="A deadly master of poisons who dispatches victims with vicious dagger strikes.|n|nPreferred Weapons: Daggers",icon=236270},
-		[260] = {name="Combat",class=4,role="DAMAGER",desc="A swashbuckler who uses agility and guile to stand toe-to-toe with enemies.|n|nPreferred Weapons: Axes, Maces, Swords, Fist Weapons",icon="Interface\\Icons\\INV_Sword_30"},
+		[260] = {name="Combat",class=4,role="DAMAGER",desc="A swashbuckler who uses agility and guile to stand toe-to-toe with enemies.|n|nPreferred Weapons: Axes, Maces, Swords, Fist Weapons",icon="Interface\\Icons\\Ability_BackStab"},
 		[261] = {name="Subtlety",class=4,role="DAMAGER",desc="A dark stalker who leaps from the shadows to ambush $Ghis:her; unsuspecting prey.|n|nPreferred Weapons: Daggers",icon=132320},
 		[262] = {name="Elemental",class=7,role="DAMAGER",desc="A spellcaster who harnesses the destructive forces of nature and the elements.|n|nPreferred Weapon: Mace, Dagger, and Shield",icon=136048},
 		[263] = {name="Enhancement",class=7,role="DAMAGER",desc="A totemic warrior who strikes foes with weapons imbued with elemental power.|n|nPreferred Weapons: Dual Axes, Maces, Fist Weapons",icon=237581},
@@ -2478,6 +2478,49 @@ ExRT.GDB.MapIDToJournalInstance = {
 [558]=247,[557]=250,[556]=252,[555]=253,[554]=258,[553]=257,[552]=254,[550]=749,[548]=748,[547]=260,[546]=262,[545]=261,[544]=747,[543]=248,[542]=256,[540]=259,[534]=750,[533]=754,[532]=745,[531]=744,[509]=743,
 [469]=742,[429]=1277,[429]=1277,[429]=1277,[409]=741,[389]=226,[349]=232,[329]=1292,[329]=1292,[269]=255,[249]=760,[230]=228,[229]=229,[209]=241,[129]=233,[109]=237,[90]=231,[70]=239,[48]=227,[47]=234,
 [43]=240,[36]=63,[34]=238,[33]=64,
+}
+
+ExRT.GDB.RaidIconByMapID = {
+	[724] = "Interface\\Icons\\Spell_shadow_twilight",
+	[631] = "Interface\\Icons\\Achievement_dungeon_icecrown_icecrownentrance",
+	[649] = "Interface\\Icons\\Achievement_reputation_argentchampion",
+	[249] = "Interface\\Icons\\Achievement_boss_generaldrakkisath",
+	[248] = "Interface\\Icons\\Achievement_boss_generaldrakkisath",
+	[603] = "Interface\\Icons\\Spell_shadow_shadesofdarkness",
+	[616] = "Interface\\Icons\\Achievement_dungeon_nexusraid_25man",
+	[615] = "Interface\\Icons\\Achievement_dungeon_coablackdragonflight_10man",
+	[533] = "Interface\\Icons\\Inv_trinket_naxxramas06",
+	[99533] = "Interface\\Icons\\Inv_trinket_naxxramas06",
+	[580] = "Interface\\Icons\\Achievement_boss_kiljaedan",
+	[568] = "Interface\\Icons\\Achievement_boss_zuljin",
+	[564] = "Interface\\Icons\\Achievement_boss_illidan",
+	[534] = "Interface\\Icons\\Achievement_boss_archimonde ",
+	[550] = "Interface\\Icons\\Achievement_character_bloodelf_male",
+	[548] = "Interface\\Icons\\Achievement_boss_ladyvashj",
+	[544] = "Interface\\Icons\\Achievement_boss_magtheridon",
+	[565] = "Interface\\Icons\\Achievement_boss_gruulthedragonkiller",
+	[532] = "Interface\\Icons\\Achievement_boss_princemalchezaar_02",
+	[531] = "Interface\\Icons\\Achievement_boss_cthun",
+	[509] = "Interface\\Icons\\Achievement_boss_ossiriantheunscarred",
+	[309] = "Interface\\Icons\\Achievement_boss_hakkar",
+	[469] = "Interface\\Icons\\Achievement_boss_nefarion",
+	[409] = "Interface\\Icons\\Achievement_boss_ragnaros",
+}
+
+ExRT.GDB.RaidGroupByMapID = {
+	[724] = "wotlk", [631] = "wotlk", [649] = "wotlk", [249] = "wotlk",
+	[603] = "wotlk", [616] = "wotlk", [615] = "wotlk", [533] = "wotlk",
+	[580] = "tbc",  [568] = "tbc",  [564] = "tbc",  [534] = "tbc",
+	[550] = "tbc",  [548] = "tbc",  [544] = "tbc",  [565] = "tbc",
+	[532] = "tbc",
+	[99533] = "classic", [531] = "classic", [509] = "classic",
+	[309] = "classic", [248] = "classic", [469] = "classic", [409] = "classic",
+}
+
+ExRT.GDB.RaidSortInGroup = {
+	[724] = 1, [631] = 2, [649] = 3, [249] = 4, [603] = 5, [616] = 6, [615] = 7, [533] = 8,
+	[580] = 1, [568] = 2, [564] = 3, [534] = 4, [550] = 5, [548] = 6, [544] = 7, [565] = 8, [532] = 9,
+	[99533] = 1, [531] = 2, [509] = 3, [309] = 4, [248] = 5, [469] = 6, [409] = 7,
 }
 
 ExRT.GDB.EncountersList = {
@@ -2820,17 +2863,19 @@ do
 	end
 end
 
-local POST_WOTLK_THRESHOLD = 724
+local POST_WOTLK_THRESHOLD = 99999
 
 local WOTLK_RAID_ORDER = {
-	409, 469, 309, 509, 531,
-	532, 565, 544, 548, 550, 534, 564, 568, 580,
-	533, 616, 615, 603, 249, 649, 631, 724,
+	724, 631, 649, 249, 603, 616, 615, 533,
+	580, 568, 564, 534, 550, 548, 544, 565, 532,
+	99533, 531, 509, 309, 248, 469, 409,
 }
 local WOTLK_RAID_RANK = {}
 for i, mapID in ipairs(WOTLK_RAID_ORDER) do
 	WOTLK_RAID_RANK[mapID] = i
 end
+ExRT.GDB.WOTLK_RAID_ORDER = WOTLK_RAID_ORDER
+ExRT.GDB.WOTLK_RAID_RANK = WOTLK_RAID_RANK
 
 function ExRT.F.GetEncountersList(onlyRaid,onlyActual,reverse,onlyDung)
 	local new = {}

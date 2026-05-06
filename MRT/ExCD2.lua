@@ -331,10 +331,13 @@ module.db.spell_talentProvideAnotherTalents = {
 	[197632] = {132469},
 	[197491] = {99,22842},
 	[217615] = {99,22842},
+	[31850]  = {66233},
 }
 
 module.db.spell_talentsList = {}
 module.db.spell_isPvpTalent = {}
+
+module.db.spell_isRaidCD = {}
 
 do
 	local nilData = {}
@@ -515,6 +518,15 @@ module.db.spell_startCDbyAuraFadeExt = {
 }
 module.db.spell_startCDbyAuraApplied = {
 }
+if ExRT.isLK then
+	module.db.spell_startCDbyAuraApplied[20707] = 20765
+	module.db.spell_startCDbyAuraApplied[20762] = 20765
+	module.db.spell_startCDbyAuraApplied[20764] = 20765
+	module.db.spell_startCDbyAuraApplied[20765] = 20765
+	module.db.spell_startCDbyAuraApplied[20772] = 20765
+	module.db.spell_startCDbyAuraApplied[27240] = 20765
+	module.db.spell_startCDbyAuraApplied[47883] = 20765
+end
 module.db.spell_startCDbyAuraApplied_fix = {}
 for _,spellID in pairs(module.db.spell_startCDbyAuraApplied) do module.db.spell_startCDbyAuraApplied_fix[spellID] = true end
 
@@ -922,6 +934,7 @@ module.db.maxColumns = 10
 
 module.db.colsDefaults = {
 	iconSize = 16,
+	iconHeight = 16,
 	iconGray = true,
 	iconPosition = 1,
 	textureFile = ExRT.F.barImg,
@@ -969,6 +982,39 @@ module.db.colsDefaults = {
 	textIconNameChars = 50,
 	textIconCDStyle = 7,
 
+	iconFontMode = false,
+	iconFontTopTemplate = "",
+	iconFontTopAnchor = "TOP",
+	iconFontTopX = 0,
+	iconFontTopY = 0,
+	iconFontTopPos = 2,
+	iconFontTopGrowth = 0,
+	iconFontCenterTemplate = "%time%",
+	iconFontCenterAnchor = "CENTER",
+	iconFontCenterX = 0,
+	iconFontCenterY = 0,
+	iconFontCenterPos = 5,
+	iconFontCenterGrowth = 0,
+	iconFontBottomTemplate = "%name%",
+	iconFontBottomAnchor = "BOTTOM",
+	iconFontBottomX = 0,
+	iconFontBottomY = 0,
+	iconFontBottomPos = 8,
+	iconFontBottomGrowth = 0,
+
+	fontIconTopName = nil,
+	fontIconTopSize = nil,
+	fontIconTopOutline = nil,
+	fontIconTopShadow = nil,
+	fontIconMidName = nil,
+	fontIconMidSize = nil,
+	fontIconMidOutline = nil,
+	fontIconMidShadow = nil,
+	fontIconBotName = nil,
+	fontIconBotSize = nil,
+	fontIconBotOutline = nil,
+	fontIconBotShadow = nil,
+
 	blacklistText = "",
 	whitelistText = "",
 
@@ -978,7 +1024,55 @@ module.db.colsDefaults = {
 	ATFOffsetY = 0,
 	ATFGrowth = 1,
 	iconGlowType = 4,
+	iconGlowColorR = 0.95,
+	iconGlowColorG = 0.95,
+	iconGlowColorB = 0.32,
+	iconGlowColorA = 1,
 }
+
+module.db.colsIconFontPos = {
+	[1]  = {"TOPLEFT",     "TOPLEFT",     false, 1},
+	[2]  = {"TOP",         "TOP",         true,  0},
+	[3]  = {"TOPRIGHT",    "TOPRIGHT",    false, 2},
+	[4]  = {"LEFT",        "LEFT",        false, 1},
+	[5]  = {"CENTER",      "CENTER",      true,  0},
+	[6]  = {"RIGHT",       "RIGHT",       false, 2},
+	[7]  = {"BOTTOMLEFT",  "BOTTOMLEFT",  false, 1},
+	[8]  = {"BOTTOM",      "BOTTOM",      true,  0},
+	[9]  = {"BOTTOMRIGHT", "BOTTOMRIGHT", false, 2},
+	[10] = {"BOTTOMRIGHT", "BOTTOMLEFT",  false, 2},
+	[11] = {"TOPRIGHT",    "TOPLEFT",     false, 2},
+	[12] = {"BOTTOMLEFT",  "TOPLEFT",     false, 1},
+	[13] = {"BOTTOMRIGHT", "TOPRIGHT",    false, 2},
+	[14] = {"TOPLEFT",     "TOPRIGHT",    false, 1},
+	[15] = {"BOTTOMLEFT",  "BOTTOMRIGHT", false, 1},
+	[16] = {"TOPRIGHT",    "BOTTOMRIGHT", false, 2},
+	[17] = {"TOPLEFT",     "BOTTOMLEFT",  false, 1},
+	[18] = {"BOTTOM",      "TOP",         true,  0},
+	[19] = {"LEFT",        "RIGHT",       false, 1},
+	[20] = {"TOP",         "BOTTOM",      true,  0},
+	[21] = {"RIGHT",       "LEFT",        false, 2},
+}
+
+module.db.colsIconFontPosFromAnchor = {
+	Top    = {TOPLEFT=1,  TOP=2,    TOPRIGHT=3 },
+	Center = {LEFT=4,     CENTER=5, RIGHT=6   },
+	Bottom = {BOTTOMLEFT=7, BOTTOM=8, BOTTOMRIGHT=9},
+}
+
+function module.db.ResolveIconFontPos(slot, savedPos, savedAnchor)
+	local posTbl = module.db.colsIconFontPos
+	if savedPos and posTbl[savedPos] then
+		return savedPos, posTbl[savedPos]
+	end
+	local map = module.db.colsIconFontPosFromAnchor[slot]
+	local fallback = map and savedAnchor and map[savedAnchor]
+	if fallback and posTbl[fallback] then
+		return fallback, posTbl[fallback]
+	end
+	local def = slot == "Top" and 2 or slot == "Center" and 5 or slot == "Bottom" and 8 or 5
+	return def, posTbl[def]
+end
 
 module.db.colsInit = {
 	iconGeneral = true,
@@ -1297,6 +1391,9 @@ local function BarUpdateText(self)
 		end
 	end
 
+	if barParent.textShowTargetName and barData.targetName and time >= 1 then
+		name = name .. " > "..barData.targetName
+	end
 	if barData.specialAddText then
 		name = name .. (barData.specialAddText() or "")
 	end
@@ -1314,31 +1411,72 @@ local function BarUpdateText(self)
 	gsub_data.spell = spellName
 	gsub_data.status = offStatus
 	gsub_data.charge = chargesCount
+	gsub_data.target = barData.targetName or ""
 
-	local left = string_trim(barParent.textTemplateLeft:gsub("%%([^%%]+)%%",gsub_func),nil)
-	if self.textLeft.text ~= left then
-		self.textLeft.text = left
-		if left == "" then left = " " end
-		self.textLeft:SetText(left)
-	end
+	if barParent.iconFontMode then
+		if barParent.optionIconName then
+			local n = barParent.textIconNameChars or 50
+			gsub_data.name = utf8sub(gsub_data.name, 1, n)
+			gsub_data.target = utf8sub(gsub_data.target, 1, n)
+			gsub_data.name_time = time >= 1 and longtime or gsub_data.name
+			gsub_data.name_stime = time >= 1 and shorttime or gsub_data.name
+		end
 
-	local right = string_trim(barParent.textTemplateRight:gsub("%%([^%%]+)%%",gsub_func),nil)
-	if self.textRight.text ~= right then
-		self.textRight.text = right
-		if right == "" then right = " " end
-		self.textRight:SetText(right)
-	end
+		local top = string_trim((barParent.iconFontTopTemplate or ""):gsub("%%([^%%]+)%%",gsub_func),nil)
+		if self.textIconTop.text ~= top then
+			self.textIconTop:SetText(top)
+			self.textIconTop.text = top
+		end
+		local mid = string_trim((barParent.iconFontCenterTemplate or ""):gsub("%%([^%%]+)%%",gsub_func),nil)
+		if self.textIconMid.text ~= mid then
+			self.textIconMid:SetText(mid)
+			self.textIconMid.text = mid
+		end
+		local bot = string_trim((barParent.iconFontBottomTemplate or ""):gsub("%%([^%%]+)%%",gsub_func),nil)
+		if self.textIconBot.text ~= bot then
+			self.textIconBot:SetText(bot)
+			self.textIconBot.text = bot
+		end
 
-	local center = string_trim(barParent.textTemplateCenter:gsub("%%([^%%]+)%%",gsub_func),nil)
-	if self.textCenter.text ~= center then
-		self.textCenter:SetText(center)
-		self.textCenter.text = center
-	end
+		if self.textLeft.text ~= "" then self.textLeft.text = ""; self.textLeft:SetText(" ") end
+		if self.textRight.text ~= "" then self.textRight.text = ""; self.textRight:SetText(" ") end
+		if self.textCenter.text ~= "" then self.textCenter.text = ""; self.textCenter:SetText("") end
+		if self.textIcon.name ~= "" then
+			self.textIcon:SetText("")
+			self.textIcon.name = ""
+		end
+		if self.textIcon:IsShown() then
+			self.textIcon:Hide()
+		end
+	else
+		local left = string_trim(barParent.textTemplateLeft:gsub("%%([^%%]+)%%",gsub_func),nil)
+		if self.textLeft.text ~= left then
+			self.textLeft.text = left
+			if left == "" then left = " " end
+			self.textLeft:SetText(left)
+		end
 
-	if barParent.optionIconName and (self.textIcon.name ~= barData.name or self.textIcon.numChars ~= barParent.textIconNameChars) then
-		self.textIcon:SetText(utf8sub(barData.name,1,barParent.textIconNameChars))
-		self.textIcon.name = barData.name
-		self.textIcon.numChars = barParent.textIconNameChars
+		local right = string_trim(barParent.textTemplateRight:gsub("%%([^%%]+)%%",gsub_func),nil)
+		if self.textRight.text ~= right then
+			self.textRight.text = right
+			if right == "" then right = " " end
+			self.textRight:SetText(right)
+		end
+
+		local center = string_trim(barParent.textTemplateCenter:gsub("%%([^%%]+)%%",gsub_func),nil)
+		if self.textCenter.text ~= center then
+			self.textCenter:SetText(center)
+			self.textCenter.text = center
+		end
+
+		if barParent.optionIconName and (self.textIcon.name ~= barData.name or self.textIcon.numChars ~= barParent.textIconNameChars) then
+			self.textIcon:SetText(utf8sub(barData.name,1,barParent.textIconNameChars))
+			self.textIcon.name = barData.name
+			self.textIcon.numChars = barParent.textIconNameChars
+		end
+		if not self.textIcon:IsShown() then
+			self.textIcon:Show()
+		end
 	end
 
 	local cdText
@@ -1490,6 +1628,9 @@ local function BarStateAnimation(self)
 		bar.textCenter:SetTextColor(t.r + bar.curr_anim_t_r*progress,t.g + bar.curr_anim_t_g*progress,t.b + bar.curr_anim_t_b*progress)
 		bar.textIcon:SetTextColor(t.r + bar.curr_anim_t_r*progress,t.g + bar.curr_anim_t_g*progress,t.b + bar.curr_anim_t_b*progress)
 		bar.textIconCD:SetTextColor(t.r + bar.curr_anim_t_r*progress,t.g + bar.curr_anim_t_g*progress,t.b + bar.curr_anim_t_b*progress)
+		bar.textIconTop:SetTextColor(t.r + bar.curr_anim_t_r*progress,t.g + bar.curr_anim_t_g*progress,t.b + bar.curr_anim_t_b*progress)
+		bar.textIconMid:SetTextColor(t.r + bar.curr_anim_t_r*progress,t.g + bar.curr_anim_t_g*progress,t.b + bar.curr_anim_t_b*progress)
+		bar.textIconBot:SetTextColor(t.r + bar.curr_anim_t_r*progress,t.g + bar.curr_anim_t_g*progress,t.b + bar.curr_anim_t_b*progress)
 	end
 end
 local function BarStateAnimationFinished(self)
@@ -1742,6 +1883,9 @@ local function UpdateBarStatus(self,isTitle)
 			self.textCenter:SetTextColor(colorTable.r,colorTable.g,colorTable.b)
 			self.textIcon:SetTextColor(colorTable.r,colorTable.g,colorTable.b)
 			self.textIconCD:SetTextColor(colorTable.r,colorTable.g,colorTable.b)
+			self.textIconTop:SetTextColor(colorTable.r,colorTable.g,colorTable.b)
+			self.textIconMid:SetTextColor(colorTable.r,colorTable.g,colorTable.b)
+			self.textIconBot:SetTextColor(colorTable.r,colorTable.g,colorTable.b)
 		end
 
 		if isActive and self.curr_anim_state ~= 1 then
@@ -1807,6 +1951,9 @@ local function UpdateBarStatus(self,isTitle)
 		self.textCenter:SetTextColor(colorTable.r,colorTable.g,colorTable.b)
 		self.textIcon:SetTextColor(colorTable.r,colorTable.g,colorTable.b)
 		self.textIconCD:SetTextColor(colorTable.r,colorTable.g,colorTable.b)
+		self.textIconTop:SetTextColor(colorTable.r,colorTable.g,colorTable.b)
+		self.textIconMid:SetTextColor(colorTable.r,colorTable.g,colorTable.b)
+		self.textIconBot:SetTextColor(colorTable.r,colorTable.g,colorTable.b)
 	end
 	self.afterAnimFix = nil
 
@@ -1882,10 +2029,11 @@ end
 local function BarCreateTitle(self)
 	local parent = self.parent
 
-	local height = parent.iconSize or 24
+	local iconWidth = parent.iconSize or 24
+	local iconHeight = parent.iconHeight or iconWidth
 
-	self.statusbar:ClearAllPoints()	self.statusbar:SetHeight(height)
-	self.icon:ClearAllPoints()	self.icon:SetSize(height,height)
+	self.statusbar:ClearAllPoints()	self.statusbar:SetHeight(iconHeight)
+	self.icon:ClearAllPoints()	self.icon:SetSize(iconWidth,iconHeight)
 
 	self.textLeft:SetText("")
 	self.textLeft.text = nil
@@ -1896,11 +2044,17 @@ local function BarCreateTitle(self)
 	self.textIcon:SetText("")
 	self.textIcon.name = nil
 	self.textIconCD:SetText("")
+	self.textIconTop:SetText("")
+	self.textIconTop.text = nil
+	self.textIconMid:SetText("")
+	self.textIconMid.text = nil
+	self.textIconBot:SetText("")
+	self.textIconBot.text = nil
 
 	if parent.optionIconPosition == 2 then
 		self.icon:Show()
 		self.statusbar:SetPoint("LEFT",self,0,0)
-		self.statusbar:SetPoint("RIGHT",self,-height,0)
+		self.statusbar:SetPoint("RIGHT",self,-iconWidth,0)
 		self.icon:SetPoint("RIGHT",self,0,0)
 
 		self.textRight:SetPoint("LEFT",self,0,0)
@@ -1909,7 +2063,7 @@ local function BarCreateTitle(self)
 		self.textRight:SetText(self.data.spellName)
 	elseif parent.optionIconPosition == 1 then
 		self.icon:Show()
-		self.statusbar:SetPoint("LEFT",self,height,0)
+		self.statusbar:SetPoint("LEFT",self,iconWidth,0)
 		self.statusbar:SetPoint("RIGHT",self,0,0)
 		self.icon:SetPoint("LEFT",self,0,0)
 
@@ -2014,39 +2168,41 @@ local function UpdateBarStyle(self)
 	local parent = self.parent
 
 	local width = parent.barWidth or 100
-	local height = parent.iconSize or 24
+	local iconWidth = parent.iconSize or 24
+	local iconHeight = parent.iconHeight or iconWidth
+	local height = iconHeight
 
 	self:SetSize(width,height)
 
 	self.textLeft:ClearAllPoints()	self.textLeft:SetSize(0,height)
 	self.textRight:ClearAllPoints()	self.textRight:SetSize(0,height)
 	self.textCenter:ClearAllPoints()self.textCenter:SetSize(0,height)
-					self.textIcon:SetSize(height,height)
-	self.icon:ClearAllPoints()	self.icon:SetSize(height,height)
+					self.textIcon:SetSize(iconWidth,iconHeight)
+	self.icon:ClearAllPoints()	self.icon:SetSize(iconWidth,iconHeight)
 	self.statusbar:ClearAllPoints()	self.statusbar:SetHeight(height)
 					self.spark:SetSize(10,height+10)
-					self.cooldown:SetSize(height,height)
+					self.cooldown:SetSize(iconWidth,iconHeight)
 
-	local iconSize = height
+	local iconOffset = iconWidth
 	if parent.optionIconPosition == 3 or parent.optionIconTitles then
 		self.icon:Hide()
 		self.statusbar:SetPoint("LEFT",self,0,0)
 		self.statusbar:SetPoint("RIGHT",self,0,0)
-		iconSize = 0
+		iconOffset = 0
 	elseif parent.optionIconPosition == 2 then
 		self.icon:Show()
 		self.statusbar:SetPoint("LEFT",self,0,0)
-		self.statusbar:SetPoint("RIGHT",self,-height,0)
+		self.statusbar:SetPoint("RIGHT",self,-iconWidth,0)
 		self.icon:SetPoint("RIGHT",self,0,0)
 	else
 		self.icon:Show()
-		self.statusbar:SetPoint("LEFT",self,height,0)
+		self.statusbar:SetPoint("LEFT",self,iconWidth,0)
 		self.statusbar:SetPoint("RIGHT",self,0,0)
 		self.icon:SetPoint("LEFT",self,0,0)
 	end
 
-	self.timeline.width = width - iconSize
-	self.timeline:SetSize(width - iconSize,height)
+	self.timeline.width = width - iconOffset
+	self.timeline:SetSize(width - iconOffset,height)
 
 	if parent.optionIconHideBlizzardEdges then
 		self.iconTexture:SetTexCoord(.1,.9,.1,.9)
@@ -2061,27 +2217,36 @@ local function UpdateBarStyle(self)
 	end
 
 	local fontOutlineFix = parent.fontOutline and 3 or 0
+	local lx, ly = parent.fontLeftX or 0, parent.fontLeftY or 0
+	local rx, ry = parent.fontRightX or 0, parent.fontRightY or 0
+	local cx, cy = parent.fontCenterX or 0, parent.fontCenterY or 0
 	if parent.textTemplateLeft:find("time%%") then
-		self.textLeft:SetPoint("LEFT",self.statusbar,1,0)
-		self.textRight:SetPoint("RIGHT",self.statusbar,-1+fontOutlineFix,0)
-		self.textRight:SetPoint("LEFT",self.textLeft,"RIGHT",0,0)
+		self.textLeft:SetPoint("LEFT",self.statusbar,1+lx,ly)
+		self.textRight:SetPoint("RIGHT",self.statusbar,-1+fontOutlineFix+rx,ry)
+		self.textRight:SetPoint("LEFT",self.textLeft,"RIGHT",rx,ry)
 
-		self.textCenter:SetPoint("LEFT",self.textLeft,"RIGHT",0,0)
-		self.textCenter:SetPoint("RIGHT",self.statusbar,0,0)
+		self.textCenter:SetPoint("LEFT",self.textLeft,"RIGHT",cx,cy)
+		self.textCenter:SetPoint("RIGHT",self.statusbar,cx,cy)
 	elseif parent.textTemplateCenter:find("time%%") then
-		self.textLeft:SetPoint("LEFT",self.statusbar,1,0)
-		self.textRight:SetPoint("RIGHT",self.statusbar,-1+fontOutlineFix,0)
+		self.textLeft:SetPoint("LEFT",self.statusbar,1+lx,ly)
+		self.textRight:SetPoint("RIGHT",self.statusbar,-1+fontOutlineFix+rx,ry)
 
-		self.textCenter:SetPoint("LEFT",self.statusbar,0,0)
-		self.textCenter:SetPoint("RIGHT",self.statusbar,0,0)
+		self.textCenter:SetPoint("LEFT",self.statusbar,cx,cy)
+		self.textCenter:SetPoint("RIGHT",self.statusbar,cx,cy)
 	else
-		self.textRight:SetPoint("RIGHT",self.statusbar,-1+fontOutlineFix,0)
-		self.textLeft:SetPoint("LEFT",self.statusbar,1,0)
-		self.textLeft:SetPoint("RIGHT",self.textRight,"LEFT",0,0)
+		self.textRight:SetPoint("RIGHT",self.statusbar,-1+fontOutlineFix+rx,ry)
+		self.textLeft:SetPoint("LEFT",self.statusbar,1+lx,ly)
+		self.textLeft:SetPoint("RIGHT",self.textRight,"LEFT",lx,ly)
 
-		self.textCenter:SetPoint("LEFT",self.statusbar,0,0)
-		self.textCenter:SetPoint("RIGHT",self.textRight,"LEFT",0,0)
+		self.textCenter:SetPoint("LEFT",self.statusbar,cx,cy)
+		self.textCenter:SetPoint("RIGHT",self.textRight,"LEFT",cx,cy)
 	end
+
+	self.textIcon:ClearAllPoints()
+	self.textIcon:SetPoint("TOPLEFT",self.icon,"TOPLEFT",parent.fontIconX or 0,parent.fontIconY or 0)
+
+	self.textIconCD:ClearAllPoints()
+	self.textIconCD:SetPoint("CENTER",self.cooldown,"CENTER",parent.fontIconCDX or 0,parent.fontIconCDY or 0)
 
 	self.barWidth = width
 
@@ -2100,6 +2265,9 @@ local function UpdateBarStyle(self)
 	self.textCenter:SetFont(parent.fontCenterName,parent.fontCenterSize,parent.fontCenterOutline and "OUTLINE" or "")
 	self.textIcon:SetFont(parent.fontIconName,parent.fontIconSize,parent.fontIconOutline and "OUTLINE" or "")
 	self.textIconCD:SetFont(parent.fontIconCDName,parent.fontIconCDSize,parent.fontIconCDOutline and "OUTLINE" or "")
+	self.textIconTop:SetFont(parent.fontIconTopName,parent.fontIconTopSize,parent.fontIconTopOutline and "OUTLINE" or "")
+	self.textIconMid:SetFont(parent.fontIconMidName,parent.fontIconMidSize,parent.fontIconMidOutline and "OUTLINE" or "")
+	self.textIconBot:SetFont(parent.fontIconBotName,parent.fontIconBotSize,parent.fontIconBotOutline and "OUTLINE" or "")
 
 	local fontOffset = 0
 	fontOffset = parent.fontLeftShadow and 1 or 0	self.textLeft:SetShadowOffset(1*fontOffset,-1*fontOffset)
@@ -2107,6 +2275,39 @@ local function UpdateBarStyle(self)
 	fontOffset = parent.fontCenterShadow and 1 or 0	self.textCenter:SetShadowOffset(1*fontOffset,-1*fontOffset)
 	fontOffset = parent.fontIconShadow and 1 or 0	self.textIcon:SetShadowOffset(1*fontOffset,-1*fontOffset)
 	fontOffset = parent.fontIconCDShadow and 1 or 0	self.textIconCD:SetShadowOffset(1*fontOffset,-1*fontOffset)
+	fontOffset = parent.fontIconTopShadow and 1 or 0	self.textIconTop:SetShadowOffset(1*fontOffset,-1*fontOffset)
+	fontOffset = parent.fontIconMidShadow and 1 or 0	self.textIconMid:SetShadowOffset(1*fontOffset,-1*fontOffset)
+	fontOffset = parent.fontIconBotShadow and 1 or 0	self.textIconBot:SetShadowOffset(1*fontOffset,-1*fontOffset)
+
+	if parent.iconFontMode then
+		local function applyIconFontText(fs, slot, savedPos, savedAnchor, savedGrowth, savedX, savedY)
+			local _, info = module.db.ResolveIconFontPos(slot, savedPos, savedAnchor)
+			fs:ClearAllPoints()
+			fs:SetPoint(info[1], self.icon, info[2], savedX or 0, savedY or 0)
+			local growth = (savedGrowth and savedGrowth ~= 0) and savedGrowth or info[4]
+			if info[3] or growth == 0 then
+				fs:SetJustifyH("CENTER")
+			elseif growth == 2 then
+				fs:SetJustifyH("RIGHT")
+			else
+				fs:SetJustifyH("LEFT")
+			end
+		end
+		applyIconFontText(self.textIconTop, "Top",    parent.iconFontTopPos,    parent.iconFontTopAnchor,    parent.iconFontTopGrowth,    parent.iconFontTopX,    parent.iconFontTopY)
+		applyIconFontText(self.textIconMid, "Center", parent.iconFontCenterPos, parent.iconFontCenterAnchor, parent.iconFontCenterGrowth, parent.iconFontCenterX, parent.iconFontCenterY)
+		applyIconFontText(self.textIconBot, "Bottom", parent.iconFontBottomPos, parent.iconFontBottomAnchor, parent.iconFontBottomGrowth, parent.iconFontBottomX, parent.iconFontBottomY)
+		self.textIconTop:Show()
+		self.textIconMid:Show()
+		self.textIconBot:Show()
+		self.textIcon:Hide()
+		self.textIcon:SetText("")
+		self.textIcon.name = nil
+	else
+		self.textIconTop:Hide()
+		self.textIconMid:Hide()
+		self.textIconBot:Hide()
+		self.textIcon:Show()
+	end
 
 	local cdFont = self.cooldown:GetRegions()
 	cdFont:SetFont(cdFont:GetFont(),parent.fontCDSize or 16,"OUTLINE")
@@ -2335,6 +2536,24 @@ local function CreateBar(parent)
 
 	self.textIcon:SetDrawLayer("ARTWORK",3)
 	self.textIconCD:SetDrawLayer("ARTWORK",3)
+
+	local iconOverlay = CreateFrame("Frame",nil,icon)
+	iconOverlay:SetAllPoints(icon)
+	iconOverlay:SetFrameLevel((cooldown:GetFrameLevel() or 0) + 12)
+	self.iconOverlay = iconOverlay
+
+	self.textIconTop = ELib:Text(iconOverlay,nil,nil,"GameFontNormal"):Color()
+	self.textIconMid = ELib:Text(iconOverlay,nil,nil,"GameFontNormal"):Color()
+	self.textIconBot = ELib:Text(iconOverlay,nil,nil,"GameFontNormal"):Color()
+	self.textIconTop:SetDrawLayer("OVERLAY",7)
+	self.textIconMid:SetDrawLayer("OVERLAY",7)
+	self.textIconBot:SetDrawLayer("OVERLAY",7)
+	self.textIconTop:SetMaxLines(1)
+	self.textIconMid:SetMaxLines(1)
+	self.textIconBot:SetMaxLines(1)
+	self.textIconTop:Hide()
+	self.textIconMid:Hide()
+	self.textIconBot:Hide()
 
 	self.glowStart = ExRT.NULLfunc
 	self.glowStop = ExRT.NULLfunc
@@ -2622,6 +2841,7 @@ do
 	local specInDBase = _db.specInDBase
 	local spell_isTalent = _db.spell_isTalent
 	local spell_isPvpTalent = _db.spell_isPvpTalent
+	local spell_isRaidCD = _db.spell_isRaidCD
 	local session_gGUIDs = _db.session_gGUIDs
 	local spell_isPetAbility = _db.spell_isPetAbility
 	local session_Pets = _db.session_Pets
@@ -2684,8 +2904,8 @@ do
 		local currTime = GetTime()
 	  	for i=1,_CV_Len do
 	  		local data = _CV[i]
-			local columnFrame = columnsTable[data.column]
-			if columnFrame.methodsSortByAvailability then
+			local columnFrame = columnsTable[data.column] or columnsTable[1]
+			if columnFrame and columnFrame.methodsSortByAvailability then
 				local cd = data.lastUse + data.cd - currTime
 
 				local charge = data.charge
@@ -2721,7 +2941,7 @@ do
 			else
 				data.sorting = 0
 			end
-			data.rsort = columnFrame.methodsReverseSorting
+			data.rsort = columnFrame and columnFrame.methodsReverseSorting
 	  	end
 		sort(_CV,sort_f)
 	end
@@ -2773,7 +2993,7 @@ do
 
 			if isTestMode or (VMRT_CDE[spellID] and
 			(db[unitSpecID] or db[4] or db[5] or db[6] or db[7] or db[8]) and
-			(not spell_isTalent[spellID] or session_gGUIDs[name][spellID]) and
+			(not spell_isTalent[spellID] or session_gGUIDs[name][spellID] or spell_isRaidCD[spellID] or (name == playerName and IsSpellKnown and IsSpellKnown(spellID))) and
 			(not spell_isPvpTalent[spellID] or (session_gGUIDs[name][spellID] and IsPvpTalentsOn(name))) and
 			(not spell_isPetAbility[spellID] or session_Pets[name] == spell_isPetAbility[spellID] or (session_Pets[name] and petsAbilities[ session_Pets[name] ] and petsAbilities[ session_Pets[name] ][1] == spell_isPetAbility[spellID]) or (type(spell_isPetAbility[spellID]) == "table" and session_Pets[name] and ExRT.F.table_find(spell_isPetAbility[spellID],session_Pets[name]))) and
 			(not spell_talentReplaceOther[spellID] or not TalentReplaceOtherCheck(spellID,name)) and
@@ -2783,6 +3003,7 @@ do
 
 				local unitRole = data.checkRole and ExRT.F.GetUnitRaidRole and ExRT.F.GetUnitRaidRole(name)
 				local col = (data.checkRole and unitRole and CDECol[spellID..";"..unitRole]) or CDECol[spellID..";"..(unitSpecID-3)] or CDECol[spellID..";1"] or def_col[spellID..";"..(unitSpecID-3)] or def_col[spellID..";1"] or db[3] or 1
+				if type(col) ~= "number" or col < 1 or col > module.db.maxColumns then col = 1 end
 				data.column = col
 
 				local forceUpdate
@@ -2812,6 +3033,14 @@ do
 				end
 
 				local columnFrame = columnsTable[col]
+				if not columnFrame then
+					col = 1
+					data.column = 1
+					columnFrame = columnsTable[1]
+					if not columnFrame then
+						return
+					end
+				end
 
 				local isOnCD = not isCharge and (data.lastUse + data.cd) > currTime
 				if data.disable_oncd then
@@ -3219,29 +3448,60 @@ do
 end
 
 local function GetNumGroupMembersFix()
-	local n = GetNumGroupMembers() or 0
 	if module.db.testMode then
 		return 20
-	elseif n == 0 and VMRT.ExCD2.NoRaid then
-		return 1
-	else
-		return n
 	end
+	local raidN = (GetNumRaidMembers and GetNumRaidMembers()) or 0
+	if raidN > 0 then
+		return raidN
+	end
+	local partyN = (GetNumPartyMembers and GetNumPartyMembers()) or 0
+	if partyN > 0 then
+		return partyN + 1
+	end
+	if VMRT.ExCD2.NoRaid then
+		return 1
+	end
+	return 0
 end
 
 local function GetRaidRosterInfoFix(j)
+	if not module.db.testMode then
+		local raidN = (GetNumRaidMembers and GetNumRaidMembers()) or 0
+		if raidN > 0 then
+			local name, rank, subgroup, level, class, classFileName, zone, online, isDead = GetRaidRosterInfo(j)
+			if not name then
+				return nil
+			end
+			local _,race = UnitRace(name or "?")
+			return name,subgroup,classFileName,level,race,online,isDead
+		end
+		local partyN = (GetNumPartyMembers and GetNumPartyMembers()) or 0
+		if partyN > 0 then
+			local unit = (j == 1) and "player" or ("party"..(j-1))
+			local name = UnitName(unit)
+			if not name then
+				return nil
+			end
+			local _, classFileName = UnitClass(unit)
+			local _, race = UnitRace(unit)
+			local level = UnitLevel(unit) or 0
+			local online = UnitIsConnected(unit)
+			local isDead = UnitIsDeadOrGhost(unit)
+			return name, 1, classFileName, level, race, online and true or false, isDead and true or false
+		end
+		if j == 1 and VMRT.ExCD2.NoRaid then
+			local name = UnitName("player")
+			local _, classFileName = UnitClass("player")
+			local _, race = UnitRace("player")
+			local level = UnitLevel("player")
+			local isDead = UnitIsDeadOrGhost("player")
+			return name, 1, classFileName, level, race, true, isDead and true or false
+		end
+		return nil
+	end
 	local name, rank, subgroup, level, class, classFileName, zone, online, isDead, role, isML = GetRaidRosterInfo(j)
-	if j == 1 and not name and VMRT.ExCD2.NoRaid then
-		name = UnitName("player")
-		class,classFileName = UnitClass("player")
-		local _,race = UnitRace("player")
-		level = UnitLevel("player")
-		isDead = UnitIsDeadOrGhost("player")
-		return name,1,classFileName,level,race,true,isDead
-	elseif not module.db.testMode then
-		local _,race = UnitRace(name or "?")
-		return name,subgroup,classFileName,level,race,online,isDead
-	elseif module.db.testMode then
+	if module.db.testMode then
 		if name then
 			local _,race = UnitRace(name)
 			return name,subgroup,classFileName,level,race,online,isDead
@@ -3958,6 +4218,9 @@ do
 			module.options:ClickPlayerClassCategoryOrFirst()
 			module.options.optColTabs.tabs[module.db.maxColumns+3].currentName:UpdateText()
 			module.options.optColTabs.tabs[module.db.maxColumns+3]:UpdateAutoTexts()
+			if module.options.optColTabs.tabs[module.db.maxColumns+3].choseSelectDropDown and module.options.optColTabs.tabs[module.db.maxColumns+3].choseSelectDropDown.UpdateText then
+				module.options.optColTabs.tabs[module.db.maxColumns+3].choseSelectDropDown:UpdateText()
+			end
 			if module.options.optColTabs.selected <= module.db.maxColumns + 1 then
 				module.options:selectColumnTab()
 			end
@@ -4135,6 +4398,31 @@ function module.main:ADDON_LOADED()
 		end
 		VMRT.ExCD2.upd4525 = true
 	end
+	if ExRT.isLK then
+		if not VMRT.ExCD2.upd_raidcds_default_v2 then
+			for i=1,#module.db.AllSpells do
+				local s = module.db.AllSpells[i]
+				if s and s[2] and type(s[2]) == "string" and s[2]:find("RAID") then
+					VMRT.ExCD2.CDE[s[1]] = true
+				end
+			end
+			VMRT.ExCD2.upd_raidcds_default_v2 = true
+			VMRT.ExCD2.upd_raidcds_default_v1 = true
+		end
+		VMRT.ExCD2.upd_raidcds_seen = VMRT.ExCD2.upd_raidcds_seen or {}
+		for i=1,#module.db.AllSpells do
+			local s = module.db.AllSpells[i]
+			if s and s[2] and type(s[2]) == "string" and s[2]:find("RAID") then
+				local id = s[1]
+				if not VMRT.ExCD2.upd_raidcds_seen[id] then
+					if VMRT.ExCD2.CDE[id] == nil then
+						VMRT.ExCD2.CDE[id] = true
+					end
+					VMRT.ExCD2.upd_raidcds_seen[id] = true
+				end
+			end
+		end
+	end
 
 	VMRT.ExCD2.userDB = VMRT.ExCD2.userDB or {}
 
@@ -4173,12 +4461,32 @@ function module.main:ADDON_LOADED()
 end
 
 function module.main:PLAYER_ENTERING_WORLD()
-	if ExRT.isClassic and ExRT.F.WarmUpSpell and module.db.AllSpells then
-		for i=1,#module.db.AllSpells do
-			local id = module.db.AllSpells[i] and module.db.AllSpells[i][1]
-			if type(id) == "number" then
-				ExRT.F.WarmUpSpell(id)
+	if ExRT.isClassic and ExRT.F.WarmUpSpell and module.db.AllSpells and not module._warmupTicker then
+		local list = module.db.AllSpells
+		local total = #list
+		local idx = 0
+		local CHUNK = 50
+		local ticker
+		local function step()
+			local stop = idx + CHUNK
+			if stop > total then stop = total end
+			for i=idx+1,stop do
+				local id = list[i] and list[i][1]
+				if type(id) == "number" then
+					ExRT.F.WarmUpSpell(id)
+				end
 			end
+			idx = stop
+			if idx >= total then
+				if ticker and ticker.Cancel then pcall(ticker.Cancel, ticker) end
+				module._warmupTicker = nil
+			end
+		end
+		if C_Timer and C_Timer.NewTicker then
+			ticker = C_Timer.NewTicker(0, step)
+			module._warmupTicker = ticker
+		else
+			while idx < total do step() end
 		end
 	end
 	if ExRT.isClassic and MRT.CLEUFrame and MRT.CLEUFrame.CLEUModules then
@@ -4765,7 +5073,8 @@ do
 
 				local line = CDList[sourceName][spellID] or CDList[sourceName][spellName]
 				if line then
-					CLEUstartCD(line,destName)
+					local who = (destName ~= nil and destName ~= "" and destName ~= sourceName) and destName or nil
+					CLEUstartCD(line,who)
 				end
 
 				if spell_isTalent[spellID] and not isSpellDuplicateDisabled and not session_gGUIDs[sourceName][spellID] then
@@ -4934,7 +5243,8 @@ do
 				if CDspellID then
 					local line = CDList[sourceName][CDspellID]
 					if line then
-						CLEUstartCD(line)
+						local who = (destName ~= nil and destName ~= "" and destName ~= sourceName) and destName or nil
+						CLEUstartCD(line,who)
 					end
 				end
 
@@ -5170,7 +5480,8 @@ do
 				if CDspellID then
 					local line = CDList[sourceName][CDspellID]
 					if line then
-						CLEUstartCD(line)
+						local who = (destName ~= nil and destName ~= "" and destName ~= sourceName) and destName or nil
+						CLEUstartCD(line,who)
 					end
 				end
 
@@ -5178,7 +5489,8 @@ do
 				if CDspellID then
 					local line = CDList[sourceName][CDspellID]
 					if line then
-						CLEUstartCD(line)
+						local who = (destName ~= nil and destName ~= "" and destName ~= sourceName) and destName or nil
+						CLEUstartCD(line,who)
 					end
 				end
 
@@ -5566,7 +5878,7 @@ function module.options:Load()
 	self.CATEGORIES_VIS = {
 		["ALL"]       = {name = L.cd2CatAll,                            icon = "Interface\\Icons\\INV_Misc_Book_09",       sort = 0},
 		["ENABLED"]   = {name = L.cd2CatEnabled,                        icon = "Interface\\Buttons\\UI-CheckBox-Check",     sort = 5, ignoreSubcats = true},
-		["FAV"]       = {name = L.cd2Favorite,                          icon = "Interface\\AddOns\\"..GlobalAddonName.."\\media\\star2", iconTcoord = {0,.5,0,.5}, sort = 8, ignoreSubcats = true},
+		["FAV"]       = {name = L.cd2Favorite,                          icon = "Interface\\AddOns\\"..GlobalAddonName.."\\media\\star2", iconTcoord = {0,.5,0,.5}, sort = 200, ignoreSubcats = true},
 
 
 		["RAID"]      = {name = L.cd2CatMajor,                          icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing",      sort = 10, ignoreSubcats = true},
@@ -5722,6 +6034,17 @@ function module.options:Load()
 		for i=#cats,1,-1 do
 			if module.options.CATEGORIES_VIS[ cats[i] ] and module.options.CATEGORIES_VIS[ cats[i] ].isHidden then
 				tremove(cats,i)
+			end
+		end
+		if ExRT.isClassic then
+			for i=#cats,1,-1 do
+				local cat = cats[i]
+				local catData = module.options.CATEGORIES_VIS[cat]
+				local allowed = cat == "ALL" or cat == "ENABLED" or cat == "FAV"
+					or (catData and catData.isClassCategory)
+				if not allowed then
+					tremove(cats,i)
+				end
 			end
 		end
 		sort(cats,SortCategoriesButtons)
@@ -6242,6 +6565,11 @@ function module.options:Load()
 		line.spec4:SetSize(16,16)
 		line.spec4:SetPoint("RIGHT", line.spec3, "LEFT", -1, 0)
 
+		line.pet = line:CreateTexture(nil, "OVERLAY")
+		line.pet:SetSize(14,14)
+		line.pet:SetPoint("BOTTOMRIGHT", line.spec, "BOTTOMLEFT", -1, 0)
+		line.pet:Hide()
+
 		line.col = ELib:Slider(line,""):Size(120):Point("LEFT",line.class,"RIGHT",15,-1):Range(1,10):SetTo(11):OnChange(SpellsListColSetValue)
 		if line.col and line.col.SetObeyStepOnDrag then line.col:SetObeyStepOnDrag(true) end
 		line.col.Low:Hide()
@@ -6274,7 +6602,7 @@ function module.options:Load()
 		line.colBack:SetPoint("LEFT",line.col)
 		line.colBack:SetPoint("RIGHT",line.col)
 
-		line.colExpand = ELib:Button(line,L.cd2BySpec):Size(120,8):Point("LEFT",line.col,0,0):Point("TOP",line,0,0):OnClick(SpellsListLineColExpand)
+		line.colExpand = ELib:Button(line,L.cd2BySpec):Size(90,8):Point("LEFT",line.col,(ExRT.isClassic and not ExRT.isLK) and 15 or -30,0):Point("BOTTOM",line,0,0):OnClick(SpellsListLineColExpand)
 		if ExRT.is10 or ExRT.isLK1 then
 			line.colExpand.Texture:SetGradient("VERTICAL",CreateColor(0.05,0.26,0.09,1), CreateColor(0.20,0.41,0.25,1))
 		else
@@ -6283,7 +6611,7 @@ function module.options:Load()
 		local textObj = line.colExpand:GetTextObj()
 		textObj:SetFont(textObj:GetFont(),8,"")
 
-		line.colExpand2 = ELib:Button(line,L.cd2ByRole):Size(120,8):Point("LEFT",line.col,0,0):Point("BOTTOM",line,0,0):OnClick(SpellsListLineColExpandRole)
+		line.colExpand2 = ELib:Button(line,L.cd2ByRole):Size(90,8):Point("LEFT",line.col,60,0):Point("BOTTOM",line,0,0):OnClick(SpellsListLineColExpandRole)
 		if ExRT.is10 or ExRT.isLK1 then
 			line.colExpand2.Texture:SetGradient("VERTICAL",CreateColor(0.26,0.05,0.09,1), CreateColor(0.41,0.20,0.25,1))
 		else
@@ -6595,7 +6923,7 @@ function module.options:Load()
 						end
 					end
 				end
-				if count == 0 then
+				if count == 0 and i == 1 then
 					tremove(newList,#newList)
 				end
 			end
@@ -6855,9 +7183,10 @@ function module.options:Load()
 				end
 				line.data_class = class
 
+				line.pet:Hide()
 				if module.db.spell_isPetAbility[ data[1] ] then
-					line.spec:SetTexture(613074)
-					line.spec:Show()
+					line.pet:SetTexture("Interface\\Icons\\Ability_Hunter_BeastTraining")
+					line.pet:Show()
 				end
 
 				for j=1,4 do
@@ -6870,12 +7199,15 @@ function module.options:Load()
 					col = VMRT.ExCD2.CDECol[data[1]..";"..specPos] or col or data[3]
 				end
 				local defCol = col
+				local universalKey = data[1]..";1"
 				line.col.keystr = colDefStr
 				if dataSpecs > 1 then
 					line.col.keystr = {}
 					local updateCol = data[4]
 					if updateCol then
 						line.col.keystr[#line.col.keystr+1] = colDefStr
+					else
+						line.col.keystr[#line.col.keystr+1] = universalKey
 					end
 					local miniIcon = {}
 					for j=5,8 do
@@ -6888,7 +7220,7 @@ function module.options:Load()
 							end
 							local specs = ExRT.GDB.ClassSpecializationList[class]
 							if specs then
-								local p = VMRT.ExCD2.CDECol[str] or VMRT.ExCD2.CDECol[data[1]..";1"] or module.db.def_col[str] or module.db.def_col[data[1]..";1"] or data[3]
+								local p = VMRT.ExCD2.CDECol[str] or VMRT.ExCD2.CDECol[universalKey] or module.db.def_col[str] or module.db.def_col[universalKey] or data[3]
 								if p ~= defCol then
 									local t = line.col.ThumbBySpec[j-4]
 									t:SetPoint("CENTER",line.col,"LEFT",7 + (line.col:GetWidth() - 14) / 9 * (p-1),miniIcon[p] == 1 and -5 or miniIcon[p] == 2 and 5 or 0)
@@ -6899,6 +7231,8 @@ function module.options:Load()
 							end
 						end
 					end
+				elseif specPos and specPos ~= 1 then
+					line.col.keystr = {colDefStr, universalKey}
 				end
 				if extraData and extraData.specPos then
 					local specPos = extraData.specPos
@@ -7348,10 +7682,18 @@ function module.options:Load()
 		optColSet.chkEnable:SetChecked(VColOpt.enabled)
 		optColSet.chkGeneral:SetChecked(VColOpt.frameGeneral)
 
-		local frameOpt = VColOpt
-		if not isGeneralTab and VColOpt.frameGeneral then
-			frameOpt = VMRT.ExCD2.colSet[module.db.maxColumns + 1] or VColOpt
+		local genColOpt = VMRT.ExCD2.colSet[module.db.maxColumns + 1]
+		local function _effOpt(flag)
+			if not isGeneralTab and VColOpt[flag] and genColOpt then
+				return genColOpt
+			end
+			return VColOpt
 		end
+		local frameOpt = _effOpt("frameGeneral")
+		local iconOpt = _effOpt("iconGeneral")
+		local textureOpt = _effOpt("textureGeneral")
+		local fontOpt = _effOpt("fontGeneral")
+		local textOpt = _effOpt("textGeneral")
 		optColSet.sliderLinesNum:SetValue(frameOpt.frameLines or defOpt.frameLines)
 		optColSet.sliderAlpha:SetValue(frameOpt.frameAlpha or defOpt.frameAlpha)
 		optColSet.sliderScale:SetValue(frameOpt.frameScale or defOpt.frameScale)
@@ -7366,27 +7708,34 @@ function module.options:Load()
 
 		optColSet.chkGeneral:doAlphas()
 
-		optColSet.sliderHeight:SetValue(VColOpt.iconSize or defOpt.iconSize)
-		optColSet.chkGray:SetChecked(VColOpt.iconGray)
-		optColSet.chkCooldown:SetChecked(VColOpt.methodsCooldown)
+		optColSet.sliderHeight:SetValue(iconOpt.iconSize or defOpt.iconSize)
+		optColSet.sliderIconRealHeight:SetValue(iconOpt.iconHeight or iconOpt.iconSize or defOpt.iconHeight or defOpt.iconSize)
+		optColSet.chkSeparateIconHW:SetChecked(iconOpt.iconSeparateHW)
+		optColSet.chkGray:SetChecked(iconOpt.iconGray)
+		optColSet.chkCooldown:SetChecked(iconOpt.methodsCooldown)
+		optColSet:applyIconHWLayout()
 		optColSet:chkCooldownTextUpdate()
-		optColSet.chkCooldownShowSwipe:SetChecked(VColOpt.iconCooldownShowSwipe)
-		optColSet.chkShowTitles:SetChecked(VColOpt.iconTitles)
-		optColSet.chkHideBlizzardEdges:SetChecked(VColOpt.iconHideBlizzardEdges)
-		optColSet.chkMasque:SetChecked(VColOpt.iconMasque)
+		optColSet.chkCooldownShowSwipe:SetChecked(iconOpt.iconCooldownShowSwipe)
+		optColSet.chkShowTitles:SetChecked(iconOpt.iconTitles)
+		optColSet.chkHideBlizzardEdges:SetChecked(iconOpt.iconHideBlizzardEdges)
+		optColSet.chkMasque:SetChecked(iconOpt.iconMasque)
 		optColSet.chkGeneralIcons:SetChecked(VColOpt.iconGeneral)
 		do
-			local defIconPos = VColOpt.iconPosition or defOpt.iconPosition
+			local defIconPos = iconOpt.iconPosition or defOpt.iconPosition
 			optColSet.dropDownIconPos:SetText( optColSet.dropDownIconPos.PosNames[defIconPos])
 		end
-		if optColSet.dropDownCooldownGlowType.List[ VColOpt.iconGlowType or 1 ] then
-			optColSet.dropDownCooldownGlowType:SetText(optColSet.dropDownCooldownGlowType.List[ VColOpt.iconGlowType or 1 ].text)
+		if optColSet.dropDownCooldownGlowType.List[ iconOpt.iconGlowType or 1 ] then
+			optColSet.dropDownCooldownGlowType:SetText(optColSet.dropDownCooldownGlowType.List[ iconOpt.iconGlowType or 1 ].text)
+		end
+		optColSet.colorPickerGlow.color:SetColorTexture(iconOpt.iconGlowColorR or defOpt.iconGlowColorR, iconOpt.iconGlowColorG or defOpt.iconGlowColorG, iconOpt.iconGlowColorB or defOpt.iconGlowColorB, iconOpt.iconGlowColorA or defOpt.iconGlowColorA)
+		if optColSet.updateGlowColorEnabled then
+			optColSet.updateGlowColorEnabled()
 		end
 
 		optColSet.chkGeneralIcons:doAlphas()
 
 		do
-			local target = VColOpt.textureFile or ExRT.F.barImg
+			local target = textureOpt.textureFile or ExRT.F.barImg
 			local texturePos = nil
 			local mediaList = ExRT.F.GetSharedMediaList("statusbar", ExRT.F.textureList)
 			for j = 1, #mediaList do
@@ -7395,33 +7744,33 @@ function module.options:Load()
 					break
 				end
 			end
-			if not texturePos and VColOpt.textureFile then
-				texturePos = select(3,string.find(VColOpt.textureFile,"\\([^\\]*)$"))
+			if not texturePos and textureOpt.textureFile then
+				texturePos = select(3,string.find(textureOpt.textureFile,"\\([^\\]*)$"))
 			end
 			texturePos = texturePos or "Standart"
 			optColSet.dropDownTexture:SetText(L.cd2OtherSetTexture.." ["..texturePos.."]")
 		end
-		optColSet.colorPickerBorder.color:SetColorTexture(VColOpt.textureBorderColorR or defOpt.textureBorderColorR,VColOpt.textureBorderColorG or defOpt.textureBorderColorG,VColOpt.textureBorderColorB or defOpt.textureBorderColorB, VColOpt.textureBorderColorA or defOpt.textureBorderColorA)
-		optColSet.sliderBorderSize:SetValue(VColOpt.textureBorderSize or defOpt.textureBorderSize)
-		optColSet.chkAnimation:SetChecked(VColOpt.textureAnimation)
-		optColSet.chkHideSpark:SetChecked(VColOpt.textureHideSpark)
-		optColSet.chkSmoothAnimation:SetChecked(VColOpt.textureSmoothAnimation)
-		optColSet.sliderSmoothAnimationDuration:SetValue(VColOpt.textureSmoothAnimationDuration or defOpt.textureSmoothAnimationDuration)
+		optColSet.colorPickerBorder.color:SetColorTexture(textureOpt.textureBorderColorR or defOpt.textureBorderColorR,textureOpt.textureBorderColorG or defOpt.textureBorderColorG,textureOpt.textureBorderColorB or defOpt.textureBorderColorB, textureOpt.textureBorderColorA or defOpt.textureBorderColorA)
+		optColSet.sliderBorderSize:SetValue(textureOpt.textureBorderSize or defOpt.textureBorderSize)
+		optColSet.chkAnimation:SetChecked(textureOpt.textureAnimation)
+		optColSet.chkHideSpark:SetChecked(textureOpt.textureHideSpark)
+		optColSet.chkSmoothAnimation:SetChecked(textureOpt.textureSmoothAnimation)
+		optColSet.sliderSmoothAnimationDuration:SetValue(textureOpt.textureSmoothAnimationDuration or defOpt.textureSmoothAnimationDuration)
 		optColSet.chkGeneralColorize:SetChecked(VColOpt.textureGeneral)
 
 		optColSet.chkGeneralColorize:doAlphas()
 
 		do
-			local FontNameForDropDown = select(3,string.find(VColOpt.fontName or defOpt.fontName,"\\([^\\]*)$"))
-			optColSet.dropDownFont:SetText( (FontNameForDropDown or VColOpt.fontName or defOpt.fontName or "?") )
+			local FontNameForDropDown = select(3,string.find(fontOpt.fontName or defOpt.fontName,"\\([^\\]*)$"))
+			optColSet.dropDownFont:SetText( (FontNameForDropDown or fontOpt.fontName or defOpt.fontName or "?") )
 		end
-		optColSet.sliderFont:SetValue(VColOpt.fontSize or defOpt.fontSize)
-		optColSet.chkFontOutline:SetChecked(VColOpt.fontOutline)
-		optColSet.chkFontShadow:SetChecked(VColOpt.fontShadow)
+		optColSet.sliderFont:SetValue(fontOpt.fontSize or defOpt.fontSize)
+		optColSet.chkFontOutline:SetChecked(fontOpt.fontOutline)
+		optColSet.chkFontShadow:SetChecked(fontOpt.fontShadow)
 		do
-			optColSet.chkFontOtherAvailable:SetChecked(VColOpt.fontOtherAvailable)
-			module.options.fontOtherAvailable(VColOpt.fontOtherAvailable)
-			if VColOpt.fontOtherAvailable then
+			optColSet.chkFontOtherAvailable:SetChecked(fontOpt.fontOtherAvailable)
+			module.options.fontOtherAvailable(fontOpt.fontOtherAvailable)
+			if fontOpt.fontOtherAvailable then
 				optColSet.nowFont = "fontLeft"
 			else
 				optColSet.nowFont = "font"
@@ -7432,18 +7781,62 @@ function module.options:Load()
 
 		optColSet.chkGeneralFont:doAlphas()
 
-		optColSet.textLeftTemEdit:SetText(VColOpt.textTemplateLeft or defOpt.textTemplateLeft)
-		optColSet.textRightTemEdit:SetText(VColOpt.textTemplateRight or defOpt.textTemplateRight)
-		optColSet.textCenterTemEdit:SetText(VColOpt.textTemplateCenter or defOpt.textTemplateCenter)
-		optColSet.chkIconName:SetChecked(VColOpt.textIconName)
-		optColSet.sliderIconNameChars:SetValue(VColOpt.textIconNameChars or defOpt.textIconNameChars)
+		optColSet.textLeftTemEdit:SetText(textOpt.textTemplateLeft or defOpt.textTemplateLeft)
+		optColSet.textRightTemEdit:SetText(textOpt.textTemplateRight or defOpt.textTemplateRight)
+		optColSet.textCenterTemEdit:SetText(textOpt.textTemplateCenter or defOpt.textTemplateCenter)
+		optColSet.chkIconName:SetChecked(textOpt.textIconName)
+		optColSet.sliderIconNameChars:SetValue(textOpt.textIconNameChars or defOpt.textIconNameChars)
 		do
-			local deftextIconCDStyle = VColOpt.textIconCDStyle or defOpt.textIconCDStyle
+			local deftextIconCDStyle = textOpt.textIconCDStyle or defOpt.textIconCDStyle
 			optColSet.dropDownIconCDStyle:SetText(optColSet.dropDownIconCDStyle.Styles[deftextIconCDStyle])
 		end
+		optColSet.chkShowTargetName:SetChecked(textOpt.textShowTargetName)
+
+		optColSet.chkIconFontMode:SetChecked(textOpt.iconFontMode)
+		optColSet.iconFontTopEdit:SetText(textOpt.iconFontTopTemplate or defOpt.iconFontTopTemplate)
+		optColSet.iconFontTopXSlider:SetValue(textOpt.iconFontTopX or defOpt.iconFontTopX)
+		optColSet.iconFontTopXSlider:refreshLabel()
+		optColSet.iconFontTopYSlider:SetValue(textOpt.iconFontTopY or defOpt.iconFontTopY)
+		optColSet.iconFontTopYSlider:refreshLabel()
+		optColSet.iconFontCenterEdit:SetText(textOpt.iconFontCenterTemplate or defOpt.iconFontCenterTemplate)
+		optColSet.iconFontCenterXSlider:SetValue(textOpt.iconFontCenterX or defOpt.iconFontCenterX)
+		optColSet.iconFontCenterXSlider:refreshLabel()
+		optColSet.iconFontCenterYSlider:SetValue(textOpt.iconFontCenterY or defOpt.iconFontCenterY)
+		optColSet.iconFontCenterYSlider:refreshLabel()
+		optColSet.iconFontBottomEdit:SetText(textOpt.iconFontBottomTemplate or defOpt.iconFontBottomTemplate)
+		optColSet.iconFontBottomXSlider:SetValue(textOpt.iconFontBottomX or defOpt.iconFontBottomX)
+		optColSet.iconFontBottomXSlider:refreshLabel()
+		optColSet.iconFontBottomYSlider:SetValue(textOpt.iconFontBottomY or defOpt.iconFontBottomY)
+		optColSet.iconFontBottomYSlider:refreshLabel()
+		if optColSet.iconFontTopWidget    then optColSet.iconFontTopWidget:refreshChecks();    optColSet.iconFontTopWidget:refreshGrowthEnabled()    end
+		if optColSet.iconFontCenterWidget then optColSet.iconFontCenterWidget:refreshChecks(); optColSet.iconFontCenterWidget:refreshGrowthEnabled() end
+		if optColSet.iconFontBottomWidget then optColSet.iconFontBottomWidget:refreshChecks(); optColSet.iconFontBottomWidget:refreshGrowthEnabled() end
+
+		optColSet.fontLeftXSlider:SetValue(fontOpt.fontLeftX or 0)
+		optColSet.fontLeftXSlider:refreshLabel()
+		optColSet.fontLeftYSlider:SetValue(fontOpt.fontLeftY or 0)
+		optColSet.fontLeftYSlider:refreshLabel()
+		optColSet.fontRightXSlider:SetValue(fontOpt.fontRightX or 0)
+		optColSet.fontRightXSlider:refreshLabel()
+		optColSet.fontRightYSlider:SetValue(fontOpt.fontRightY or 0)
+		optColSet.fontRightYSlider:refreshLabel()
+		optColSet.fontCenterXSlider:SetValue(fontOpt.fontCenterX or 0)
+		optColSet.fontCenterXSlider:refreshLabel()
+		optColSet.fontCenterYSlider:SetValue(fontOpt.fontCenterY or 0)
+		optColSet.fontCenterYSlider:refreshLabel()
+		optColSet.fontIconXSlider:SetValue(fontOpt.fontIconX or 0)
+		optColSet.fontIconXSlider:refreshLabel()
+		optColSet.fontIconYSlider:SetValue(fontOpt.fontIconY or 0)
+		optColSet.fontIconYSlider:refreshLabel()
+		optColSet.fontIconCDXSlider:SetValue(fontOpt.fontIconCDX or 0)
+		optColSet.fontIconCDXSlider:refreshLabel()
+		optColSet.fontIconCDYSlider:SetValue(fontOpt.fontIconCDY or 0)
+		optColSet.fontIconCDYSlider:refreshLabel()
 
 		optColSet.chkGeneralText:SetChecked(VColOpt.textGeneral)
 
+		optColSet:applyIconFontModeLayout()
+		optColSet:applyATFLockLayout()
 		optColSet.chkGeneralText:doAlphas()
 
 		optColSet.chkShowOnlyOnCD:SetChecked(VColOpt.methodsShownOnCD)
@@ -7610,7 +8003,8 @@ function module.options:Load()
 		end
 	end)
 
-	self.optColSet.NavLineF = ELib:Frame(self.optColTabs):Point("TOPLEFT",self.optColTabs,0,0):Size(1,1)
+	self.optColSet.NavLineF = ELib:Frame(UIParent):Point("TOPLEFT",UIParent,0,0):Size(1,1)
+	self.optColSet.NavLineF:SetFrameStrata("HIGH")
 	self.optColSet.NavLineF:Hide()
 
 	self.optColSet.NavLineF.line = self.optColSet.NavLineF.CreateLine and self.optColSet.NavLineF:CreateLine(nil, "ARTWORK")
@@ -7621,21 +8015,20 @@ function module.options:Load()
 
 		self.optColSet.NavLineF:SetScript("OnUpdate",function(self)
 				if not self.line then return end
-				if not self.f then
+				if not self.f or not self.f2 then
 					return
 				end
-				local l1,t1 = self.f2:GetLeft(), self.f2:GetTop()
-				local s1 = self.f2:GetEffectiveScale()
-				local l2,t2 = self.f:GetLeft(), self.f:GetTop()
-				local s2 = self.f:GetEffectiveScale()
-				l1, t1 = l1*s1, t1*s1
-				l2, t2 = l2*s2, t2*s2
+				local cx1, cy1 = self.f2:GetCenter()
+				local cx2, cy2 = self.f:GetCenter()
+				if not cx1 or not cx2 then return end
+				local s1 = self.f2:GetEffectiveScale() or 1
+				local s2 = self.f:GetEffectiveScale() or 1
+				local s3 = UIParent:GetEffectiveScale() or 1
+				cx1, cy1 = cx1*s1/s3, cy1*s1/s3
+				cx2, cy2 = cx2*s2/s3, cy2*s2/s3
 
-				local s3 = UIParent:GetEffectiveScale()
-				l1, t1, l2, t2 = l1/s3, t1/s3, l2/s3, t2/s3
-
-				self.line:SetStartPoint("BOTTOMLEFT", UIParent, l1, t1)
-				self.line:SetEndPoint("BOTTOMLEFT", UIParent, l2, t2)
+				self.line:SetStartPoint("BOTTOMLEFT", UIParent, cx1, cy1)
+				self.line:SetEndPoint("BOTTOMLEFT", UIParent, cx2, cy2)
 
 				local t = GetTime() % 1
 				local d = 40/1024
@@ -7652,6 +8045,9 @@ function module.options:Load()
 		if f.f and f.f.ATFenabled then return end
 		f:Show()
 	end):OnLeave(function ()
+		self.optColSet.NavLineF:Hide()
+	end)
+	self.optColSet.FindFrameBut:HookScript("OnHide", function()
 		self.optColSet.NavLineF:Hide()
 	end)
 
@@ -7714,6 +8110,9 @@ function module.options:Load()
 			end
 		end
 		optColSet.LOCK = nil
+		if module.options.selectColumnTab then
+			module.options:selectColumnTab()
+		end
 		module:ReloadAllSplits()
 	end
 
@@ -7865,6 +8264,25 @@ function module.options:Load()
 	end)
 
 
+	self.optColSet.chkSeparateIconHW = ELib:Check(self.optColSet.superTabFrame.tab[2],L.cd2ColSetSeparateIconHW):Point(10,-12):Tooltip(L.cd2ColSetSeparateIconHWTooltip):OnClick(function(self)
+		local sel = module.options.optColTabs and module.options.optColTabs.selected
+		local saved = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+		if saved and saved.ATF then
+			self:SetChecked(false)
+			return
+		end
+		if self:GetChecked() then
+			currColOpt.iconSeparateHW = true
+			if not currColOpt.iconHeight then
+				currColOpt.iconHeight = currColOpt.iconSize or module.db.colsDefaults.iconSize
+			end
+		else
+			currColOpt.iconSeparateHW = nil
+		end
+		module.options.optColSet:applyIconHWLayout()
+		module:ReloadAllSplits()
+	end)
+
 	self.optColSet.sliderHeight = ELib:Slider(self.optColSet.superTabFrame.tab[2],L.cd2OtherSetIconSize):Size(400):Point("TOP",0,-50):Range(6,128):SetObey(true):OnChange(function(self,event)
 		event = event - event%1
 		currColOpt.iconSize = event
@@ -7872,6 +8290,15 @@ function module.options:Load()
 		self.tooltipText = event
 		self:tooltipReload(self)
 	end)
+
+	self.optColSet.sliderIconRealHeight = ELib:Slider(self.optColSet.superTabFrame.tab[2],L.cd2ColSetIconHeight):Size(400):Point("TOP",0,-90):Range(6,128):SetObey(true):OnChange(function(self,event)
+		event = event - event%1
+		currColOpt.iconHeight = event
+		module:ReloadAllSplits()
+		self.tooltipText = event
+		self:tooltipReload(self)
+	end)
+	self.optColSet.sliderIconRealHeight:Hide()
 
 	self.optColSet.chkGray = ELib:Check(self.optColSet.superTabFrame.tab[2],L.cd2graytooltip):Point(10,-110):OnClick(function(self)
 		if self:GetChecked() then
@@ -7904,10 +8331,85 @@ function module.options:Load()
 		else
 			currColOpt.methodsCooldown = nil
 		end
+		module.options.optColSet:applyIconHWLayout()
 		module:ReloadAllSplits()
 	end)
 
+	function self.optColSet:applyIconHWLayout()
+		local sel = module.options.optColTabs and module.options.optColTabs.selected
+		local VColOpt = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+		local isGeneralTab = sel == (module.db.maxColumns + 1)
+		local genColOpt = VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[module.db.maxColumns + 1]
+		local opt = (VColOpt and not isGeneralTab and VColOpt.iconGeneral and genColOpt) or VColOpt
+		local atf = VColOpt and VColOpt.ATF
+		local sep = opt and opt.iconSeparateHW and not atf
+		local cd = opt and opt.methodsCooldown
+		local active = sep and cd
+		if active then
+			self.sliderHeight.text:SetText(L.cd2ColSetIconWidth)
+			self.sliderIconRealHeight:Show()
+			self.textIconPos:ClearAllPoints()
+			self.textIconPos:SetPoint("TOPLEFT",10,-125)
+			self.dropDownIconPos:ClearAllPoints()
+			self.dropDownIconPos:SetPoint("TOPLEFT",180,-125)
+			self.chkGray:ClearAllPoints()
+			self.chkGray:SetPoint("TOPLEFT",10,-150)
+			self.chkCooldown:ClearAllPoints()
+			self.chkCooldown:SetPoint("TOPLEFT",10,-175)
+		else
+			self.sliderHeight.text:SetText(L.cd2OtherSetIconSize)
+			self.sliderIconRealHeight:Hide()
+			self.textIconPos:ClearAllPoints()
+			self.textIconPos:SetPoint("TOPLEFT",10,-85)
+			self.dropDownIconPos:ClearAllPoints()
+			self.dropDownIconPos:SetPoint("TOPLEFT",180,-85)
+			self.chkGray:ClearAllPoints()
+			self.chkGray:SetPoint("TOPLEFT",10,-110)
+			self.chkCooldown:ClearAllPoints()
+			self.chkCooldown:SetPoint("TOPLEFT",10,-135)
+		end
+		ExRT.lib.SetAlphas(cd and 1 or 0.5, self.chkSeparateIconHW)
+		if self.applyATFLockLayout then
+			self:applyATFLockLayout()
+		end
+	end
+
+	function self.optColSet:applyATFLockLayout()
+		local sel = module.options.optColTabs and module.options.optColTabs.selected
+		local saved = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+		local on = saved and saved.ATF or false
+		if self.chkIconFontMode then
+			if on then
+				self.chkIconFontMode:SetChecked(false)
+				self.chkIconFontMode.tooltipText = L.cd2ATFLockTooltip
+			else
+				self.chkIconFontMode.tooltipText = nil
+			end
+		end
+		if self.chkSeparateIconHW then
+			if on then
+				self.chkSeparateIconHW:SetChecked(false)
+				self.chkSeparateIconHW.tooltipText = L.cd2ATFLockTooltip
+			else
+				self.chkSeparateIconHW.tooltipText = L.cd2ColSetSeparateIconHWTooltip
+			end
+		end
+		if ExRT and ExRT.lib and ExRT.lib.SetAlphas then
+			ExRT.lib.SetAlphas(on and 0.5 or 1, self.chkIconFontMode, self.chkSeparateIconHW)
+		end
+	end
+
 	self.optColSet.chkCooldownTextDef = ELib:Radio(self.optColSet.superTabFrame.tab[2],L.cd2ColSetCDTimeDef):Point("TOPLEFT",self.optColSet.chkCooldown,25,-25):Tooltip(L.cd2ColSetCDTimeDefTooltip):OnClick(function(self)
+		local sel = module.options.optColTabs and module.options.optColTabs.selected
+		local saved = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+		local isGeneralTab = sel == (module.db.maxColumns + 1)
+		local genCol = VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[module.db.maxColumns + 1]
+		local source = saved
+		if not isGeneralTab and saved and saved.textGeneral and genCol then source = genCol end
+		if source and source.iconFontMode then
+			module.options.optColSet:chkCooldownTextUpdate()
+			return
+		end
 		currColOpt.iconCooldownHideNumbers = nil
 		currColOpt.iconCooldownExRTNumbers = nil
 		module.options.optColSet:chkCooldownTextUpdate()
@@ -7915,6 +8417,16 @@ function module.options:Load()
 	end)
 
 	self.optColSet.chkCooldownExRTNumbers = ELib:Radio(self.optColSet.superTabFrame.tab[2],L.cd2ColSetCDTimeExRT):Point("TOPLEFT",self.optColSet.chkCooldownTextDef,0,-25):Tooltip(L.cd2ColSetCDTimeExRTTooltip):OnClick(function(self)
+		local sel = module.options.optColTabs and module.options.optColTabs.selected
+		local saved = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+		local isGeneralTab = sel == (module.db.maxColumns + 1)
+		local genCol = VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[module.db.maxColumns + 1]
+		local source = saved
+		if not isGeneralTab and saved and saved.textGeneral and genCol then source = genCol end
+		if source and source.iconFontMode then
+			module.options.optColSet:chkCooldownTextUpdate()
+			return
+		end
 		currColOpt.iconCooldownHideNumbers = nil
 		currColOpt.iconCooldownExRTNumbers = true
 		module.options.optColSet:chkCooldownTextUpdate()
@@ -7922,6 +8434,16 @@ function module.options:Load()
 	end)
 
 	self.optColSet.chkCooldownHideNumbers = ELib:Radio(self.optColSet.superTabFrame.tab[2],L.BattleResHideTime):Point("TOPLEFT",self.optColSet.chkCooldownExRTNumbers,0,-25):Tooltip(L.BattleResHideTimeTooltip):OnClick(function(self)
+		local sel = module.options.optColTabs and module.options.optColTabs.selected
+		local saved = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+		local isGeneralTab = sel == (module.db.maxColumns + 1)
+		local genCol = VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[module.db.maxColumns + 1]
+		local source = saved
+		if not isGeneralTab and saved and saved.textGeneral and genCol then source = genCol end
+		if source and source.iconFontMode then
+			module.options.optColSet:chkCooldownTextUpdate()
+			return
+		end
 		currColOpt.iconCooldownHideNumbers = true
 		currColOpt.iconCooldownExRTNumbers = nil
 		module.options.optColSet:chkCooldownTextUpdate()
@@ -7930,8 +8452,15 @@ function module.options:Load()
 
 	self.optColSet.chkCooldownTextUpdate = function(self)
 		local v1,v2,v3
-		local currColOpt = VMRT.ExCD2.colSet[module.options.optColTabs.selected]
-		if currColOpt.iconCooldownExRTNumbers then
+		local sel = module.options.optColTabs and module.options.optColTabs.selected
+		local currColOpt = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+		if not currColOpt then return end
+		local genColOpt = VMRT.ExCD2.colSet[module.db.maxColumns + 1]
+		local isGeneralTab = sel == (module.db.maxColumns + 1)
+		local effFont = (not isGeneralTab and currColOpt.textGeneral and genColOpt) or currColOpt
+		if effFont and effFont.iconFontMode then
+			v2 = true
+		elseif currColOpt.iconCooldownExRTNumbers then
 			v3 = true
 		elseif currColOpt.iconCooldownHideNumbers then
 			v2 = true
@@ -7953,7 +8482,7 @@ function module.options:Load()
 	end)
 
 	self.optColSet.textGlowType = ELib:Text(self.optColSet.superTabFrame.tab[2],L.cd2GlowType):Point("TOPLEFT",self.optColSet.chkCooldownShowSwipe,0,-25):Size(0,25):Middle():Left()
-	self.optColSet.dropDownCooldownGlowType = ELib:DropDown(self.optColSet.superTabFrame.tab[2],160,4):Size(170):Point("LEFT",self.optColSet.textGlowType,"RIGHT",5,0):Tooltip(L.cd2GlowTypeTooltip)
+	self.optColSet.dropDownCooldownGlowType = ELib:DropDown(self.optColSet.superTabFrame.tab[2],90,4):Size(70):Point("LEFT",self.optColSet.textGlowType,"RIGHT",5,0):Tooltip(L.cd2GlowTypeTooltip)
 	for i=1,4 do
 		self.optColSet.dropDownCooldownGlowType.List[i] = {
 			text = i == 4 and L.NoText or i,
@@ -7963,8 +8492,56 @@ function module.options:Load()
 				currColOpt.iconGlowType = arg1
 				module:ReloadAllSplits()
 				module.options.optColSet.dropDownCooldownGlowType:SetText(module.options.optColSet.dropDownCooldownGlowType.List[arg1].text)
+				if module.options.optColSet.updateGlowColorEnabled then
+					module.options.optColSet.updateGlowColorEnabled()
+				end
 			end,
 		}
+	end
+
+	self.optColSet.colorPickerGlow = ExRT.lib.CreateColorPickButton(self.optColSet.superTabFrame.tab[2],20,20,nil,0,0)
+	self.optColSet.colorPickerGlow:ClearAllPoints()
+	self.optColSet.colorPickerGlow:SetPoint("LEFT", self.optColSet.dropDownCooldownGlowType, "RIGHT", 6, 0)
+	self.optColSet.colorPickerGlow:SetScript("OnEnter", function(self)
+		ELib.Tooltip.Show(self, nil, L.cd2GlowColor, {L.cd2GlowColorTooltip,1,1,1})
+	end)
+	self.optColSet.colorPickerGlow:SetScript("OnLeave", function() GameTooltip_Hide() end)
+	self.optColSet.colorPickerGlow:SetScript("OnClick",function (self)
+		if self:GetAlpha() < 1 then return end
+		local startR = currColOpt.iconGlowColorR or module.db.colsDefaults.iconGlowColorR
+		local startG = currColOpt.iconGlowColorG or module.db.colsDefaults.iconGlowColorG
+		local startB = currColOpt.iconGlowColorB or module.db.colsDefaults.iconGlowColorB
+		local startA = currColOpt.iconGlowColorA or module.db.colsDefaults.iconGlowColorA
+		ColorPickerFrame.previousValues = {startR, startG, startB, startA}
+		ColorPickerFrame.hasOpacity = true
+		local nilFunc = ExRT.NULLfunc
+		local function changedCallback(restore)
+			local newR, newG, newB, newA
+			if restore then
+				newR, newG, newB, newA = unpack(restore)
+			else
+				newA, newR, newG, newB = OpacitySliderFrame:GetValue(), ColorPickerFrame:GetColorRGB()
+			end
+			currColOpt.iconGlowColorR = newR
+			currColOpt.iconGlowColorG = newG
+			currColOpt.iconGlowColorB = newB
+			currColOpt.iconGlowColorA = newA
+			module:ReloadAllSplits()
+			self.color:SetColorTexture(newR,newG,newB,newA)
+		end
+		ColorPickerFrame.func, ColorPickerFrame.opacityFunc, ColorPickerFrame.cancelFunc = nilFunc, nilFunc, nilFunc
+		ColorPickerFrame.opacity = startA
+		ColorPickerFrame:SetColorRGB(startR, startG, startB)
+		ColorPickerFrame.func, ColorPickerFrame.opacityFunc, ColorPickerFrame.cancelFunc = changedCallback, changedCallback, changedCallback
+		ColorPickerFrame:Show()
+	end)
+	function self.optColSet.updateGlowColorEnabled()
+		local sel = module.options.optColTabs and module.options.optColTabs.selected
+		local saved = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+		local t = (saved and saved.iconGlowType) or module.db.colsDefaults.iconGlowType
+		local enabled = t == 1 or t == 2 or t == 3
+		module.options.optColSet.colorPickerGlow:SetAlpha(enabled and 1 or 0.3)
+		module.options.optColSet.colorPickerGlow:EnableMouse(enabled)
 	end
 
 	self.optColSet.chkShowTitles = ELib:Check(self.optColSet.superTabFrame.tab[2],L.cd2ColSetShowTitles):Point("TOPLEFT",self.optColSet.chkCooldown,0,-150):OnClick(function(self)
@@ -7998,7 +8575,10 @@ function module.options:Load()
 		applyUseGeneralAll(self:GetChecked())
 	end)
 	function self.optColSet.chkGeneralIcons:doAlphas()
-		ExRT.lib.SetAlphas(VMRT.ExCD2.colSet[module.options.optColTabs.selected].iconGeneral and module.options.optColTabs.selected ~= (module.db.maxColumns + 1) and 0.5 or 1,module.options.optColSet.chkGray,module.options.optColSet.sliderHeight,module.options.optColSet.dropDownIconPos,module.options.optColSet.chkCooldown,module.options.optColSet.chkShowTitles,module.options.optColSet.chkHideBlizzardEdges,module.options.optColSet.chkCooldownShowSwipe,module.options.optColSet.chkCooldownHideNumbers,module.options.optColSet.textIconPos, module.options.optColSet.textGlowType, module.options.optColSet.dropDownCooldownGlowType,module.options.optColSet.chkCooldownTextDef,module.options.optColSet.chkCooldownExRTNumbers,module.options.optColSet.chkMasque)
+		ExRT.lib.SetAlphas(VMRT.ExCD2.colSet[module.options.optColTabs.selected].iconGeneral and module.options.optColTabs.selected ~= (module.db.maxColumns + 1) and 0.5 or 1,module.options.optColSet.chkGray,module.options.optColSet.sliderHeight,module.options.optColSet.dropDownIconPos,module.options.optColSet.chkCooldown,module.options.optColSet.chkShowTitles,module.options.optColSet.chkHideBlizzardEdges,module.options.optColSet.chkCooldownShowSwipe,module.options.optColSet.chkCooldownHideNumbers,module.options.optColSet.textIconPos, module.options.optColSet.textGlowType, module.options.optColSet.dropDownCooldownGlowType,module.options.optColSet.colorPickerGlow,module.options.optColSet.chkCooldownTextDef,module.options.optColSet.chkCooldownExRTNumbers,module.options.optColSet.chkMasque,module.options.optColSet.chkSeparateIconHW,module.options.optColSet.sliderIconRealHeight)
+		if module.options.optColSet.updateGlowColorEnabled then
+			module.options.optColSet.updateGlowColorEnabled()
+		end
 	end
 
 
@@ -8202,7 +8782,7 @@ function module.options:Load()
 
 	self.colorSetupFrame.resetButton:SetScript("OnClick",function()
 		local tmpColors = {"R","G","B"}
-		for j=1,4 do
+		for j=1,3 do
 			for i=1,3 do
 				for n=1,3 do
 					currColOpt[ "textureColor"..colorSetupFrameColorsObjectsNames[i]..colorSetupFrameColorsNames[j]..tmpColors[n] ] = nil
@@ -8251,7 +8831,7 @@ function module.options:Load()
 
 	self.optColSet.superTabFrame.tab[4].decorationLine = ELib:DecorationLine(self.optColSet.superTabFrame.tab[4],true,"BACKGROUND"):Point("TOPLEFT",self.optColSet.superTabFrame.tab[4],0,-35):Point("BOTTOMRIGHT",self.optColSet.superTabFrame.tab[4],"TOPRIGHT",0,-55)
 
-	self.optColSet.fontsTab = ELib:Tabs(self.optColSet.superTabFrame.tab[4],0,L.cd2ColSetFontPosGeneral,L.cd2ColSetFontPosRight,L.cd2ColSetFontPosCenter,L.cd2ColSetFontPosIcon,L.cd2ColSetFontPosIconCD):Size(455,160):Point(0,-55)
+	self.optColSet.fontsTab = ELib:Tabs(self.optColSet.superTabFrame.tab[4],0,L.cd2ColSetFontPosGeneral,L.cd2ColSetFontPosRight,L.cd2ColSetFontPosCenter,L.cd2ColSetFontPosIcon,L.cd2ColSetFontPosIconCD,L.cd2ColSetTextIconFontTop,L.cd2ColSetTextIconFontCenter,L.cd2ColSetTextIconFontBottom):Size(455,160):Point(0,-55)
 	self.optColSet.fontsTab:SetBackdropBorderColor(0,0,0,0)
 	self.optColSet.fontsTab:SetBackdropColor(0,0,0,0)
 	local function fontsTabButtonClick(self)
@@ -8270,38 +8850,85 @@ function module.options:Load()
 		module.options.optColSet.chkFontOutline:SetChecked(VMRT.ExCD2.colSet[i][self.fontMark.."Outline"])
 		module.options.optColSet.chkFontShadow:SetChecked(VMRT.ExCD2.colSet[i][self.fontMark.."Shadow"])
 	end
-	for i=1,5 do
+	for i=1,8 do
 		self.optColSet.fontsTab.tabs[i].button:SetScript("OnClick",fontsTabButtonClick)
 	end
-	local fontOtherAvailableTable = {"Left","Right","Center","Icon","IconCD"}
+	local fontOtherAvailableTable = {"Left","Right","Center","Icon","IconCD","IconTop","IconMid","IconBot"}
+	local function getIconFontModeOn()
+		local sel = module.options.optColTabs and module.options.optColTabs.selected
+		local saved = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+		if saved and saved.ATF then return false end
+		local isGeneralTab = sel == (module.db.maxColumns + 1)
+		if not isGeneralTab and saved and saved.textGeneral then
+			local genCol = VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[module.db.maxColumns + 1]
+			return genCol and genCol.iconFontMode
+		end
+		return saved and saved.iconFontMode
+	end
 	function self.fontOtherAvailable(isAvailable)
+		local iconFontOn = getIconFontModeOn()
+		local visible
 		if isAvailable then
-			for i=2,5 do
-				self.optColSet.fontsTab.tabs[i].button:Show()
+			if iconFontOn then
+				visible = {6,7,8}
+			else
+				visible = {1,2,3,4,5}
+				self.optColSet.fontsTab.tabs[1].button:SetText(L.cd2ColSetFontPosLeft)
 			end
-			self.optColSet.fontsTab.tabs[1].button:SetText(L.cd2ColSetFontPosLeft)
-			for i=1,5 do
+			for i=1,8 do
 				self.optColSet.fontsTab.tabs[i].button.fontMark = "font"..fontOtherAvailableTable[i]
 			end
 		else
-			for i=2,5 do
-				self.optColSet.fontsTab.tabs[i].button:Hide()
-			end
+			visible = {1}
 			self.optColSet.fontsTab.tabs[1].button:SetText(L.cd2ColSetFontPosGeneral)
 			self.optColSet.fontsTab.tabs[1].button.fontMark = "font"
 		end
-		self.optColSet.fontsTab.resizeFunc(self.optColSet.fontsTab.tabs[1].button, 0, nil, nil, self.optColSet.fontsTab.tabs[1].button:GetFontString():GetStringWidth(), self.optColSet.fontsTab.tabs[1].button:GetFontString():GetStringWidth())
-		fontsTabButtonClick(module.options.optColSet.fontsTab.tabs[1].button)
+		local visibleSet = {}
+		for j=1,#visible do visibleSet[visible[j]] = true end
+		for i=1,8 do
+			if visibleSet[i] then self.optColSet.fontsTab.tabs[i].button:Show() else self.optColSet.fontsTab.tabs[i].button:Hide() end
+		end
+		for j=1,#visible do
+			local btn = self.optColSet.fontsTab.tabs[visible[j]].button
+			btn:ClearAllPoints()
+			if j == 1 then
+				btn:SetPoint("TOPLEFT", self.optColSet.fontsTab, 10, 24)
+			else
+				btn:SetPoint("LEFT", self.optColSet.fontsTab.tabs[visible[j-1]].button, "RIGHT", 6, 0)
+			end
+			local fs = btn:GetFontString()
+			local w = fs and fs:GetStringWidth() or 0
+			self.optColSet.fontsTab.resizeFunc(btn, 0, nil, nil, w, w)
+		end
+		if self.optColSet.fontLeftXSlider then
+			if isAvailable then
+				self.optColSet.fontLeftXSlider:Show()
+				self.optColSet.fontLeftYSlider:Show()
+			else
+				self.optColSet.fontLeftXSlider:Hide()
+				self.optColSet.fontLeftYSlider:Hide()
+			end
+		end
+		local firstBtn = self.optColSet.fontsTab.tabs[visible[1]].button
+		if not visibleSet[self.optColSet.fontsTab.selected or 1] then
+			fontsTabButtonClick(firstBtn)
+		else
+			fontsTabButtonClick(self.optColSet.fontsTab.tabs[self.optColSet.fontsTab.selected].button)
+		end
 	end
 
-	self.optColSet.chkFontOtherAvailable = ELib:Check(self.optColSet.superTabFrame.tab[4],L.cd2ColSetFontOtherAvailable):Point(10,-220):OnClick(function(self)
+	self.optColSet.chkFontOtherAvailable = ELib:Check(self.optColSet.superTabFrame.tab[4],L.cd2ColSetFontOtherAvailable):Point(10,-260):OnClick(function(self)
 		if self:GetChecked() then
 			currColOpt.fontOtherAvailable = true
 		else
 			currColOpt.fontOtherAvailable = nil
 		end
 		module:ReloadAllSplits()
-		module.options.fontOtherAvailable( self:GetChecked() )
+		if module.options.optColSet and module.options.optColSet.applyIconFontModeLayout then
+			module.options.optColSet:applyIconFontModeLayout()
+		else
+			module.options.fontOtherAvailable( self:GetChecked() )
+		end
 	end)
 
 	self.optColSet.sliderFont = ELib:Slider(self.optColSet.fontsTab,L.cd2OtherSetFontSize):Size(400):Point("TOP",0,-60):Range(8,72):OnChange(function(self,event)
@@ -8359,7 +8986,13 @@ function module.options:Load()
 		applyUseGeneralAll(self:GetChecked())
 	end)
 	function self.optColSet.chkGeneralFont:doAlphas()
-		ExRT.lib.SetAlphas(VMRT.ExCD2.colSet[module.options.optColTabs.selected].fontGeneral and module.options.optColTabs.selected ~= (module.db.maxColumns + 1) and 0.5 or 1,module.options.optColSet.dropDownFont,module.options.optColSet.sliderFont,module.options.optColSet.chkFontOutline,module.options.optColSet.chkFontShadow,module.options.optColSet.chkFontOtherAvailable)
+		local a = VMRT.ExCD2.colSet[module.options.optColTabs.selected].fontGeneral and module.options.optColTabs.selected ~= (module.db.maxColumns + 1) and 0.5 or 1
+		ExRT.lib.SetAlphas(a,module.options.optColSet.dropDownFont,module.options.optColSet.sliderFont,module.options.optColSet.chkFontOutline,module.options.optColSet.chkFontShadow,module.options.optColSet.chkFontOtherAvailable,
+			module.options.optColSet.fontLeftXSlider,module.options.optColSet.fontLeftYSlider,
+			module.options.optColSet.fontRightXSlider,module.options.optColSet.fontRightYSlider,
+			module.options.optColSet.fontCenterXSlider,module.options.optColSet.fontCenterYSlider,
+			module.options.optColSet.fontIconXSlider,module.options.optColSet.fontIconYSlider,
+			module.options.optColSet.fontIconCDXSlider,module.options.optColSet.fontIconCDYSlider)
 	end
 
 
@@ -8393,10 +9026,77 @@ function module.options:Load()
 		currColOpt.textTemplateLeft = nil
 		currColOpt.textTemplateRight = nil
 		currColOpt.textTemplateCenter = nil
+		currColOpt.iconFontTopTemplate = nil
+		currColOpt.iconFontTopAnchor = nil
+		currColOpt.iconFontTopX = nil
+		currColOpt.iconFontTopY = nil
+		currColOpt.iconFontTopPos = nil
+		currColOpt.iconFontTopGrowth = nil
+		currColOpt.iconFontCenterTemplate = nil
+		currColOpt.iconFontCenterAnchor = nil
+		currColOpt.iconFontCenterX = nil
+		currColOpt.iconFontCenterY = nil
+		currColOpt.iconFontCenterPos = nil
+		currColOpt.iconFontCenterGrowth = nil
+		currColOpt.iconFontBottomTemplate = nil
+		currColOpt.iconFontBottomAnchor = nil
+		currColOpt.iconFontBottomX = nil
+		currColOpt.iconFontBottomY = nil
+		currColOpt.iconFontBottomPos = nil
+		currColOpt.iconFontBottomGrowth = nil
 		module:ReloadAllSplits()
-		module.options.optColSet.textLeftTemEdit:SetText(module.db.colsDefaults.textTemplateLeft)
-		module.options.optColSet.textRightTemEdit:SetText(module.db.colsDefaults.textTemplateRight)
-		module.options.optColSet.textCenterTemEdit:SetText(module.db.colsDefaults.textTemplateCenter)
+		local d = module.db.colsDefaults
+		module.options.optColSet.textLeftTemEdit:SetText(d.textTemplateLeft)
+		module.options.optColSet.textRightTemEdit:SetText(d.textTemplateRight)
+		module.options.optColSet.textCenterTemEdit:SetText(d.textTemplateCenter)
+		module.options.optColSet.iconFontTopEdit:SetText(d.iconFontTopTemplate)
+		module.options.optColSet.iconFontTopXSlider:SetValue(d.iconFontTopX)
+		module.options.optColSet.iconFontTopXSlider:refreshLabel()
+		module.options.optColSet.iconFontTopYSlider:SetValue(d.iconFontTopY)
+		module.options.optColSet.iconFontTopYSlider:refreshLabel()
+		module.options.optColSet.iconFontCenterEdit:SetText(d.iconFontCenterTemplate)
+		module.options.optColSet.iconFontCenterXSlider:SetValue(d.iconFontCenterX)
+		module.options.optColSet.iconFontCenterXSlider:refreshLabel()
+		module.options.optColSet.iconFontCenterYSlider:SetValue(d.iconFontCenterY)
+		module.options.optColSet.iconFontCenterYSlider:refreshLabel()
+		module.options.optColSet.iconFontBottomEdit:SetText(d.iconFontBottomTemplate)
+		module.options.optColSet.iconFontBottomXSlider:SetValue(d.iconFontBottomX)
+		module.options.optColSet.iconFontBottomXSlider:refreshLabel()
+		module.options.optColSet.iconFontBottomYSlider:SetValue(d.iconFontBottomY)
+		module.options.optColSet.iconFontBottomYSlider:refreshLabel()
+		if module.options.optColSet.iconFontTopWidget    then module.options.optColSet.iconFontTopWidget:refreshChecks();    module.options.optColSet.iconFontTopWidget:refreshGrowthEnabled()    end
+		if module.options.optColSet.iconFontCenterWidget then module.options.optColSet.iconFontCenterWidget:refreshChecks(); module.options.optColSet.iconFontCenterWidget:refreshGrowthEnabled() end
+		if module.options.optColSet.iconFontBottomWidget then module.options.optColSet.iconFontBottomWidget:refreshChecks(); module.options.optColSet.iconFontBottomWidget:refreshGrowthEnabled() end
+		currColOpt.fontLeftX = nil
+		currColOpt.fontLeftY = nil
+		currColOpt.fontRightX = nil
+		currColOpt.fontRightY = nil
+		currColOpt.fontCenterX = nil
+		currColOpt.fontCenterY = nil
+		currColOpt.fontIconX = nil
+		currColOpt.fontIconY = nil
+		currColOpt.fontIconCDX = nil
+		currColOpt.fontIconCDY = nil
+		module.options.optColSet.fontLeftXSlider:SetValue(0)
+		module.options.optColSet.fontLeftXSlider:refreshLabel()
+		module.options.optColSet.fontLeftYSlider:SetValue(0)
+		module.options.optColSet.fontLeftYSlider:refreshLabel()
+		module.options.optColSet.fontRightXSlider:SetValue(0)
+		module.options.optColSet.fontRightXSlider:refreshLabel()
+		module.options.optColSet.fontRightYSlider:SetValue(0)
+		module.options.optColSet.fontRightYSlider:refreshLabel()
+		module.options.optColSet.fontCenterXSlider:SetValue(0)
+		module.options.optColSet.fontCenterXSlider:refreshLabel()
+		module.options.optColSet.fontCenterYSlider:SetValue(0)
+		module.options.optColSet.fontCenterYSlider:refreshLabel()
+		module.options.optColSet.fontIconXSlider:SetValue(0)
+		module.options.optColSet.fontIconXSlider:refreshLabel()
+		module.options.optColSet.fontIconYSlider:SetValue(0)
+		module.options.optColSet.fontIconYSlider:refreshLabel()
+		module.options.optColSet.fontIconCDXSlider:SetValue(0)
+		module.options.optColSet.fontIconCDXSlider:refreshLabel()
+		module.options.optColSet.fontIconCDYSlider:SetValue(0)
+		module.options.optColSet.fontIconCDYSlider:refreshLabel()
 	end)
 
 	self.optColSet.chkIconName = ELib:Check(self.optColSet.superTabFrame.tab[5],L.cd2ColSetTextIconName):Point(10,-250):OnClick(function(self)
@@ -8448,11 +9148,330 @@ function module.options:Load()
 		}
 	end
 
+	self.optColSet.chkShowTargetName = ELib:Check(self.optColSet.superTabFrame.tab[5],L.cd2ColSetTextShowTargetName):Point("TOPLEFT",self.optColSet.chkIconName,0,-60):OnClick(function(self)
+		if self:GetChecked() then
+			currColOpt.textShowTargetName = true
+		else
+			currColOpt.textShowTargetName = nil
+		end
+		module:ReloadAllSplits()
+	end)
+
+
+	local function makeOffsetSlider(parent, savedKeyPrefix, axis)
+		local baseLabel = (axis == "X") and L.cd2OffsetX or L.cd2OffsetY
+		local s = ELib:Slider(parent,baseLabel):Size(180):Range(-50,50):OnChange(function(self,event)
+			event = event - event%1
+			currColOpt[savedKeyPrefix..axis] = event
+			module:ReloadAllSplits()
+			self.tooltipText = event
+			self.text:SetText(baseLabel..": "..event)
+			self:tooltipReload(self)
+		end)
+		s.Low:SetText("-50")
+		s.High:SetText("50")
+		s.baseLabel = baseLabel
+		s.refreshLabel = function(self)
+			local v = self:GetValue() or 0
+			v = v - v%1
+			self.text:SetText(self.baseLabel..": "..v)
+		end
+		return s
+	end
+
+	local rowY = {Top = -40, Center = -65, Bottom = -90}
+
+	self.optColSet.iconFontTopText = ELib:Text(self.optColSet.superTabFrame.tab[5],L.cd2ColSetTextIconFontTop..":"):Size(200,20):Point(10,rowY.Top)
+	self.optColSet.iconFontTopEdit = ELib:Edit(self.optColSet.superTabFrame.tab[5]):Size(220,20):Point(180,rowY.Top):OnChange(function(self,isUser)
+		if isUser then
+			currColOpt.iconFontTopTemplate = self:GetText()
+			module:ReloadAllSplits()
+		end
+	end)
+
+	self.optColSet.iconFontCenterText = ELib:Text(self.optColSet.superTabFrame.tab[5],L.cd2ColSetTextIconFontCenter..":"):Size(200,20):Point(10,rowY.Center)
+	self.optColSet.iconFontCenterEdit = ELib:Edit(self.optColSet.superTabFrame.tab[5]):Size(220,20):Point(180,rowY.Center):OnChange(function(self,isUser)
+		if isUser then
+			currColOpt.iconFontCenterTemplate = self:GetText()
+			module:ReloadAllSplits()
+		end
+	end)
+
+	self.optColSet.iconFontBottomText = ELib:Text(self.optColSet.superTabFrame.tab[5],L.cd2ColSetTextIconFontBottom..":"):Size(200,20):Point(10,rowY.Bottom)
+	self.optColSet.iconFontBottomEdit = ELib:Edit(self.optColSet.superTabFrame.tab[5]):Size(220,20):Point(180,rowY.Bottom):OnChange(function(self,isUser)
+		if isUser then
+			currColOpt.iconFontBottomTemplate = self:GetText()
+			module:ReloadAllSplits()
+		end
+	end)
+
+	local iconFontPosLayout = {
+		[1]  = {"TOPLEFT",     "TOPLEFT",      4, -4 },
+		[2]  = {"TOP",         "TOP",          0, -4 },
+		[3]  = {"TOPRIGHT",    "TOPRIGHT",    -4, -4 },
+		[4]  = {"LEFT",        "LEFT",         4,  0 },
+		[5]  = {"CENTER",      "CENTER",       0,  0 },
+		[6]  = {"RIGHT",       "RIGHT",       -4,  0 },
+		[7]  = {"BOTTOMLEFT",  "BOTTOMLEFT",   4,  4 },
+		[8]  = {"BOTTOM",      "BOTTOM",       0,  4 },
+		[9]  = {"BOTTOMRIGHT", "BOTTOMRIGHT", -4,  4 },
+		[10] = {"BOTTOMRIGHT", "BOTTOMLEFT",  -2,  2 },
+		[11] = {"TOPRIGHT",    "TOPLEFT",     -2, -2 },
+		[12] = {"BOTTOMLEFT",  "TOPLEFT",      2,  2 },
+		[13] = {"BOTTOMRIGHT", "TOPRIGHT",    -2,  2 },
+		[14] = {"TOPLEFT",     "TOPRIGHT",     2, -2 },
+		[15] = {"BOTTOMLEFT",  "BOTTOMRIGHT",  2,  2 },
+		[16] = {"TOPRIGHT",    "BOTTOMRIGHT", -2, -2 },
+		[17] = {"TOPLEFT",     "BOTTOMLEFT",   2, -2 },
+		[18] = {"BOTTOM",      "TOP",          0,  2 },
+		[19] = {"LEFT",        "RIGHT",        2,  0 },
+		[20] = {"TOP",         "BOTTOM",       0, -2 },
+		[21] = {"RIGHT",       "LEFT",        -2,  0 },
+	}
+
+	local function makeIconFontPositionWidget(parent, slot)
+		local widget = {}
+		widget.label = ELib:Text(parent, L.cd2ColSetIconPosition..":"):Size(70,20):Point(10,-180)
+
+		widget.preview = ELib:Frame(parent):Point("TOPLEFT",80,-185):Size(80,50)
+		ELib:Texture(widget.preview,.8,.8,.8,.8,"BACKGROUND"):Point('x')
+
+		widget.radios = {}
+		for posID = 1, 21 do
+			local lay = iconFontPosLayout[posID]
+			local r = ELib:Radio(parent)
+			r:SetSize(12, 12)
+			if r.text then r.text:SetText("") end
+			r:SetHitRectInsets(-1,-1,-1,-1)
+			r:ClearAllPoints()
+			r:SetPoint(lay[1], widget.preview, lay[2], lay[3], lay[4])
+			r.posID = posID
+			r:SetScript("OnClick", function(self)
+				currColOpt["iconFont"..slot.."Pos"] = self.posID
+				currColOpt["iconFont"..slot.."Anchor"] = nil
+				local info = module.db.colsIconFontPos[self.posID]
+				if info and info[3] then
+					currColOpt["iconFont"..slot.."Growth"] = nil
+				end
+				widget:refreshChecks()
+				widget:refreshGrowthEnabled()
+				module:ReloadAllSplits()
+			end)
+			r.posLabel = posID
+			widget.radios[posID] = r
+		end
+
+		widget.growthLabel = ELib:Text(parent, L.cd2ColSetIconGrowth..":"):Size(60,20):Point(220,-180)
+		widget.growthRadios = {}
+		local function makeGrowthRadio(growthValue, anchorY, drawText)
+			local r = ELib:Radio(parent, drawText)
+			r:SetSize(14, 14)
+			r:ClearAllPoints()
+			r:SetPoint("TOPLEFT", widget.growthLabel, "BOTTOMLEFT", 8, anchorY)
+			r.growthValue = growthValue
+			r:SetScript("OnClick", function(self)
+				currColOpt["iconFont"..slot.."Growth"] = self.growthValue
+				widget:refreshGrowthChecks()
+				module:ReloadAllSplits()
+			end)
+			return r
+		end
+		widget.growthRadios[1] = makeGrowthRadio(1,  -4, "  --> ")
+		widget.growthRadios[2] = makeGrowthRadio(2, -24, "  <-- ")
+
+		widget.xSlider = makeOffsetSlider(parent, "iconFont"..slot, "X"):Point(10, -260)
+		widget.ySlider = makeOffsetSlider(parent, "iconFont"..slot, "Y"):Point(220, -260)
+
+		function widget:refreshChecks()
+			local sel = module.options.optColTabs and module.options.optColTabs.selected
+			local saved = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+			local pos
+			if saved then
+				pos = module.db.ResolveIconFontPos(slot, saved["iconFont"..slot.."Pos"], saved["iconFont"..slot.."Anchor"])
+			else
+				pos = module.db.colsDefaults["iconFont"..slot.."Pos"]
+			end
+			for posID = 1, 21 do
+				self.radios[posID]:SetChecked(posID == pos)
+			end
+		end
+		function widget:refreshGrowthChecks()
+			local sel = module.options.optColTabs and module.options.optColTabs.selected
+			local saved = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+			local pos = saved and saved["iconFont"..slot.."Pos"] or module.db.colsDefaults["iconFont"..slot.."Pos"]
+			local info = module.db.colsIconFontPos[pos]
+			local growth = saved and saved["iconFont"..slot.."Growth"]
+			if not growth or growth == 0 then
+				growth = info and info[4] or 0
+			end
+			self.growthRadios[1]:SetChecked(growth == 1)
+			self.growthRadios[2]:SetChecked(growth == 2)
+		end
+		function widget:refreshGrowthEnabled()
+			local sel = module.options.optColTabs and module.options.optColTabs.selected
+			local saved = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+			local pos = saved and saved["iconFont"..slot.."Pos"] or module.db.colsDefaults["iconFont"..slot.."Pos"]
+			local info = module.db.colsIconFontPos[pos]
+			local enabled = info and not info[3]
+			self.growthRadios[1]:SetAlpha(enabled and 1 or 0.3)
+			self.growthRadios[2]:SetAlpha(enabled and 1 or 0.3)
+			self.growthRadios[1]:EnableMouse(enabled and true or false)
+			self.growthRadios[2]:EnableMouse(enabled and true or false)
+			self:refreshGrowthChecks()
+		end
+
+		return widget
+	end
+
+	local function makeOffsetRow(parent, savedKeyPrefix)
+		local sx = makeOffsetSlider(parent, savedKeyPrefix, "X"):Point(10, -180)
+		local sy = makeOffsetSlider(parent, savedKeyPrefix, "Y"):Point(220, -180)
+		return sx, sy
+	end
+
+	self.optColSet.iconFontTopWidget = makeIconFontPositionWidget(self.optColSet.fontsTab.tabs[6], "Top")
+	self.optColSet.iconFontCenterWidget = makeIconFontPositionWidget(self.optColSet.fontsTab.tabs[7], "Center")
+	self.optColSet.iconFontBottomWidget = makeIconFontPositionWidget(self.optColSet.fontsTab.tabs[8], "Bottom")
+	self.optColSet.iconFontTopXSlider = self.optColSet.iconFontTopWidget.xSlider
+	self.optColSet.iconFontTopYSlider = self.optColSet.iconFontTopWidget.ySlider
+	self.optColSet.iconFontCenterXSlider = self.optColSet.iconFontCenterWidget.xSlider
+	self.optColSet.iconFontCenterYSlider = self.optColSet.iconFontCenterWidget.ySlider
+	self.optColSet.iconFontBottomXSlider = self.optColSet.iconFontBottomWidget.xSlider
+	self.optColSet.iconFontBottomYSlider = self.optColSet.iconFontBottomWidget.ySlider
+
+	self.optColSet.fontLeftXSlider, self.optColSet.fontLeftYSlider = makeOffsetRow(self.optColSet.fontsTab.tabs[1], "fontLeft")
+	self.optColSet.fontRightXSlider, self.optColSet.fontRightYSlider = makeOffsetRow(self.optColSet.fontsTab.tabs[2], "fontRight")
+	self.optColSet.fontCenterXSlider, self.optColSet.fontCenterYSlider = makeOffsetRow(self.optColSet.fontsTab.tabs[3], "fontCenter")
+	self.optColSet.fontIconXSlider, self.optColSet.fontIconYSlider = makeOffsetRow(self.optColSet.fontsTab.tabs[4], "fontIcon")
+	self.optColSet.fontIconCDXSlider, self.optColSet.fontIconCDYSlider = makeOffsetRow(self.optColSet.fontsTab.tabs[5], "fontIconCD")
+
+	self.optColSet.iconFontTopText:Hide()
+	self.optColSet.iconFontTopEdit:Hide()
+	self.optColSet.iconFontCenterText:Hide()
+	self.optColSet.iconFontCenterEdit:Hide()
+	self.optColSet.iconFontBottomText:Hide()
+	self.optColSet.iconFontBottomEdit:Hide()
+
+	self.optColSet.chkIconFontMode = ELib:Check(self.optColSet.superTabFrame.tab[5],L.cd2ColSetTextIconFontMode):Point("TOPLEFT",10,-12):OnClick(function(self)
+		local sel = module.options.optColTabs and module.options.optColTabs.selected
+		local saved = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+		local isGeneralTab = sel == (module.db.maxColumns + 1)
+		if saved and saved.ATF then
+			self:SetChecked(false)
+			return
+		end
+		if not isGeneralTab and saved and saved.textGeneral then
+			local genCol = VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[module.db.maxColumns + 1]
+			self:SetChecked(genCol and genCol.iconFontMode or false)
+			module.options.optColSet:applyIconFontModeLayout()
+			return
+		end
+		if self:GetChecked() then
+			currColOpt.iconFontMode = true
+			if currColOpt.iconFontTopTemplate == nil then
+				currColOpt.iconFontTopTemplate = ""
+			end
+			if currColOpt.iconFontCenterTemplate == nil then
+				currColOpt.iconFontCenterTemplate = "%time%"
+			end
+			if currColOpt.iconFontBottomTemplate == nil then
+				currColOpt.iconFontBottomTemplate = "%name%"
+			end
+			module.options.optColSet.iconFontTopEdit:SetText(currColOpt.iconFontTopTemplate)
+			module.options.optColSet.iconFontCenterEdit:SetText(currColOpt.iconFontCenterTemplate)
+			module.options.optColSet.iconFontBottomEdit:SetText(currColOpt.iconFontBottomTemplate)
+		else
+			currColOpt.iconFontMode = nil
+		end
+		module.options.optColSet:applyIconFontModeLayout()
+		module:ReloadAllSplits()
+	end)
+
+	function self.optColSet:applyIconFontModeLayout()
+		local sel = module.options.optColTabs and module.options.optColTabs.selected
+		local saved = sel and VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[sel]
+		local isGeneralTab = sel == (module.db.maxColumns + 1)
+		local genCol = VMRT.ExCD2 and VMRT.ExCD2.colSet and VMRT.ExCD2.colSet[module.db.maxColumns + 1]
+		local source = saved
+		if not isGeneralTab and saved and saved.textGeneral and genCol then
+			source = genCol
+		end
+		local atf = saved and saved.ATF
+		local on = (source and source.iconFontMode or (not source and currColOpt and currColOpt.iconFontMode)) and not atf
+		local barCtrls = {self.textLeftTemText,self.textLeftTemEdit,self.textRightTemText,self.textRightTemEdit,self.textCenterTemText,self.textCenterTemEdit}
+		local iconCtrls = {
+			self.iconFontTopText,self.iconFontTopEdit,
+			self.iconFontCenterText,self.iconFontCenterEdit,
+			self.iconFontBottomText,self.iconFontBottomEdit,
+		}
+		for i=1,#barCtrls do if on then barCtrls[i]:Hide() else barCtrls[i]:Show() end end
+		for i=1,#iconCtrls do if on then iconCtrls[i]:Show() else iconCtrls[i]:Hide() end end
+		if on then
+			self.chkIconName.text:SetText(L.cd2ColSetTextIconCrop)
+		else
+			self.chkIconName.text:SetText(L.cd2ColSetTextIconName)
+		end
+
+		self.textAllTemplates:ClearAllPoints()
+		self.textAllTemplates:SetPoint("TOPLEFT",self.superTabFrame.tab[5],"TOPLEFT",10,-115)
+		self.textResetButton:ClearAllPoints()
+		self.textResetButton:SetPoint("TOP",self.superTabFrame.tab[5],"TOP",0,-225)
+		self.chkIconName:ClearAllPoints()
+		self.chkIconName:SetPoint("TOPLEFT",self.superTabFrame.tab[5],"TOPLEFT",10,-250)
+
+		if self.chkShowTargetName then
+			if on then self.chkShowTargetName:Hide() else self.chkShowTargetName:Show() end
+		end
+
+		if ExRT and ExRT.lib and ExRT.lib.SetAlphas then
+			ExRT.lib.SetAlphas(on and 0.5 or 1, self.chkCooldownTextDef, self.chkCooldownExRTNumbers, self.chkCooldownHideNumbers)
+		end
+		if on then
+			self.chkCooldownTextDef.tooltipText = L.cd2ExtIconFontLockTooltip
+			self.chkCooldownExRTNumbers.tooltipText = L.cd2ExtIconFontLockTooltip
+			self.chkCooldownHideNumbers.tooltipText = L.cd2ExtIconFontLockTooltip
+		else
+			self.chkCooldownTextDef.tooltipText = L.cd2ColSetCDTimeDefTooltip
+			self.chkCooldownExRTNumbers.tooltipText = L.cd2ColSetCDTimeExRTTooltip
+			self.chkCooldownHideNumbers.tooltipText = L.BattleResHideTimeTooltip
+		end
+		if self.chkCooldownTextUpdate then
+			self:chkCooldownTextUpdate()
+		end
+
+		local fontsTabBaseHeight = 215
+		local fontsTabExtendedHeight = 295
+		local chkFontOtherBaseY = -260
+		local chkFontOtherExtendedY = -360
+		local fOAvail = self.chkFontOtherAvailable and self.chkFontOtherAvailable:GetChecked()
+		if on and fOAvail then
+			if self.fontsTab and self.fontsTab.SetSize then self.fontsTab:SetSize(455, fontsTabExtendedHeight) end
+			if self.chkFontOtherAvailable then
+				self.chkFontOtherAvailable:ClearAllPoints()
+				self.chkFontOtherAvailable:SetPoint("TOPLEFT", self.superTabFrame.tab[4], "TOPLEFT", 10, chkFontOtherExtendedY)
+			end
+		else
+			if self.fontsTab and self.fontsTab.SetSize then self.fontsTab:SetSize(455, fontsTabBaseHeight) end
+			if self.chkFontOtherAvailable then
+				self.chkFontOtherAvailable:ClearAllPoints()
+				self.chkFontOtherAvailable:SetPoint("TOPLEFT", self.superTabFrame.tab[4], "TOPLEFT", 10, chkFontOtherBaseY)
+			end
+		end
+
+		if module.options.fontOtherAvailable and self.chkFontOtherAvailable then
+			module.options.fontOtherAvailable( self.chkFontOtherAvailable:GetChecked() )
+		end
+	end
+
 	self.optColSet.chkGeneralText = ELib:Check(self.optColSet.superTabFrame.tab[5],L.cd2ColSetGeneral):Point("TOPRIGHT",-10,-10):Left():OnClick(function(self)
 		applyUseGeneralAll(self:GetChecked())
 	end)
 	function self.optColSet.chkGeneralText:doAlphas()
-		ExRT.lib.SetAlphas(VMRT.ExCD2.colSet[module.options.optColTabs.selected].textGeneral and module.options.optColTabs.selected ~= (module.db.maxColumns + 1) and 0.5 or 1,module.options.optColSet.textLeftTemEdit,module.options.optColSet.textRightTemEdit,module.options.optColSet.textCenterTemEdit,module.options.optColSet.chkIconName,module.options.optColSet.textAllTemplates,module.options.optColSet.textLeftTemText,module.options.optColSet.textRightTemText,module.options.optColSet.textCenterTemText,module.options.optColSet.textResetButton,module.options.optColSet.sliderIconNameChars,module.options.optColSet.dropDownIconCDStyle,module.options.optColSet.textdropDownIconCDStyle)
+		ExRT.lib.SetAlphas(VMRT.ExCD2.colSet[module.options.optColTabs.selected].textGeneral and module.options.optColTabs.selected ~= (module.db.maxColumns + 1) and 0.5 or 1,module.options.optColSet.textLeftTemEdit,module.options.optColSet.textRightTemEdit,module.options.optColSet.textCenterTemEdit,module.options.optColSet.chkIconName,module.options.optColSet.textAllTemplates,module.options.optColSet.textLeftTemText,module.options.optColSet.textRightTemText,module.options.optColSet.textCenterTemText,module.options.optColSet.textResetButton,module.options.optColSet.sliderIconNameChars,module.options.optColSet.dropDownIconCDStyle,module.options.optColSet.textdropDownIconCDStyle,module.options.optColSet.chkShowTargetName,
+			module.options.optColSet.chkIconFontMode,
+			module.options.optColSet.iconFontTopText,module.options.optColSet.iconFontTopEdit,module.options.optColSet.iconFontTopXSlider,module.options.optColSet.iconFontTopYSlider,
+			module.options.optColSet.iconFontCenterText,module.options.optColSet.iconFontCenterEdit,module.options.optColSet.iconFontCenterXSlider,module.options.optColSet.iconFontCenterYSlider,
+			module.options.optColSet.iconFontBottomText,module.options.optColSet.iconFontBottomEdit,module.options.optColSet.iconFontBottomXSlider,module.options.optColSet.iconFontBottomYSlider)
 	end
 
 
@@ -8937,6 +9956,13 @@ function module.options:Load()
 			methodsCooldown = true,
 			iconCooldownShowSwipe = true,
 
+			iconFontTopTemplate = "%target%",
+			iconFontTopPos = 2,
+			iconFontCenterTemplate = "%time%",
+			iconFontCenterPos = 5,
+			iconFontBottomTemplate = "%name%",
+			iconFontBottomPos = 8,
+
 			ATFLines = 2,
 			ATFCol = 6,
 			ATFGrowth = 2,
@@ -9028,6 +10054,13 @@ function module.options:Load()
 			textIconName = true,
 			methodsCooldown = true,
 			textIconNameChars = 6,
+
+			iconFontTopTemplate = "%target%",
+			iconFontTopPos = 2,
+			iconFontCenterTemplate = "%time%",
+			iconFontCenterPos = 5,
+			iconFontBottomTemplate = "%name%",
+			iconFontBottomPos = 8,
 
 			frameWidth = 40,
 			frameColumns = 4,
@@ -9356,6 +10389,8 @@ function module.options:Load()
 		},
 		toOptions = {
 			iconSize = true,
+			iconHeight = true,
+			iconSeparateHW = true,
 			textureAnimation = true,
 			methodsStyleAnimation = true,
 			methodsTimeLineAnimation = true,
@@ -9413,6 +10448,14 @@ function module.options:Load()
 			ATFLines = true,
 			ATFCol = true,
 			ATFGrowth = true,
+
+			iconFontMode = true,
+			iconFontTopTemplate = true,
+			iconFontTopPos = true,
+			iconFontCenterTemplate = true,
+			iconFontCenterPos = true,
+			iconFontBottomTemplate = true,
+			iconFontBottomPos = true,
 
 			_frameAlpha = "frameAlpha",
 			_frameWidth = "frameWidth",
@@ -9637,7 +10680,12 @@ function module.options:Load()
 			currColOpt.frameStrata = nil
 		else
 			currColOpt.ATF = nil
+			module.options.optColSet.chkIconFontMode:SetChecked(currColOpt.iconFontMode and true or false)
+			module.options.optColSet.chkSeparateIconHW:SetChecked(currColOpt.iconSeparateHW and true or false)
 		end
+		module.options.optColSet:applyATFLockLayout()
+		module.options.optColSet:applyIconFontModeLayout()
+		module.options.optColSet:applyIconHWLayout()
 		module:ReloadAllSplits()
 	end)
 
@@ -9912,7 +10960,10 @@ function module.options:Load()
 	end)
 
 	profilesTab.choseSelectText = ELib:Text(profilesTab,L.ProfilesSelect,11):Size(605,200):Point(335,-88):Top()
-	profilesTab.choseSelectDropDown = ELib:DropDown(profilesTab,220,10):Point(330,-100):Size(235):SetText(LFG_LIST_SELECT)
+	profilesTab.choseSelectDropDown = ELib:DropDown(profilesTab,220,10):Point(330,-100):Size(235):SetText(GetCurrentProfileName())
+	profilesTab.choseSelectDropDown.UpdateText = function(self)
+		self:SetText(GetCurrentProfileName())
+	end
 
 	local function GetCurrentProfilesList(func)
 		local list = {
@@ -10402,13 +11453,15 @@ local function IconGlowNoLibStart(self)
 	if not LCG then
 		return
 	end
-	local iconGlowType = self:GetParent().parent.optionGlowType
+	local p = self:GetParent().parent
+	local iconGlowType = p.optionGlowType
+	local glowColor = p.optionGlowColor
 	if (not iconGlowType or iconGlowType == 1) then
-		return LCG.ButtonGlow_Start(self)
+		return LCG.ButtonGlow_Start(self, glowColor)
 	elseif iconGlowType == 2 then
-		return LCG.AutoCastGlow_Start(self)
+		return LCG.AutoCastGlow_Start(self, glowColor)
 	elseif iconGlowType == 3 then
-		return LCG.PixelGlow_Start(self)
+		return LCG.PixelGlow_Start(self, glowColor)
 	elseif iconGlowType == 4 then
 		return ExRT.NULLfunc(self)
 	end
@@ -10440,6 +11493,14 @@ function module:ColApplyStyle(columnFrame,currColOpt,generalOpt,defOpt,mainWidth
 
 	columnFrame.iconSize = (not currColOpt.iconGeneral and currColOpt.iconSize) or (currColOpt.iconGeneral and generalOpt.iconSize) or defOpt.iconSize
 
+	local effMethodsCooldown = (not currColOpt.iconGeneral and currColOpt.methodsCooldown) or (currColOpt.iconGeneral and generalOpt.methodsCooldown)
+	local effIconSeparateHW = (not currColOpt.iconGeneral and currColOpt.iconSeparateHW) or (currColOpt.iconGeneral and generalOpt.iconSeparateHW)
+	local effIconHeight = (not currColOpt.iconGeneral and currColOpt.iconHeight) or (currColOpt.iconGeneral and generalOpt.iconHeight) or columnFrame.iconSize
+	if currColOpt.ATF then
+		effIconSeparateHW = false
+	end
+	columnFrame.iconHeight = (effMethodsCooldown and effIconSeparateHW and effIconHeight) or columnFrame.iconSize
+
 	local frameBetweenLines = (not currColOpt.frameGeneral and currColOpt.frameBetweenLines) or (currColOpt.frameGeneral and generalOpt.frameBetweenLines) or defOpt.frameBetweenLines
 	columnFrame.frameBetweenLines = frameBetweenLines
 
@@ -10453,11 +11514,11 @@ function module:ColApplyStyle(columnFrame,currColOpt,generalOpt,defOpt,mainWidth
 		linesTotal = 150
 	end
 	if VMRT.ExCD2.SplitOpt then
-		columnFrame.Gheight = columnFrame.iconSize*linesShown+frameBetweenLines*(linesShown-1)
-		columnFrame:SetHeight(columnFrame.iconSize*linesShown+frameBetweenLines*(linesShown-1))
+		columnFrame.Gheight = columnFrame.iconHeight*linesShown+frameBetweenLines*(linesShown-1)
+		columnFrame:SetHeight(columnFrame.iconHeight*linesShown+frameBetweenLines*(linesShown-1))
 	elseif not currColOpt.ATF then
-		columnFrame.Gheight = columnFrame.iconSize*linesShown
-		columnFrame:SetHeight(columnFrame.iconSize*linesShown)
+		columnFrame.Gheight = columnFrame.iconHeight*linesShown
+		columnFrame:SetHeight(columnFrame.iconHeight*linesShown)
 	end
 	columnFrame.NumberLastLinesActive = max(linesTotal,module.db.maxLinesInCol,#columnFrame.lines)
 
@@ -10532,6 +11593,7 @@ function module:ColApplyStyle(columnFrame,currColOpt,generalOpt,defOpt,mainWidth
 		if columnFrame.optionCooldownUseExRT then columnFrame.optionCooldownHideNumbers = true end
 	columnFrame.optionCooldownShowSwipe = (not currColOpt.iconGeneral and currColOpt.iconCooldownShowSwipe) or (currColOpt.iconGeneral and generalOpt.iconCooldownShowSwipe)
 	columnFrame.optionIconName = (not currColOpt.textGeneral and currColOpt.textIconName) or (currColOpt.textGeneral and generalOpt.textIconName)
+	columnFrame.textShowTargetName = (not currColOpt.textGeneral and currColOpt.textShowTargetName) or (currColOpt.textGeneral and generalOpt.textShowTargetName)
 	columnFrame.optionHideSpark = (not currColOpt.textureGeneral and currColOpt.textureHideSpark) or (currColOpt.textureGeneral and generalOpt.textureHideSpark)
 	columnFrame.optionIconTitles = (not currColOpt.iconGeneral and currColOpt.iconTitles) or (currColOpt.iconGeneral and generalOpt.iconTitles)
 		columnFrame.optionIconTitles = columnFrame.optionIconTitles and not (columnFrame.optionIconPosition == 3)
@@ -10539,6 +11601,12 @@ function module:ColApplyStyle(columnFrame,currColOpt,generalOpt,defOpt,mainWidth
 
 	local iconGlowType = (not currColOpt.iconGeneral and currColOpt.iconGlowType) or (currColOpt.iconGeneral and generalOpt.iconGlowType) or defOpt.iconGlowType
 	columnFrame.optionGlowType = iconGlowType
+	local glowR = (not currColOpt.iconGeneral and currColOpt.iconGlowColorR) or (currColOpt.iconGeneral and generalOpt.iconGlowColorR) or defOpt.iconGlowColorR
+	local glowG = (not currColOpt.iconGeneral and currColOpt.iconGlowColorG) or (currColOpt.iconGeneral and generalOpt.iconGlowColorG) or defOpt.iconGlowColorG
+	local glowB = (not currColOpt.iconGeneral and currColOpt.iconGlowColorB) or (currColOpt.iconGeneral and generalOpt.iconGlowColorB) or defOpt.iconGlowColorB
+	local glowA = (not currColOpt.iconGeneral and currColOpt.iconGlowColorA) or (currColOpt.iconGeneral and generalOpt.iconGlowColorA) or defOpt.iconGlowColorA
+	local glowColor = {glowR, glowG, glowB, glowA}
+	columnFrame.optionGlowColor = glowColor
 	local glowStart, glowStop
 	if LCG and (not iconGlowType or iconGlowType == 1) then
 		glowStart, glowStop = LCG.ButtonGlow_Start, LCG.ButtonGlow_Stop
@@ -10551,7 +11619,12 @@ function module:ColApplyStyle(columnFrame,currColOpt,generalOpt,defOpt,mainWidth
 	elseif not LCG then
 		glowStart, glowStop = IconGlowNoLibStart, IconGlowNoLibStop
 	end
-	columnFrame.glowStart = glowStart or ExRT.NULLfunc
+	if glowStart and glowStart ~= ExRT.NULLfunc and iconGlowType ~= 4 then
+		local origStart = glowStart
+		columnFrame.glowStart = function(r) origStart(r, glowColor) end
+	else
+		columnFrame.glowStart = glowStart or ExRT.NULLfunc
+	end
 	columnFrame.glowStop = glowStop or ExRT.NULLfunc
 
 	columnFrame.methodsIconTooltip = (not currColOpt.methodsGeneral and currColOpt.methodsIconTooltip) or (currColOpt.methodsGeneral and generalOpt.methodsIconTooltip)
@@ -10590,6 +11663,41 @@ function module:ColApplyStyle(columnFrame,currColOpt,generalOpt,defOpt,mainWidth
 	columnFrame.textIconNameChars = (not currColOpt.textGeneral and currColOpt.textIconNameChars) or (currColOpt.textGeneral and generalOpt.textIconNameChars) or defOpt.textIconNameChars
 	columnFrame.textIconCDStyle = (not currColOpt.textGeneral and currColOpt.textIconCDStyle) or (currColOpt.textGeneral and generalOpt.textIconCDStyle) or defOpt.textIconCDStyle
 
+	local function pickIconFont(field)
+		if currColOpt.textGeneral then
+			return generalOpt[field]
+		end
+		return currColOpt[field]
+	end
+	columnFrame.iconFontMode = (not currColOpt.textGeneral and currColOpt.iconFontMode)
+		or (currColOpt.textGeneral and generalOpt.iconFontMode)
+		or false
+	if currColOpt.ATF then
+		columnFrame.iconFontMode = false
+	end
+	if columnFrame.iconFontMode then
+		columnFrame.optionCooldownHideNumbers = true
+		columnFrame.optionCooldownUseExRT = false
+	end
+	columnFrame.iconFontTopTemplate = pickIconFont("iconFontTopTemplate") or defOpt.iconFontTopTemplate
+	columnFrame.iconFontTopAnchor = pickIconFont("iconFontTopAnchor") or defOpt.iconFontTopAnchor
+	columnFrame.iconFontTopX = pickIconFont("iconFontTopX") or defOpt.iconFontTopX
+	columnFrame.iconFontTopY = pickIconFont("iconFontTopY") or defOpt.iconFontTopY
+	columnFrame.iconFontTopPos = pickIconFont("iconFontTopPos") or defOpt.iconFontTopPos
+	columnFrame.iconFontTopGrowth = pickIconFont("iconFontTopGrowth") or defOpt.iconFontTopGrowth
+	columnFrame.iconFontCenterTemplate = pickIconFont("iconFontCenterTemplate") or defOpt.iconFontCenterTemplate
+	columnFrame.iconFontCenterAnchor = pickIconFont("iconFontCenterAnchor") or defOpt.iconFontCenterAnchor
+	columnFrame.iconFontCenterX = pickIconFont("iconFontCenterX") or defOpt.iconFontCenterX
+	columnFrame.iconFontCenterY = pickIconFont("iconFontCenterY") or defOpt.iconFontCenterY
+	columnFrame.iconFontCenterPos = pickIconFont("iconFontCenterPos") or defOpt.iconFontCenterPos
+	columnFrame.iconFontCenterGrowth = pickIconFont("iconFontCenterGrowth") or defOpt.iconFontCenterGrowth
+	columnFrame.iconFontBottomTemplate = pickIconFont("iconFontBottomTemplate") or defOpt.iconFontBottomTemplate
+	columnFrame.iconFontBottomAnchor = pickIconFont("iconFontBottomAnchor") or defOpt.iconFontBottomAnchor
+	columnFrame.iconFontBottomX = pickIconFont("iconFontBottomX") or defOpt.iconFontBottomX
+	columnFrame.iconFontBottomY = pickIconFont("iconFontBottomY") or defOpt.iconFontBottomY
+	columnFrame.iconFontBottomPos = pickIconFont("iconFontBottomPos") or defOpt.iconFontBottomPos
+	columnFrame.iconFontBottomGrowth = pickIconFont("iconFontBottomGrowth") or defOpt.iconFontBottomGrowth
+
 	local blacklistText = (not currColOpt.blacklistGeneral and currColOpt.blacklistText) or (currColOpt.blacklistGeneral and generalOpt.blacklistText) or defOpt.blacklistText
 	columnFrame.BlackList = CreateBlackList(blacklistText)
 	local whitelistText = (not currColOpt.blacklistGeneral and currColOpt.whitelistText) or (currColOpt.blacklistGeneral and generalOpt.whitelistText) or defOpt.whitelistText
@@ -10620,26 +11728,51 @@ function module:ColApplyStyle(columnFrame,currColOpt,generalOpt,defOpt,mainWidth
 	columnFrame.fontLeftName = (not fontOtherAvailable and fontOpts.fontName) or (fontOtherAvailable and fontOpts.fontLeftName) or defOpt.fontName
 	columnFrame.fontLeftOutline = (not fontOtherAvailable and fontOpts.fontOutline) or (fontOtherAvailable and fontOpts.fontLeftOutline)
 	columnFrame.fontLeftShadow = (not fontOtherAvailable and fontOpts.fontShadow) or (fontOtherAvailable and fontOpts.fontLeftShadow)
+	columnFrame.fontLeftX = (fontOtherAvailable and fontOpts.fontLeftX) or 0
+	columnFrame.fontLeftY = (fontOtherAvailable and fontOpts.fontLeftY) or 0
 
 	columnFrame.fontRightSize = (not fontOtherAvailable and fontOpts.fontSize) or (fontOtherAvailable and fontOpts.fontRightSize) or defOpt.fontSize
 	columnFrame.fontRightName = (not fontOtherAvailable and fontOpts.fontName) or (fontOtherAvailable and fontOpts.fontRightName) or defOpt.fontName
 	columnFrame.fontRightOutline = (not fontOtherAvailable and fontOpts.fontOutline) or (fontOtherAvailable and fontOpts.fontRightOutline)
 	columnFrame.fontRightShadow = (not fontOtherAvailable and fontOpts.fontShadow) or (fontOtherAvailable and fontOpts.fontRightShadow)
+	columnFrame.fontRightX = (fontOtherAvailable and fontOpts.fontRightX) or 0
+	columnFrame.fontRightY = (fontOtherAvailable and fontOpts.fontRightY) or 0
 
 	columnFrame.fontCenterSize = (not fontOtherAvailable and fontOpts.fontSize) or (fontOtherAvailable and fontOpts.fontCenterSize) or defOpt.fontSize
 	columnFrame.fontCenterName = (not fontOtherAvailable and fontOpts.fontName) or (fontOtherAvailable and fontOpts.fontCenterName) or defOpt.fontName
 	columnFrame.fontCenterOutline = (not fontOtherAvailable and fontOpts.fontOutline) or (fontOtherAvailable and fontOpts.fontCenterOutline)
 	columnFrame.fontCenterShadow = (not fontOtherAvailable and fontOpts.fontShadow) or (fontOtherAvailable and fontOpts.fontCenterShadow)
+	columnFrame.fontCenterX = (fontOtherAvailable and fontOpts.fontCenterX) or 0
+	columnFrame.fontCenterY = (fontOtherAvailable and fontOpts.fontCenterY) or 0
 
 	columnFrame.fontIconSize = (not fontOtherAvailable and fontOpts.fontSize) or (fontOtherAvailable and fontOpts.fontIconSize) or defOpt.fontSize
 	columnFrame.fontIconName = (not fontOtherAvailable and fontOpts.fontName) or (fontOtherAvailable and fontOpts.fontIconName) or defOpt.fontName
 	columnFrame.fontIconOutline = (not fontOtherAvailable and fontOpts.fontOutline) or (fontOtherAvailable and fontOpts.fontIconOutline)
 	columnFrame.fontIconShadow = (not fontOtherAvailable and fontOpts.fontShadow) or (fontOtherAvailable and fontOpts.fontIconShadow)
+	columnFrame.fontIconX = (fontOtherAvailable and fontOpts.fontIconX) or 0
+	columnFrame.fontIconY = (fontOtherAvailable and fontOpts.fontIconY) or 0
 
 	columnFrame.fontIconCDSize = (not fontOtherAvailable and fontOpts.fontSize) or (fontOtherAvailable and fontOpts.fontIconCDSize) or defOpt.fontSize
 	columnFrame.fontIconCDName = (not fontOtherAvailable and fontOpts.fontName) or (fontOtherAvailable and fontOpts.fontIconCDName) or defOpt.fontName
 	columnFrame.fontIconCDOutline = (not fontOtherAvailable and fontOpts.fontOutline) or (fontOtherAvailable and fontOpts.fontIconCDOutline)
 	columnFrame.fontIconCDShadow = (not fontOtherAvailable and fontOpts.fontShadow) or (fontOtherAvailable and fontOpts.fontIconCDShadow)
+	columnFrame.fontIconCDX = (fontOtherAvailable and fontOpts.fontIconCDX) or 0
+	columnFrame.fontIconCDY = (fontOtherAvailable and fontOpts.fontIconCDY) or 0
+
+	columnFrame.fontIconTopSize = (not fontOtherAvailable and fontOpts.fontSize) or (fontOtherAvailable and fontOpts.fontIconTopSize) or defOpt.fontSize
+	columnFrame.fontIconTopName = (not fontOtherAvailable and fontOpts.fontName) or (fontOtherAvailable and fontOpts.fontIconTopName) or defOpt.fontName
+	columnFrame.fontIconTopOutline = (not fontOtherAvailable and fontOpts.fontOutline) or (fontOtherAvailable and fontOpts.fontIconTopOutline)
+	columnFrame.fontIconTopShadow = (not fontOtherAvailable and fontOpts.fontShadow) or (fontOtherAvailable and fontOpts.fontIconTopShadow)
+
+	columnFrame.fontIconMidSize = (not fontOtherAvailable and fontOpts.fontSize) or (fontOtherAvailable and fontOpts.fontIconMidSize) or defOpt.fontSize
+	columnFrame.fontIconMidName = (not fontOtherAvailable and fontOpts.fontName) or (fontOtherAvailable and fontOpts.fontIconMidName) or defOpt.fontName
+	columnFrame.fontIconMidOutline = (not fontOtherAvailable and fontOpts.fontOutline) or (fontOtherAvailable and fontOpts.fontIconMidOutline)
+	columnFrame.fontIconMidShadow = (not fontOtherAvailable and fontOpts.fontShadow) or (fontOtherAvailable and fontOpts.fontIconMidShadow)
+
+	columnFrame.fontIconBotSize = (not fontOtherAvailable and fontOpts.fontSize) or (fontOtherAvailable and fontOpts.fontIconBotSize) or defOpt.fontSize
+	columnFrame.fontIconBotName = (not fontOtherAvailable and fontOpts.fontName) or (fontOtherAvailable and fontOpts.fontIconBotName) or defOpt.fontName
+	columnFrame.fontIconBotOutline = (not fontOtherAvailable and fontOpts.fontOutline) or (fontOtherAvailable and fontOpts.fontIconBotOutline)
+	columnFrame.fontIconBotShadow = (not fontOtherAvailable and fontOpts.fontShadow) or (fontOtherAvailable and fontOpts.fontIconBotShadow)
 
 	columnFrame.fontCDSize = (not currColOpt.fontGeneral and currColOpt.fontCDSize) or (currColOpt.fontGeneral and generalOpt.fontCDSize) or defOpt.fontCDSize
 
@@ -10759,6 +11892,7 @@ function module:ColApplyStyle(columnFrame,currColOpt,generalOpt,defOpt,mainWidth
 		columnFrame.optionCooldown = true
 		columnFrame.optionHideSpark = true
 		columnFrame.iconSize = currColOpt.iconSize or defOpt.iconSize
+		columnFrame.iconHeight = columnFrame.iconSize
 		columnFrame.barWidth = columnFrame.iconSize + 0.001
 
 		columnFrame.textTemplateLeft = ""
@@ -10805,9 +11939,9 @@ function module:ColApplyStyle(columnFrame,currColOpt,generalOpt,defOpt,mainWidth
 				line = ((n-1) - inLine) / frameColumns
 				colLine:ClearAllPoints()
 				if frameAnchorRightToLeft then
-					colLine:SetPoint("BOTTOMRIGHT", -inLine*frameWidth, line*columnFrame.iconSize+line*frameBetweenLines)
+					colLine:SetPoint("BOTTOMRIGHT", -inLine*frameWidth, line*columnFrame.iconHeight+line*frameBetweenLines)
 				else
-					colLine:SetPoint("BOTTOMLEFT", inLine*frameWidth, line*columnFrame.iconSize+line*frameBetweenLines)
+					colLine:SetPoint("BOTTOMLEFT", inLine*frameWidth, line*columnFrame.iconHeight+line*frameBetweenLines)
 				end
 				colLine.ATFanchored = nil
 			else
@@ -10815,9 +11949,9 @@ function module:ColApplyStyle(columnFrame,currColOpt,generalOpt,defOpt,mainWidth
 				line = ExRT.F.Round( ((n-1) - inLine) / frameColumns )
 				colLine:ClearAllPoints()
 				if frameAnchorRightToLeft then
-					colLine:SetPoint("TOPRIGHT", -inLine*frameWidth, -line*columnFrame.iconSize-line*frameBetweenLines)
+					colLine:SetPoint("TOPRIGHT", -inLine*frameWidth, -line*columnFrame.iconHeight-line*frameBetweenLines)
 				else
-					colLine:SetPoint("TOPLEFT", inLine*frameWidth, -line*columnFrame.iconSize-line*frameBetweenLines)
+					colLine:SetPoint("TOPLEFT", inLine*frameWidth, -line*columnFrame.iconHeight-line*frameBetweenLines)
 				end
 				colLine.ATFanchored = nil
 			end
@@ -11014,211 +12148,219 @@ if ExRT.isLK then
 
 	module.db.AllSpells = {
 
-		{29166,	"DRUID,UTIL",	1,	{29166,	180,	20}},
-		{20748,	"DRUID,RES,UTIL",	3,	{20748,	600,	0}},
-		{6795,	"DRUID,TAUNT",	1,	nil,	nil,	{6795,	8,	0},	nil},
-		{740,	"DRUID,HEAL,RAID",	3,	{740,	480,	8}},
-		{5209,	"DRUID,TAUNT",	1,	nil,	nil,	{5209,	180,	6},	nil},
-		{17116,	"DRUID,UTIL",	1,	nil,	nil,	nil,	{17116,	180,	0}},
-		{22812,	"DRUID,DEF,DEFTANK",	1,	{22812,	60,	12}},
-		{5229,	"DRUID,DEF",	1,	nil,	nil,	{5229,	60,	10},	nil},
-		{50334,	"DRUID,DPS",	3,	nil,	nil,	{50334,	180,	15},	nil},
-		{61336,	"DRUID,DEF,DEFTANK",	3,	nil,	nil,	{61336,	180,	12},	nil},
-		{53201,	"DRUID,DPS",	3,	nil,	{53201,	90,	10},	nil,	nil},
-		{33831,	"DRUID,DPS",	1,	nil,	{33831,	180,	30},	nil,	nil},
-		{22842,	"DRUID,DEF",	1,	nil,	nil,	{22842,	180,	10},	nil},
-		{18562,	"DRUID,HEAL,HEALUTIL",	1,	nil,	nil,	nil,	{18562,	15,	0}},
-		{1850,	"DRUID,MOVE",	1,	nil,	nil,	{1850,	180,	15},	nil},
-		{16689,	"DRUID,UTIL,CC",	1,	nil,	{16689,	60,	45},	nil,	nil},
-		{16979,	"DRUID,UTIL",	1,	nil,	nil,	{16979,	15,	0},	nil},
-		{49376,	"DRUID,UTIL",	1,	nil,	nil,	{49376,	30,	0},	nil},
-		{22570,	"DRUID,CC",	1,	nil,	nil,	{22570,	10,	5},	nil},
+		{29166,	"DRUID",	1,	{29166,	180,	20}},
+		{20748,	"DRUID",	3,	{20748,	600,	0}},
+		{6795,	"DRUID",	1,	{6795,	8,	0}},
+		{740,	"DRUID",	3,	{740,	480,	8}},
+		{5209,	"DRUID",	1,	{5209,	180,	6}},
+		{17116,	"DRUID",	1,	nil,	nil,	nil,	{17116,	180,	0}},
+		{22812,	"DRUID",	1,	{22812,	60,	12}},
+		{5229,	"DRUID",	1,	{5229,	60,	10}},
+		{50334,	"DRUID",	3,	nil,	nil,	{50334,	180,	15},	nil},
+		{61336,	"DRUID",	3,	nil,	nil,	{61336,	180,	12},	nil},
+		{53201,	"DRUID",	3,	nil,	{53201,	90,	10},	nil,	nil},
+		{33831,	"DRUID",	1,	nil,	{33831,	180,	30},	nil,	nil},
+		{22842,	"DRUID",	1,	{22842,	180,	10}},
+		{18562,	"DRUID",	1,	nil,	nil,	nil,	{18562,	15,	0}},
+		{1850,	"DRUID",	1,	{1850,	180,	15}},
+		{16689,	"DRUID",	1,	nil,	{16689,	60,	45},	nil,	nil},
+		{16979,	"DRUID",	1,	nil,	nil,	{16979,	15,	0},	nil},
+		{49376,	"DRUID",	1,	nil,	nil,	{49376,	30,	0},	nil},
+		{22570,	"DRUID",	1,	{22570,	10,	5}},
+		{5217,	"DRUID",	1,	{5217,	30,	6}},
+		{50516,	"DRUID",	1,	nil,	{50516,	20,	6},	nil,	nil},
+		{5211,	"DRUID",	1,	{5211,	60,	5}},
 
 
-		{355,	"WARRIOR,TAUNT",	1,	nil,	nil,	nil,	{355,	8,	0}},
-		{12975,	"WARRIOR,DEF",	1,	nil,	nil,	nil,	{12975,	180,	20}},
-		{871,	"WARRIOR,DEF,DEFTANK",	3,	nil,	nil,	nil,	{871,	300,	12}},
-		{1161,	"WARRIOR,TAUNT",	1,	{1161,	180,	6}},
-		{12809,	"WARRIOR,CC",	1,	nil,	nil,	nil,	{12809,	30,	5}},
-		{676,	"WARRIOR,UTIL",	1,	{676,	60,	10}},
-		{55694,	"WARRIOR,DEF",	1,	nil,	nil,	{55694,	180,	10},	nil},
-		{1719,	"WARRIOR,DPS",	3,	{1719,	300,	12}},
-		{46924,	"WARRIOR,DPS",	3,	nil,	{46924,	90,	6},	nil,	nil},
-		{20252,	"WARRIOR,UTIL",	1,	nil,	nil,	{20252,	30,	0},	nil},
-		{3411,	"WARRIOR,UTIL",	1,	nil,	nil,	nil,	{3411,	30,	0}},
-		{23920,	"WARRIOR,DEF",	1,	{23920,	10,	5}},
-		{2565,	"WARRIOR,DEFTANK",	1,	nil,	nil,	nil,	{2565,	60,	10}},
-		{5246,	"WARRIOR,CC,AOECC",	1,	{5246,	120,	8}},
-		{18499,	"WARRIOR,DEF,UTIL",	1,	{18499,	30,	10}},
-		{6552,	"WARRIOR,KICK",	1,	nil,	nil,	{6552,	10,	0},	nil},
-		{72,	"WARRIOR,KICK",	1,	nil,	nil,	nil,	{72,	12,	0}},
-		{64382,	"WARRIOR,UTIL,DPS",	1,	{64382,	300,	0}},
-		{12292,	"WARRIOR,DPS",	3,	nil,	nil,	{12292,	180,	30},	nil},
-		{12328,	"WARRIOR,DPS",	1,	nil,	{12328,	30,	10},	nil,	nil},
-		{2687,	"WARRIOR,UTIL",	1,	{2687,	60,	10}},
+		{355,	"WARRIOR",	1,	{355,	8,	0}},
+		{12975,	"WARRIOR",	1,	nil,	nil,	nil,	{12975,	180,	20}},
+		{871,	"WARRIOR",	3,	{871,	300,	12}},
+		{1161,	"WARRIOR",	1,	{1161,	180,	6}},
+		{12809,	"WARRIOR",	1,	nil,	nil,	nil,	{12809,	30,	5}},
+		{676,	"WARRIOR",	1,	{676,	60,	10}},
+		{55694,	"WARRIOR",	1,	{55694,	180,	10}},
+		{1719,	"WARRIOR",	3,	{1719,	300,	12}},
+		{46924,	"WARRIOR",	3,	nil,	{46924,	90,	6},	nil,	nil},
+		{20252,	"WARRIOR",	1,	{20252,	30,	0}},
+		{3411,	"WARRIOR",	1,	{3411,	30,	0}},
+		{23920,	"WARRIOR",	1,	{23920,	10,	5}},
+		{2565,	"WARRIOR",	1,	{2565,	60,	10}},
+		{5246,	"WARRIOR",	1,	{5246,	120,	8}},
+		{18499,	"WARRIOR",	1,	{18499,	30,	10}},
+		{6552,	"WARRIOR",	1,	{6552,	10,	0}},
+		{72,	"WARRIOR",	1,	{72,	12,	0}},
+		{64382,	"WARRIOR",	1,	{64382,	300,	0}},
+		{12292,	"WARRIOR",	3,	nil,	nil,	{12292,	180,	30},	nil},
+		{12328,	"WARRIOR",	1,	nil,	{12328,	30,	10},	nil,	nil},
+		{2687,	"WARRIOR",	1,	{2687,	60,	10}},
+		{20230,	"WARRIOR",	3,	{20230,	1800,	12}},
+		{60970,	"WARRIOR",	1,	nil,	nil,	{60970,	90,	0},	nil},
+		{46968,	"WARRIOR",	3,	nil,	nil,	nil,	{46968,	20,	4}},
 
 
-		{11958,	"MAGE,UTIL",	1,	nil,	nil,	nil,	{11958,	480,	0}},
-		{12472,	"MAGE,DPS",	3,	nil,	nil,	nil,	{12472,	180,	20}},
-		{45438,	"MAGE,IMMUNITY",	3,	{45438,	300,	10}},
-		{55342,	"MAGE,DPS",	1,	{55342,	180,	30}},
-		{12051,	"MAGE,UTIL",	1,	{12051,	240,	8}},
-		{2139,	"MAGE,KICK",	1,	{2139,	24,	8}},
-		{1953,	"MAGE,UTIL,MOVE",	1,	{1953,	15,	0}},
-		{66,	"MAGE,UTIL",	1,	{66,	180,	18}},
-		{31687,	"MAGE,DPS",	1,	nil,	nil,	nil,	{31687,	180,	45}},
-		{12042,	"MAGE,DPS",	3,	nil,	{12042,	120,	15},	nil,	nil},
-		{12043,	"MAGE,DPS",	1,	nil,	{12043,	120,	10},	nil,	nil},
-		{122,	"MAGE,CC",	1,	{122,	25,	8}},
-		{11129,	"MAGE,DPS",	3,	nil,	nil,	{11129,	180,	0},	nil},
-		{31661,	"MAGE,CC,AOECC",	1,	nil,	nil,	{31661,	20,	5},	nil},
-		{11426,	"MAGE,DEF",	1,	nil,	nil,	nil,	{11426,	30,	60}},
+		{11958,	"MAGE",	1,	{11958,	480,	0}},
+		{12472,	"MAGE",	3,	nil,	nil,	nil,	{12472,	180,	20}},
+		{45438,	"MAGE",	3,	{45438,	300,	10}},
+		{55342,	"MAGE",	1,	{55342,	180,	30}},
+		{12051,	"MAGE",	1,	{12051,	240,	8}},
+		{2139,	"MAGE",	1,	{2139,	24,	8}},
+		{1953,	"MAGE",	1,	{1953,	15,	0}},
+		{66,	"MAGE",	1,	{66,	180,	18}},
+		{31687,	"MAGE",	1,	nil,	nil,	nil,	{31687,	180,	45}},
+		{12042,	"MAGE",	3,	nil,	{12042,	120,	15},	nil,	nil},
+		{12043,	"MAGE",	1,	nil,	{12043,	120,	10},	nil,	nil},
+		{122,	"MAGE",	1,	{122,	25,	8}},
+		{11129,	"MAGE",	3,	nil,	nil,	{11129,	180,	0},	nil},
+		{31661,	"MAGE",	1,	nil,	nil,	{31661,	20,	5},	nil},
+		{11426,	"MAGE",	1,	nil,	nil,	nil,	{11426,	30,	60}},
+		{44572,	"MAGE",	1,	nil,	nil,	nil,	{44572,	30,	5}},
 
 
-		{642,	"PALADIN,IMMUNITY,DEFTANK",	3,	{642,	300,	12}},
-		{10310,	"PALADIN,HEAL,DEF",	3,	{10310,	1200,	0}},
-		{19752,	"PALADIN,UTIL",	3,	{19752,	600,	180}},
-		{31884,	"PALADIN,DPS",	3,	{31884,	180,	20}},
-		{10278,	"PALADIN,DEF,DEFTAR",	1,	{10278,	300,	10}},
-		{1044,	"PALADIN,UTIL",	1,	{1044,	25,	6}},
-		{1038,	"PALADIN,UTIL",	1,	{1038,	120,	10}},
-		{6940,	"PALADIN,DEF,DEFTAR",	1,	{6940,	120,	12}},
-		{62124,	"PALADIN,TAUNT",	1,	nil,	nil,	{62124,	8,	0},	nil},
-		{64205,	"PALADIN,DEF,RAID",	3,	nil,	nil,	{64205,	120,	10},	nil},
-		{31821,	"PALADIN,DEF,RAID",	1,	nil,	{31821,	120,	6},	nil,	nil},
-		{20066,	"PALADIN,CC",	1,	nil,	nil,	nil,	{20066,	60,	60}},
-		{10308,	"PALADIN,CC",	1,	{10308,	60,	6}},
-		{498,	"PALADIN,DEF",	1,	{498,	60,	12}},
-		{31842,	"PALADIN,HEAL",	1,	nil,	{31842,	180,	15},	nil,	nil},
-		{54428,	"PALADIN,UTIL",	1,	{54428,	60,	15}},
-		{20216,	"PALADIN,HEAL",	1,	nil,	{20216,	120,	10},	nil,	nil},
-		{66233,	"PALADIN,DEFTANK,DEF",	3,	nil,	nil,	{66233,	120,	10},	nil},
-		{31789,	"PALADIN,TAUNT",	1,	nil,	nil,	{31789,	8,	0},	nil},
-		{31935,	"PALADIN,KICK,DPS",	1,	nil,	nil,	{31935,	30,	0},	nil},
-		{2812,	"PALADIN,DPS",	1,	{2812,	30,	0}},
-		{53595,	"PALADIN,DEFTANK,DPS",	1,	nil,	nil,	{53595,	6,	0},	nil},
-		{24275,	"PALADIN,DPS",	1,	{24275,	6,	0}},
+		{642,	"PALADIN",	3,	{642,	300,	12}},
+		{10310,	"PALADIN",	3,	{10310,	1200,	0}},
+		{19752,	"PALADIN",	3,	{19752,	600,	180}},
+		{31884,	"PALADIN",	3,	{31884,	180,	20}},
+		{10278,	"PALADIN",	1,	{10278,	300,	10}},
+		{1044,	"PALADIN",	1,	{1044,	25,	6}},
+		{1038,	"PALADIN",	1,	{1038,	120,	10}},
+		{6940,	"PALADIN",	1,	{6940,	120,	12}},
+		{62124,	"PALADIN",	1,	{62124,	8,	0}},
+		{64205,	"PALADIN",	3,	nil,	nil,	{64205,	120,	10}},
+		{31821,	"PALADIN",	1,	nil,	{31821,	120,	6}},
+		{20066,	"PALADIN",	1,	nil,	nil,	nil,	{20066,	60,	60}},
+		{10308,	"PALADIN",	1,	{10308,	60,	6}},
+		{498,	"PALADIN",	1,	{498,	60,	12}},
+		{31842,	"PALADIN",	1,	nil,	{31842,	180,	15},	nil,	nil},
+		{54428,	"PALADIN",	1,	{54428,	60,	15}},
+		{20216,	"PALADIN",	1,	nil,	{20216,	120,	10},	nil,	nil},
+		{66233,	"PALADIN",	3,	nil,	nil,	{66233,	120,	10},	nil},
+		{31789,	"PALADIN",	1,	{31789,	8,	0}},
+		{31935,	"PALADIN",	1,	nil,	nil,	{31935,	30,	0},	nil},
+		{2812,	"PALADIN",	1,	{2812,	30,	0}},
+		{24275,	"PALADIN",	1,	{24275,	6,	0}},
 
 
-		{16190,	"SHAMAN,HEAL,RAID",	3,	nil,	nil,	nil,	{16190,	300,	12}},
-		{32182,	"SHAMAN,DPS,RAID",	3,	{32182,	300,	40},	specialCheck=function() if UnitFactionGroup('player')=="Alliance" then return true end end},
-		{2825,	"SHAMAN,DPS,RAID",	3,	{2825,	300,	40},	specialCheck=function() if UnitFactionGroup('player')=="Horde" then return true end end},
-		{20608,	"SHAMAN,RES",	1,	{21169,	1800,	0}},
-		{2894,	"SHAMAN,DPS,UTIL",	1,	{2894,	600,	120}},
-		{2062,	"SHAMAN,UTIL",	1,	{2062,	600,	120}},
-		{8177,	"SHAMAN,DEF",	1,	{8177,	25,	15}},
-		{51490,	"SHAMAN,DPS",	1,	nil,	{51490,	45,	0},	nil,	nil},
-		{16166,	"SHAMAN,DPS",	3,	nil,	{16166,	180,	15},	nil,	nil},
-		{30823,	"SHAMAN,DEF",	1,	nil,	nil,	{30823,	60,	15},	nil},
-		{55198,	"SHAMAN,HEAL",	1,	nil,	nil,	nil,	{55198,	180,	15}},
-		{51514,	"SHAMAN,CC",	1,	{51514,	45,	30}},
-		{16188,	"SHAMAN,UTIL",	1,	nil,	nil,	nil,	{16188,	180,	0}},
-		{57994,	"SHAMAN,KICK",	1,	{57994,	6,	0}},
-		{8983,	"SHAMAN,UTIL,CC",	1,	{8983,	30,	15}},
+		{16190,	"SHAMAN",	3,	nil,	nil,	nil,	{16190,	300,	12}},
+		{32182,	"SHAMAN",	3,	{32182,	300,	40},	specialCheck=function() if UnitFactionGroup('player')=="Alliance" then return true end end},
+		{2825,	"SHAMAN",	3,	{2825,	300,	40},	specialCheck=function() if UnitFactionGroup('player')=="Horde" then return true end end},
+		{20608,	"SHAMAN",	1,	{21169,	1800,	0}},
+		{2894,	"SHAMAN",	1,	{2894,	600,	120}},
+		{2062,	"SHAMAN",	1,	{2062,	600,	120}},
+		{8177,	"SHAMAN",	1,	{8177,	25,	15}},
+		{51490,	"SHAMAN",	1,	nil,	{51490,	45,	0},	nil,	nil},
+		{16166,	"SHAMAN",	3,	nil,	{16166,	180,	15},	nil,	nil},
+		{30823,	"SHAMAN",	1,	nil,	nil,	{30823,	60,	15},	nil},
+		{55198,	"SHAMAN",	1,	nil,	nil,	nil,	{55198,	180,	15}},
+		{51514,	"SHAMAN",	1,	{51514,	45,	30}},
+		{16188,	"SHAMAN",	1,	nil,	nil,	nil,	{16188,	180,	0}},
+		{57994,	"SHAMAN",	1,	{57994,	6,	0}},
+		{8983,	"SHAMAN",	1,	{8983,	30,	15}},
+		{51533,	"SHAMAN",	1,	nil,	nil,	{51533,	180,	30},	nil},
 
 
-		{20765,	"WARLOCK,RES,UTIL",	3,	{20765,	900,	0}},
-		{17928,	"WARLOCK,CC,AOECC",	1,	{17928,	120,	8}},
-		{30283,	"WARLOCK,CC,AOECC",	1,	nil,	nil,	nil,	{30283,	20,	2}},
-		{6229,	"WARLOCK,DEF",	1,	{6229,	30,	30}},
-		{29858,	"WARLOCK,UTIL",	1,	{29858,	180,	0}},
-		{18708,	"WARLOCK,UTIL",	1,	{18708,	180,	15}},
-		{47241,	"WARLOCK,DPS,DEF",	3,	nil,	nil,	{47241,	180,	30},	nil},
-		{47193,	"WARLOCK,DPS",	1,	nil,	nil,	{47193,	60,	0},	nil},
-		{18540,	"WARLOCK,DPS",	3,	{18540,	600,	45}},
-		{19647,	"WARLOCK,KICK",	1,	{19647,	24,	0}},
-		{6789,	"WARLOCK,CC",	1,	{6789,	120,	3}},
-		{1122,	"WARLOCK,DPS",	3,	{1122,	600,	60}},
-		{17877,	"WARLOCK,DPS",	1,	nil,	nil,	nil,	{17877,	15,	0}},
-		{6358,	"WARLOCK,CC",	1,	{6358,	0,	15}},
+		{20765,	"WARLOCK",	3,	{20765,	900,	0}},
+		{17928,	"WARLOCK",	1,	{17928,	120,	8}},
+		{30283,	"WARLOCK",	1,	nil,	nil,	nil,	{30283,	20,	2}},
+		{6229,	"WARLOCK",	1,	{6229,	30,	30}},
+		{29858,	"WARLOCK",	1,	{29858,	180,	0}},
+		{18708,	"WARLOCK",	1,	nil,	nil,	{18708,	180,	15}},
+		{47241,	"WARLOCK",	3,	nil,	nil,	{47241,	180,	30},	nil},
+		{47193,	"WARLOCK",	1,	nil,	nil,	{47193,	60,	0},	nil},
+		{18540,	"WARLOCK",	3,	{18540,	600,	45}},
+		{19647,	"WARLOCK",	1,	{19647,	24,	0},	nil,	nil,	nil},
+		{6789,	"WARLOCK",	1,	{6789,	120,	3}},
+		{1122,	"WARLOCK",	3,	{1122,	600,	60}},
+		{17877,	"WARLOCK",	1,	nil,	nil,	nil,	{17877,	15,	0}},
+		{6358,	"WARLOCK",	1,	{6358,	0,	15},	nil,	nil,	nil},
 
 
-		{19801,	"HUNTER,DISPEL",	1,	{19801,	8,	0}},
-		{34477,	"HUNTER,UTIL",	1,	{34477,	30,	0}},
-		{19577,	"HUNTER,CC",	1,	nil,	{19577,	60,	3},	nil,	nil},
-		{5384,	"HUNTER,UTIL",	1,	{5384,	30,	0}},
-		{19263,	"HUNTER,DEF,IMMUNITY",	3,	{19263,	120,	5}},
-		{781,	"HUNTER,UTIL,MOVE",	1,	{781,	25,	0}},
-		{3045,	"HUNTER,DPS",	3,	{3045,	300,	15}},
-		{34026,	"HUNTER,DPS",	1,	{34026,	60,	0}},
-		{60192,	"HUNTER,CC",	1,	nil,	nil,	nil,	{60192,	30,	10}},
-		{19574,	"HUNTER,DPS",	3,	nil,	{19574,	120,	18},	nil,	nil},
-		{13809,	"HUNTER,UTIL",	1,	{13809,	30,	30}},
-		{34600,	"HUNTER,UTIL",	1,	{34600,	30,	30}},
-		{1499,	"HUNTER,CC",	1,	{1499,	30,	10}},
-		{53271,	"HUNTER,UTIL",	1,	nil,	{53271,	60,	4}},
-		{23989,	"HUNTER,UTIL",	3,	nil,	nil,	{23989,	180,	0},	nil},
-		{13813,	"HUNTER,DPS",	1,	{13813,	30,	30}},
-		{13795,	"HUNTER,DPS",	1,	{13795,	30,	30}},
-		{1543,	"HUNTER,UTIL",	1,	{1543,	20,	0}},
-		{34490,	"HUNTER,KICK",	1,	nil,	nil,	{34490,	20,	3},	nil},
-		{19386,	"HUNTER,CC",	1,	nil,	nil,	nil,	{19386,	60,	30}},
-		{53351,	"HUNTER,DPS",	1,	{53351,	15,	0}},
-		{14327,	"HUNTER,CC",	1,	{14327,	30,	20}},
+		{19801,	"HUNTER",	1,	{19801,	8,	0}},
+		{34477,	"HUNTER",	1,	{34477,	30,	0}},
+		{19577,	"HUNTER",	1,	nil,	{19577,	60,	3},	nil,	nil},
+		{5384,	"HUNTER",	1,	{5384,	30,	0}},
+		{19263,	"HUNTER",	3,	{19263,	120,	5}},
+		{781,	"HUNTER",	1,	{781,	25,	0}},
+		{3045,	"HUNTER",	3,	{3045,	300,	15}},
+		{34026,	"HUNTER",	1,	{34026,	60,	0}},
+		{60192,	"HUNTER",	1,	nil,	nil,	nil,	{60192,	30,	10}},
+		{19574,	"HUNTER",	3,	nil,	{19574,	120,	18},	nil,	nil},
+		{13809,	"HUNTER",	1,	{13809,	30,	30}},
+		{34600,	"HUNTER",	1,	{34600,	30,	30}},
+		{1499,	"HUNTER",	1,	{1499,	30,	10}},
+		{53271,	"HUNTER",	1,	nil,	{53271,	60,	4}},
+		{23989,	"HUNTER",	3,	nil,	nil,	{23989,	180,	0},	nil},
+		{13813,	"HUNTER",	1,	{13813,	30,	30}},
+		{13795,	"HUNTER",	1,	{13795,	30,	30}},
+		{1543,	"HUNTER",	1,	{1543,	20,	0}},
+		{34490,	"HUNTER",	1,	nil,	nil,	{34490,	20,	3},	nil},
+		{19386,	"HUNTER",	1,	nil,	nil,	nil,	{19386,	60,	30}},
+		{53351,	"HUNTER",	1,	{53351,	15,	0}},
+		{14327,	"HUNTER",	1,	{14327,	30,	20}},
 
 
-		{64843,	"PRIEST,HEAL,RAID",	3,	{64843,	480,	8}},
-		{724,	"PRIEST,HEAL",	1,	nil,	nil,	{724,	180,	0},	nil},
-		{6346,	"PRIEST,UTIL",	1,	{6346,	180,	0}},
-		{10060,	"PRIEST,DPS",	3,	nil,	{10060,	120,	15},	nil,	nil},
-		{64901,	"PRIEST,HEAL,HEALUTIL",	1,	{64901,	360,	0}},
-		{47788,	"PRIEST,HEAL,DEFTAR",	3,	nil,	nil,	{47788,	180,	10},	nil},
-		{33206,	"PRIEST,DEF,DEFTAR",	3,	nil,	{33206,	180,	8},	nil,	nil},
-		{10890,	"PRIEST,CC,AOECC",	1,	{10890,	27,	8}},
-		{586,	"PRIEST,UTIL",	1,	{586,	30,	10}},
-		{47585,	"PRIEST,IMMUNITY,DEF",	3,	nil,	nil,	nil,	{47585,	180,	6}},
-		{64044,	"PRIEST,CC",	1,	nil,	nil,	nil,	{64044,	120,	3}},
-		{15487,	"PRIEST,KICK,CC",	1,	nil,	nil,	nil,	{15487,	45,	5}},
-		{14751,	"PRIEST,UTIL",	1,	nil,	{14751,	45,	0},	nil,	nil},
-		{34433,	"PRIEST,DPS,UTIL",	1,	{34433,	300,	15}},
-		{47540,	"PRIEST,HEAL,DPS",	1,	nil,	{47540,	8,	2},	nil,	nil},
-		{33076,	"PRIEST,HEAL",	1,	{33076,	10,	30}},
-		{34861,	"PRIEST,HEAL",	1,	nil,	nil,	{34861,	6,	0},	nil},
-		{32379,	"PRIEST,DPS",	1,	{32379,	12,	0}},
-		{605,	"PRIEST,CC",	1,	{605,	0,	60}},
+		{64843,	"PRIEST",	3,	{64843,	480,	8}},
+		{724,	"PRIEST",	1,	nil,	nil,	{724,	180,	0}},
+		{6346,	"PRIEST",	1,	{6346,	180,	0}},
+		{10060,	"PRIEST",	3,	nil,	{10060,	120,	15}},
+		{64901,	"PRIEST",	1,	{64901,	360,	0}},
+		{47788,	"PRIEST",	3,	nil,	nil,	{47788,	180,	10}},
+		{33206,	"PRIEST",	3,	nil,	{33206,	180,	8}},
+		{10890,	"PRIEST",	1,	{10890,	27,	8}},
+		{586,	"PRIEST",	1,	{586,	30,	10}},
+		{47585,	"PRIEST",	3,	nil,	nil,	nil,	{47585,	180,	6}},
+		{64044,	"PRIEST",	1,	nil,	nil,	nil,	{64044,	120,	3}},
+		{15487,	"PRIEST",	1,	nil,	nil,	nil,	{15487,	45,	5}},
+		{14751,	"PRIEST",	1,	nil,	{14751,	45,	0},	nil,	nil},
+		{34433,	"PRIEST",	1,	{34433,	300,	15}},
+		{47540,	"PRIEST",	1,	nil,	{47540,	8,	2},	nil,	nil},
+		{33076,	"PRIEST",	1,	{33076,	10,	30}},
+		{34861,	"PRIEST",	1,	nil,	nil,	{34861,	6,	0},	nil},
+		{32379,	"PRIEST",	1,	{32379,	12,	0}},
+		{605,	"PRIEST",	1,	{605,	0,	60}},
 
 
-		{5277,	"ROGUE,DEF",	1,	{5277,	180,	15}},
-		{57934,	"ROGUE,UTIL",	1,	{57934,	30,	6}},
-		{1966,	"ROGUE,DEF",	1,	{1966,	10,	5}},
-		{2983,	"ROGUE,UTIL,MOVE",	1,	{2983,	180,	8}},
-		{13750,	"ROGUE,DPS",	3,	nil,	nil,	{13750,	180,	15},	nil},
-		{31224,	"ROGUE,IMMUNITY",	3,	{31224,	90,	5}},
-		{26889,	"ROGUE,UTIL",	1,	{26889,	180,	10}},
-		{51690,	"ROGUE,DPS",	3,	nil,	nil,	{51690,	120,	3},	nil},
-		{14185,	"ROGUE,UTIL",	3,	nil,	nil,	nil,	{14185,	480,	0}},
-		{51722,	"ROGUE,UTIL,KICK",	1,	{51722,	60,	10}},
-		{408,	"ROGUE,CC",	1,	{408,	20,	6}},
-		{2094,	"ROGUE,CC",	1,	{2094,	180,	10}},
-		{1776,	"ROGUE,CC",	1,	{1776,	10,	4}},
-		{1725,	"ROGUE,UTIL",	1,	{1725,	30,	10}},
-		{31230,	"ROGUE,IMMUNITY",	3,	nil,	nil,	nil,	{31230,	60,	3}},
-		{13877,	"ROGUE,DPS",	3,	nil,	nil,	{13877,	120,	15},	nil},
-		{36554,	"ROGUE,UTIL,MOVE",	1,	nil,	nil,	nil,	{36554,	30,	10}},
-		{14177,	"ROGUE,DPS",	3,	nil,	{14177,	180,	0},	nil,	nil},
+		{5277,	"ROGUE",	1,	{5277,	180,	15}},
+		{57934,	"ROGUE",	1,	{57934,	30,	6}},
+		{1966,	"ROGUE",	1,	{1966,	10,	5}},
+		{2983,	"ROGUE",	1,	{2983,	180,	8}},
+		{13750,	"ROGUE",	3,	nil,	nil,	{13750,	180,	15},	nil},
+		{31224,	"ROGUE",	3,	{31224,	90,	5}},
+		{26889,	"ROGUE",	1,	{26889,	180,	10}},
+		{51690,	"ROGUE",	3,	nil,	nil,	{51690,	120,	3},	nil},
+		{14185,	"ROGUE",	3,	nil,	nil,	nil,	{14185,	480,	0}},
+		{51722,	"ROGUE",	1,	{51722,	60,	10}},
+		{408,	"ROGUE",	1,	{408,	20,	6}},
+		{2094,	"ROGUE",	1,	{2094,	180,	10}},
+		{1776,	"ROGUE",	1,	{1776,	10,	4}},
+		{1725,	"ROGUE",	1,	{1725,	30,	10}},
+		{31230,	"ROGUE",	3,	nil,	nil,	nil,	{31230,	60,	3}},
+		{13877,	"ROGUE",	3,	nil,	nil,	{13877,	120,	15},	nil},
+		{36554,	"ROGUE",	1,	nil,	nil,	nil,	{36554,	30,	10}},
+		{14177,	"ROGUE",	3,	nil,	{14177,	180,	0},	nil,	nil},
 
 
-		{49576,	"DEATHKNIGHT,UTIL",	1,	{49576,	35,	0}},
-		{48707,	"DEATHKNIGHT,DEF",	1,	{48707,	45,	5}},
-		{42650,	"DEATHKNIGHT,DPS",	3,	{42650,	600,	0}},
-		{61999,	"DEATHKNIGHT,RES",	3,	{61999,	600,	0}},
-		{56222,	"DEATHKNIGHT,TAUNT",	1,	{56222,	8,	0}},
-		{51052,	"DEATHKNIGHT,DEF,RAID",	3,	nil,	nil,	nil,	{51052,	120,	10}},
-		{49028,	"DEATHKNIGHT,DPS",	3,	nil,	{49028,	90,	12},	nil,	nil},
-		{49016,	"DEATHKNIGHT,DPS",	1,	nil,	{49016,	180,	30},	nil,	nil},
-		{48792,	"DEATHKNIGHT,DEFTANK,DEF",	3,	{48792,	180,	12}},
-		{55233,	"DEATHKNIGHT,DEFTANK,DEF",	3,	nil,	{55233,	60,	10},	nil,	nil},
-		{49222,	"DEATHKNIGHT,DEF",	1,	nil,	nil,	nil,	{49222,	120,	300}},
-		{49206,	"DEATHKNIGHT,DPS",	3,	nil,	nil,	nil,	{49206,	180,	30}},
-		{47568,	"DEATHKNIGHT,DPS",	3,	{47568,	300,	0}},
-		{49203,	"DEATHKNIGHT,CC,AOECC",	1,	nil,	nil,	{49203,	60,	10},	nil},
-		{47476,	"DEATHKNIGHT,KICK,CC",	1,	{47476,	120,	5}},
-		{47528,	"DEATHKNIGHT,KICK",	1,	{47528,	10,	0}},
-		{49039,	"DEATHKNIGHT,UTIL,IMMUNITY",	1,	{49039,	120,	10}},
-		{51271,	"DEATHKNIGHT,DEF,DEFTANK",	3,	nil,	nil,	{51271,	60,	20},	nil},
-		{48982,	"DEATHKNIGHT,DEF,HEAL",	1,	nil,	{48982,	30,	0},	nil,	nil},
-		{45529,	"DEATHKNIGHT,UTIL",	1,	{45529,	60,	0}},
-		{46584,	"DEATHKNIGHT,DPS",	1,	{46584,	180,	60}},
+		{49576,	"DEATHKNIGHT",	1,	{49576,	35,	0}},
+		{48707,	"DEATHKNIGHT",	1,	{48707,	45,	5}},
+		{42650,	"DEATHKNIGHT",	3,	{42650,	600,	0}},
+		{61999,	"DEATHKNIGHT",	3,	{61999,	600,	0}},
+		{56222,	"DEATHKNIGHT",	1,	{56222,	8,	0}},
+		{51052,	"DEATHKNIGHT",	3,	nil,	nil,	nil,	{51052,	120,	10}},
+		{49028,	"DEATHKNIGHT",	3,	nil,	{49028,	90,	12}},
+		{49016,	"DEATHKNIGHT",	1,	nil,	{49016,	180,	30}},
+		{48792,	"DEATHKNIGHT",	3,	{48792,	180,	12}},
+		{55233,	"DEATHKNIGHT",	3,	nil,	{55233,	60,	10},	nil,	nil},
+		{49222,	"DEATHKNIGHT",	1,	nil,	nil,	nil,	{49222,	120,	300}},
+		{49206,	"DEATHKNIGHT",	3,	nil,	nil,	nil,	{49206,	180,	30}},
+		{47568,	"DEATHKNIGHT",	3,	{47568,	300,	0}},
+		{49203,	"DEATHKNIGHT",	1,	nil,	nil,	{49203,	60,	10},	nil},
+		{47476,	"DEATHKNIGHT",	1,	{47476,	120,	5}},
+		{47528,	"DEATHKNIGHT",	1,	{47528,	10,	0}},
+		{49039,	"DEATHKNIGHT",	1,	nil,	nil,	{49039,	120,	10}},
+		{51271,	"DEATHKNIGHT",	3,	nil,	nil,	{51271,	60,	20},	nil},
+		{48982,	"DEATHKNIGHT",	1,	nil,	{48982,	30,	0},	nil,	nil},
+		{45529,	"DEATHKNIGHT",	1,	{45529,	60,	0}},
+		{46584,	"DEATHKNIGHT",	1,	{46584,	180,	60}},
+		{49005,	"DEATHKNIGHT",	1,	nil,	{49005,	180,	20},	nil,	nil},
 	
 	}
 	module.db.spell_isTalent[GetSpellInfo(16190) or "spell:16190"] = true	module.db.spell_isTalent[16190] = true
@@ -11232,6 +12374,42 @@ if ExRT.isLK then
 	module.db.spell_isTalent[GetSpellInfo(49028) or "spell:49028"] = true	module.db.spell_isTalent[49028] = true
 	module.db.spell_isTalent[GetSpellInfo(49016) or "spell:49016"] = true	module.db.spell_isTalent[49016] = true
 	module.db.spell_isTalent[GetSpellInfo(31821) or "spell:31821"] = true	module.db.spell_isTalent[31821] = true
+	module.db.spell_isTalent[GetSpellInfo(66233) or "spell:66233"] = true	module.db.spell_isTalent[66233] = true
+
+	module.db.spell_autoTalent[64205] = 66
+	module.db.spell_autoTalent[31821] = 65
+	module.db.spell_autoTalent[16190] = 264
+	module.db.spell_autoTalent[51052] = 252
+	module.db.spell_autoTalent[33206] = 256
+	module.db.spell_autoTalent[10060] = 256
+	module.db.spell_autoTalent[47788] = 257
+	module.db.spell_autoTalent[11958] = 64
+	module.db.spell_autoTalent[49028] = 250
+	module.db.spell_autoTalent[49016] = 250
+	module.db.spell_autoTalent[724]   = 257
+
+	for _,sid in ipairs({
+		740,
+		31821,
+		64205,
+		16190,
+		32182,
+		2825,
+		20608,
+		20765,
+		34477,
+		64843,
+		10060,
+		47788,
+		33206,
+		57934,
+		61999,
+		51052,
+		49028,
+		49016,
+	}) do
+		module.db.spell_isRaidCD[sid] = true
+	end
 
 	module.db.spell_resetOtherSpells[GetSpellInfo(11958) or "spell:11958"] = {GetSpellInfo(45438)}
 

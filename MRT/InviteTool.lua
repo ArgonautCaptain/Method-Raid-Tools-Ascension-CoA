@@ -519,9 +519,11 @@ function module.options:Load()
 
 
 		local function QualityText(q, txt)
-			local hex = select(4, GetItemQualityColor(q)) or "ffffffff"
-			hex = tostring(hex):gsub("^\\124c", "")
-			return "|c" .. hex .. (txt or "") .. "|r"
+			local r, g, b = GetItemQualityColor(q)
+			r = r or 1
+			g = g or 1
+			b = b or 1
+			return format("|cff%02x%02x%02x%s|r", r*255, g*255, b*255, txt or "")
 		end
 		local LootThresholdDropDown = {
 			{2,QualityText(2, ITEM_QUALITY2_DESC)},

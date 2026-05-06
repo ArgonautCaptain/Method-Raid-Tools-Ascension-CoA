@@ -1222,7 +1222,7 @@ function _BW_End(encounterID)
 		))
 	end
 	if ExRT and ExRT.F and ExRT.F.ScheduleTimer then
-		ExRT.F.ScheduleTimer(collectgarbage, 2, "collect")
+		ExRT.F.ScheduleTimer(collectgarbage, 2, "step", 1024)
 	end
 end
 
@@ -2866,7 +2866,7 @@ function module:ClearData(isFirstLoad)
 	if isFirstLoad then
 		return
 	end
-	ExRT.F.ScheduleTimer(collectgarbage, 1, "collect")
+	ExRT.F.ScheduleTimer(collectgarbage, 1, "step", 1024)
 	if BWInterfaceFrame and BWInterfaceFrame:IsShown() then
 		BWInterfaceFrame:Hide()
 		BWInterfaceFrame:Show()

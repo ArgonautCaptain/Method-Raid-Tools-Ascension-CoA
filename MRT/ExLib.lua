@@ -1117,6 +1117,11 @@ do
 		self.Text:SetSize(0,20)
 		self.Text:SetPoint("RIGHT",-24,0)
 		self.Text:SetPoint("LEFT",4,0)
+		if self.Text.SetFont and _G.GameFontHighlightSmall and _G.GameFontHighlightSmall.GetFont then
+			local _fp,_fs,_ff = _G.GameFontHighlightSmall:GetFont()
+			if _fp then self.Text:SetFont(_fp, _fs or 10, _ff) end
+		end
+		if self.Text.SetTextColor then self.Text:SetTextColor(1,0.82,0,1) end
 
 		Templates:Border(self,0.24,0.25,0.30,1,1)
 		if self.HideBorders then
@@ -2855,6 +2860,9 @@ do
 	local function EditBoxEscapePressed(self)
 		self:ClearFocus()
 	end
+	local function EditBoxEnterPressed(self)
+		self:ClearFocus()
+	end
 	local function EditBoxOnHide(self)
 		if self.HasFocus and self:HasFocus() and self.ClearFocus then
 			self:ClearFocus()
@@ -3062,6 +3070,7 @@ do
 			self:SetNumeric(true)
 		end
 		self:SetScript("OnEscapePressed",EditBoxEscapePressed)
+		self:SetScript("OnEnterPressed",EditBoxEnterPressed)
 		self:HookScript("OnHide",EditBoxOnHide)
 
 		Mod(self,

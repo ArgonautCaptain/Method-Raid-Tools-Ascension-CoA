@@ -1,9 +1,13 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+v5.0.5-WotLK335a
+* Fixes
+* Raid Cooldown - Icon style new futures
+
 v5.0.4-WotLK335a
 * Fixes
-* Visual Note: Transition frol local .tga map to global .blp map for WotLK zones
+* Visual Note: Transition from local .tga map to global .blp map for WotLK zones
 
 v5.0.3-WotLK335a
 * Fixes
@@ -11,6 +15,7 @@ v5.0.3-WotLK335a
 
 v5.0.2-WotLK335a
 * Interface Options click reopens /mrt
+* UnifiedProfileManager profile bridge
 
 v5.0.1-WotLK335a
 * CallbackHandler conflict fix

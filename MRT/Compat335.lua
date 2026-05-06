@@ -1129,7 +1129,8 @@ if type(C_Map.GetMapInfo) ~= "function" then
     [141] = "The Eye of Eternity",
     [147] = "Ulduar",
     [172] = "Trial of the Crusader",
-    [248] = "Vault of Archavon",
+    [248] = "Onyxia's Lair (Classic)",
+    [99533] = "Naxxramas Vanilla",
     [186] = "Icecrown Citadel",
     [200] = "The Ruby Sanctum",
     [350] = "Karazhan",
@@ -1175,6 +1176,19 @@ if type(C_Map.GetMapInfo) ~= "function" then
   function C_Map.GetMapInfo(mapID)
     local name = WOTLK_MAP_NAMES[mapID]
     if name then return { name = name, mapID = mapID } end
+    return nil
+  end
+end
+do
+  local SYNTHETIC_MAP_NAMES = {
+    [99533] = "Naxxramas Vanilla",
+    [248]   = "Onyxia's Lair (Classic)",
+  }
+  local _origGetMapInfo = C_Map.GetMapInfo
+  function C_Map.GetMapInfo(mapID)
+    local name = SYNTHETIC_MAP_NAMES[mapID]
+    if name then return { name = name, mapID = mapID } end
+    if _origGetMapInfo then return _origGetMapInfo(mapID) end
     return nil
   end
 end

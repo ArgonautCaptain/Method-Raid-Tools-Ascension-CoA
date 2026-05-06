@@ -2657,7 +2657,7 @@ function module.options:Load()
 		end)
 	end
 
-	self.frameTypeGlow1 = ELib:Radio(self.tab.tabs[2],""):Point("LEFT",self.chkTimersGlow,425,0):OnClick(function()
+	self.frameTypeGlow1 = ELib:Radio(self.tab.tabs[2],""):Point("LEFT",self.chkTimersGlow,530,0):OnClick(function()
 		self.frameTypeGlow1:SetChecked(true)
 		self.frameTypeGlow2:SetChecked(false)
 		self.frameTypeGlow3:SetChecked(false)
@@ -2756,7 +2756,10 @@ function module.options:Load()
 	end)
 
 	profilesTab.choseSelectText = ELib:Text(profilesTab,L.ProfilesSelect,11):Size(605,200):Point(335,-75+12):Top()
-	profilesTab.choseSelectDropDown = ELib:DropDown(profilesTab,220,10):Point(330,-75):Size(235):SetText(LFG_LIST_SELECT)
+	profilesTab.choseSelectDropDown = ELib:DropDown(profilesTab,220,10):Point(330,-75):Size(235):SetText(GetCurrentProfileName())
+	profilesTab.choseSelectDropDown.UpdateText = function(self)
+		self:SetText(GetCurrentProfileName())
+	end
 
 	local function GetCurrentProfilesList(func)
 		local list = {
@@ -3227,6 +3230,9 @@ function module.options:Load()
 
 		self.tab.tabs[3].currentName:UpdateText()
 		self.tab.tabs[3]:UpdateAutoTexts()
+		if self.tab.tabs[3].choseSelectDropDown and self.tab.tabs[3].choseSelectDropDown.UpdateText then
+			self.tab.tabs[3].choseSelectDropDown:UpdateText()
+		end
 	end
 
 	self.isWide = true

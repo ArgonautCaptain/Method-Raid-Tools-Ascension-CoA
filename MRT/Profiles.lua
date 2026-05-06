@@ -144,6 +144,18 @@ function module.options:Load()
 	self.choseSelectText = ELib:Text(self,L.ProfilesSelect,11):Size(605,200):Point(335,-158):Top()
 	self.choseSelectDropDown = ELib:DropDown(self,220,10):Point(330,-170):Size(235):SetText(GetCurrentProfileName())
 
+	local function RefreshSelectedProfileText()
+		if module.options.choseSelectDropDown and module.options.choseSelectDropDown.SetText then
+			module.options.choseSelectDropDown:SetText(GetCurrentProfileName() or "")
+		end
+		if module.options.currentName and module.options.currentName.SetText then
+			module.options.currentName:SetText(GetCurrentProfileName() or "")
+		end
+	end
+	self:HookScript("OnShow", function()
+		RefreshSelectedProfileText()
+	end)
+
 	local function SelectProfile(_,name)
 		ELib:DropDownClose()
 		if name == VMRT.Profile then

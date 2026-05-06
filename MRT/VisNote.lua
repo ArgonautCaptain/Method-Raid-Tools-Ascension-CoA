@@ -900,14 +900,14 @@ function module.options:Load()
 				local widthCount, heightCount = md.cols, md.rows
 				local layerW, layerH = md.cols * md.tileW, md.rows * md.tileH
 
-				-- Auto-fit the 1024x768 layer into the visible main frame
-				-- (typically ~790x535) so nothing gets clipped on the left/top.
-				-- Caller-provided scale still wins when set.
+				-- Auto-fill the 1024x768 layer into the visible main frame
+				-- (typically ~790x535) so the map covers the whole frame
+				-- without empty padding. Caller-provided scale still wins
+				-- when set.
 				local mainW, mainH = self.main:GetSize()
 				if (mainW or 0) < 1 or (mainH or 0) < 1 then mainW, mainH = 790, 535 end
 				if not scale then
-					scale = math.min(mainW / layerW, mainH / layerH)
-					if scale > 1 then scale = 1 end
+					scale = math.max(mainW / layerW, mainH / layerH) * 1.06
 				end
 
 				local adjustX = mainW / 2 - layerW * (centerX or 0.5) * scale
@@ -959,11 +959,15 @@ function module.options:Load()
 
 	self.SelectMapDropDown = ELib:DropDown(self,260,11):Size(90):Point("TOPLEFT",615,-55):SetText(L.VisualNoteSelectMap.."...")
 	self.SelectMapDropDown.Lines = nil
+	local maps
 	local function SelectMapDropDown_SetValue(_,arg1,arg2)
 		ELib:DropDownClose()
 		SetBackground(unpack(arg1))
 		curr_map = arg2
 		curr_data[2] = arg2
+		if maps and maps[arg2] and maps[arg2][1] then
+			module.options.SelectMapDropDown:SetText(maps[arg2][1])
+		end
 	end
 	self.SelectMapDropDown.Text:SetFont(self.SelectMapDropDown.Text:GetFont(),8,"")
 
@@ -971,7 +975,7 @@ function module.options:Load()
 		return (C_Map.GetMapInfo(mapID or 0) or {}).name or ("Map ID "..mapID)
 	end
 
-	local maps = {
+	maps = {
 
 		{"None",{}},
 		{ICON_TAG_RAID_TARGET_SKULL3 or "white",{"Interface/Buttons/WHITE8X8"}},
@@ -1064,35 +1068,68 @@ function module.options:Load()
 	}
 	if ExRT.isLK then
 		ExRT.F.table_add(mapsSorted,{
-			-- One submenu per raid; raids with a single map are flat entries.
-			-- WotLK
+			1058,
 			{"Icecrown Citadel", 1031, 1032, 1033, 1034, 1035, 1036, 1037, 1038},
-			{"Ulduar", 1010, 1011, 1012, 1013, 1014, 1015},
 			{"Trial of the Crusader", 1051, 1052},
-			{"Naxxramas", 1001, 1002, 1003, 1004, 1005, 1006},
+			1050,
+			{"Ulduar", 1010, 1011, 1012, 1013, 1014, 1015},
 			{"The Eye of Eternity", 1053, 1054},
 			{"The Obsidian Sanctum", 1056, 1057},
-			1058, -- The Ruby Sanctum
-			1055, -- Vault of Archavon
-			1050, -- Onyxia's Lair
-			-- TBC
+			{"Naxxramas", 1001, 1002, 1003, 1004, 1005, 1006},
 			{"Sunwell Plateau", 1107, 1108},
+			1089,
 			{"Black Temple", 1093, 1094, 1095, 1096, 1097, 1098, 1099, 1100},
-			1092, -- Battle for Mount Hyjal
-			1091, -- Tempest Keep
-			1090, -- Serpentshrine Cavern
-			1088, -- Magtheridon's Lair
-			1087, -- Gruul's Lair
-			1089, -- Zul'Aman
+			1092,
+			1091,
+			1090,
+			1088,
+			1087,
 			{"Karazhan", 1070, 1071, 1072, 1073, 1074, 1075, 1076, 1077, 1078,
 			             1079, 1080, 1081, 1082, 1083, 1084, 1085, 1086},
-			-- Classic
-			1127, -- Temple of Ahn'Qiraj
+			1127,
+			1126,
+			1125,
 			{"Blackwing Lair", 1121, 1122, 1123, 1124},
-			1120, -- Molten Core
-			1125, -- Zul'Gurub
-			1126, -- Ruins of Ahn'Qiraj
+			1120,
 		})
+	end
+	local raidNameToMapID = {
+		["Icecrown Citadel"] = 631,
+		["Ulduar"] = 603,
+		["Trial of the Crusader"] = 649,
+		["Naxxramas"] = 533,
+		["The Eye of Eternity"] = 616,
+		["The Obsidian Sanctum"] = 615,
+		["Sunwell Plateau"] = 580,
+		["Black Temple"] = 564,
+		["Karazhan"] = 532,
+		["Blackwing Lair"] = 469,
+		["Ruby Sanctum"] = 724,
+		["Vault of Archavon"] = 624,
+		["Onyxia's Lair"] = 249,
+		["Battle for Mount Hyjal"] = 534,
+		["Tempest Keep"] = 550,
+		["Serpentshrine Cavern"] = 548,
+		["Magtheridon's Lair"] = 544,
+		["Gruul's Lair"] = 565,
+		["Zul'Aman"] = 568,
+		["Temple of Ahn'Qiraj"] = 531,
+		["Molten Core"] = 409,
+		["Zul'Gurub"] = 309,
+		["Ruins of Ahn'Qiraj"] = 509,
+	}
+	local function visMapNameToMapID(name)
+		if type(name) ~= "string" then return nil end
+		if raidNameToMapID[name] then return raidNameToMapID[name] end
+		local stripped = name:gsub(" Overview$",""):gsub(" %d+$","")
+		return raidNameToMapID[stripped]
+	end
+	local function visIconForName(name)
+		local mapID = visMapNameToMapID(name)
+		if mapID and ExRT.GDB.RaidIconByMapID then
+			return ExRT.GDB.RaidIconByMapID[mapID]
+		end
+		return nil
 	end
 	for i=1,#mapsSorted do
 		local p = mapsSorted[i]
@@ -1121,6 +1158,7 @@ function module.options:Load()
 			self.SelectMapDropDown.List[#self.SelectMapDropDown.List + 1] = {
 				text = p[1],
 				subMenu = subList,
+				icon = visIconForName(p[1]),
 			}
 		else
 			self.SelectMapDropDown.List[#self.SelectMapDropDown.List + 1] = {
@@ -1128,6 +1166,7 @@ function module.options:Load()
 				func = SelectMapDropDown_SetValue,
 				arg1 = maps[p][2],
 				arg2 = mapsSorted[i],
+				icon = visIconForName(maps[p][1]),
 			}
 		end
 	end
@@ -1138,6 +1177,9 @@ function module.options:Load()
 		else
 			SetBackground(unpack(maps[pos][2]))
 			curr_map = pos
+		end
+		if maps[curr_map] and maps[curr_map][1] then
+			module.options.SelectMapDropDown:SetText(maps[curr_map][1])
 		end
 	end
 	function self:SetDebugMap(...)
@@ -2975,6 +3017,18 @@ function module.options:Load()
 		end
 
 		module.options.NoteName:SetText(data.name or "")
+		do
+			local noteName = data.name
+			if not noteName or #noteName == 0 then
+				for i=1,#VMRT.VisNote.data do
+					if VMRT.VisNote.data[i] == data then
+						noteName = L.messageTab1.." "..i
+						break
+					end
+				end
+			end
+			module.options.SelectNote:SetText(noteName or (L.VisualNoteSelectNote.."..."))
+		end
 		local syncData = VMRT.VisNote.sync_data[data[1] or ""]
 		if syncData then
 			module.options.lastUpdate:SetText( L.NoteLastUpdate..": "..syncData.sender.." ("..date("%H:%M:%S %d.%m.%Y",syncData.time)..")" )
@@ -3098,6 +3152,16 @@ function module.options:Load()
 	self.NoteName = ELib:Edit(self):Size(200,20):Point(410,-5):LeftText(LFG_LIST_TITLE..":"):OnChange(function(self,isUser)
 		if not isUser then return end
 		curr_data.name = self:GetText()
+		local label = self:GetText()
+		if not label or #label == 0 then
+			for i=1,#VMRT.VisNote.data do
+				if VMRT.VisNote.data[i] == curr_data then
+					label = L.messageTab1.." "..i
+					break
+				end
+			end
+		end
+		module.options.SelectNote:SetText(label or (L.VisualNoteSelectNote.."..."))
 	end)
 	self.NoteName:SetMaxBytes(50)
 
@@ -3164,18 +3228,23 @@ function module.options:Load()
 		self:GetParent():Hide()
 	end)
 
-	frame:SetResizable(true)
+	if frame.SetResizable then frame:SetResizable(true) end
 	frame.buttonResize = CreateFrame("Frame",nil,frame)
 	frame.buttonResize:SetSize(15,15)
 	frame.buttonResize:SetPoint("BOTTOMRIGHT", 0, 0)
-	frame.buttonResize:SetFrameStrata("TOOLTIP")
+	frame.buttonResize:EnableMouse(true)
+	frame.buttonResize:SetFrameStrata("DIALOG")
+	frame.buttonResize:SetFrameLevel((frame:GetFrameLevel() or 1) + 50)
 	frame.buttonResize.back = frame.buttonResize:CreateTexture(nil, "BACKGROUND")
-	frame.buttonResize.back:SetTexture("Interface\\AddOns\\"..GlobalAddonName.."\\media\\Resize")
+	frame.buttonResize.back:SetTexture("Interface\\AddOns\\"..GlobalAddonName.."\\media\\Resize.tga")
 	frame.buttonResize.back:SetAllPoints()
 	frame.buttonResize.back:SetAlpha(.7)
 	frame.buttonResize:SetScript("OnMouseDown", function(self)
+		if frame.SetResizable then frame:SetResizable(true) end
 		frame.Prop = frame:GetWidth() / frame:GetHeight()
-		frame:StartSizing()
+		if frame.StartSizing then
+			frame:StartSizing("BOTTOMRIGHT")
+		end
 	end)
 	frame.buttonResize:SetScript("OnMouseUp", function(self)
 		frame:StopMovingOrSizing()

@@ -53,17 +53,15 @@ local function IsRaidMember(name)
 	if not name or name == "" then return false end
 	local short = name:match("^([^%-]+)") or name
 	if UnitName("player") == short then return true end
-	local n = GetNumGroupMembers and GetNumGroupMembers() or 0
-	if n == 0 then
-		return false
-	end
 	if IsInRaid and IsInRaid() then
+		local n = (GetNumRaidMembers and GetNumRaidMembers()) or (GetNumGroupMembers and GetNumGroupMembers()) or 0
 		for j = 1, n do
 			local rname = GetRaidRosterInfo(j)
 			if rname == short then return true end
 		end
 	else
-		for j = 1, n - 1 do
+		local n = (GetNumPartyMembers and GetNumPartyMembers()) or 0
+		for j = 1, n do
 			if UnitName("party"..j) == short then return true end
 		end
 	end
@@ -74,14 +72,15 @@ module.IsRaidMember = IsRaidMember
 local function PruneNonRaidMembers()
 	local roster = {}
 	if UnitName("player") then roster[UnitName("player")] = true end
-	local n = GetNumGroupMembers and GetNumGroupMembers() or 0
 	if IsInRaid and IsInRaid() then
+		local n = (GetNumRaidMembers and GetNumRaidMembers()) or (GetNumGroupMembers and GetNumGroupMembers()) or 0
 		for j = 1, n do
 			local rname = GetRaidRosterInfo(j)
 			if rname then roster[rname] = true end
 		end
 	else
-		for j = 1, n - 1 do
+		local n = (GetNumPartyMembers and GetNumPartyMembers()) or 0
+		for j = 1, n do
 			local pname = UnitName("party"..j)
 			if pname then roster[pname] = true end
 		end
@@ -226,13 +225,28 @@ local function InspectQueue()
 	if RaidInCombat() or (ExRT.isClassic and not ExRT.isLK) then
 		return
 	end
-	local n = GetNumGroupMembers() or 0
 	local timeAdded = GetTime()
-	for j=1,n do
-		local name,_,subgroup,_,_,_,_,online = GetRaidRosterInfo(j)
-		if name and not module.db.inspectDB[name] and online then
-			module.db.inspectQuery[name] = timeAdded
-			module.db.inspectNotItemsOnly[name] = true
+	if IsInRaid and IsInRaid() then
+		local n = (GetNumRaidMembers and GetNumRaidMembers()) or (GetNumGroupMembers and GetNumGroupMembers()) or 0
+		for j=1,n do
+			local name,_,subgroup,_,_,_,_,online = GetRaidRosterInfo(j)
+			if name and not module.db.inspectDB[name] and online then
+				module.db.inspectQuery[name] = timeAdded
+				module.db.inspectNotItemsOnly[name] = true
+			end
+		end
+	else
+		local n = (GetNumPartyMembers and GetNumPartyMembers()) or 0
+		if n > 0 then
+			for j=0,n do
+				local unit = (j == 0) and "player" or ("party"..j)
+				local name = UnitName(unit)
+				local online = j == 0 or UnitIsConnected(unit)
+				if name and not module.db.inspectDB[name] and online then
+					module.db.inspectQuery[name] = timeAdded
+					module.db.inspectNotItemsOnly[name] = true
+				end
+			end
 		end
 	end
 end
@@ -756,6 +770,14 @@ do
 
 			for spellID,specID in pairs(cooldownsModule.db.spell_autoTalent) do
 				if specID == data.spec then
+					cooldownsModule.db.session_gGUIDs[name] = {spellID,"autotalent"}
+				elseif cooldownsModule.db.spell_isRaidCD and cooldownsModule.db.spell_isRaidCD[spellID] then
+					-- Cross-spec raid CD: grant regardless of inspected spec so
+					-- e.g. a Holy Pala still gets Divine Sacrifice (Prot talent)
+					-- granted via autoTalent path. Visibility filter further
+					-- bypasses spell_isTalent gate for spell_isRaidCD anyway,
+					-- but granting here keeps session_gGUIDs consistent for
+					-- talent-cd-by-talent fixes and other downstream logic.
 					cooldownsModule.db.session_gGUIDs[name] = {spellID,"autotalent"}
 				end
 			end

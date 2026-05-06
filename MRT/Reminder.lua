@@ -2563,7 +2563,7 @@ function options:Load()
 
 	ExRT.lib:Text(self,"v."..addonVersion.." beta",10):Point("BOTTOMLEFT",self.title,"BOTTOMRIGHT",5,2)
 
-	local encountersList = ExRT.F.GetEncountersList(true,false,true)
+	local encountersList = ExRT.F.GetEncountersList(true,false,false)
 
 	local function GetEncounterSortIndex(id,unk)
 		for i=1,#encountersList do
@@ -3859,10 +3859,12 @@ function options:Load()
 											zoneMapID = mapID
 										end
 									end
+									local _rank = ExRT.GDB.WOTLK_RAID_RANK and ExRT.GDB.WOTLK_RAID_RANK[zoneKey]
+									local _displayText = (text and text ~= "") and text or ("Map ID "..tostring(zoneKey))
 									zEntry = {
-										text = text,
-										zoneImg = zoneImg,
-										prio = 40000+zoneKey+(zoneMapID and SORT_DUNG_LIST[ zoneMapID ] and SORT_DUNG_LIST[ zoneMapID ]*5000 or 0),
+										text = _displayText,
+										zoneImg = zoneImg or (ExRT.GDB.RaidIconByMapID and ExRT.GDB.RaidIconByMapID[zoneKey]),
+										prio = 40000+(_rank and (1000-_rank) or zoneKey)+(zoneMapID and SORT_DUNG_LIST[ zoneMapID ] and SORT_DUNG_LIST[ zoneMapID ]*5000 or 0),
 									}
 									_zoneEntryCache[zoneKey] = zEntry
 								end
@@ -3893,9 +3895,29 @@ function options:Load()
 						end
 						toadd2 = toadd2.subMenu
 
+						local DIFFICULTY_LABEL = options.timeLine._tlhDiffLabel
+						if not DIFFICULTY_LABEL then
+							DIFFICULTY_LABEL = {
+								[1]   = PLAYER_DIFFICULTY1 or "Normal",
+								[2]   = PLAYER_DIFFICULTY2 or "Heroic",
+								[3]   = "10 Player",
+								[4]   = "25 Player",
+								[9]   = "40 Player",
+								[14]  = PLAYER_DIFFICULTY1 or "Normal",
+								[15]  = PLAYER_DIFFICULTY2 or "Heroic",
+								[16]  = "Mythic",
+								[17]  = "Looking for Raid",
+								[175] = "10 Player",
+								[176] = "25 Player",
+								[193] = "10 Player Heroic",
+								[194] = "25 Player Heroic",
+							}
+							options.timeLine._tlhDiffLabel = DIFFICULTY_LABEL
+						end
 						for _,fightData in pairs(bossData) do
 							local data = fightData
-							local text = (GetDifficultyInfo and GetDifficultyInfo(diffID) or "diff ID: "..diffID)..(fightData.d and fightData.d[2] and format(" %d:%02d",fightData.d[2]/60,fightData.d[2]%60) or "")
+							local diffName = (GetDifficultyInfo and GetDifficultyInfo(diffID)) or DIFFICULTY_LABEL[diffID] or ("diff ID: "..diffID)
+							local text = diffName..(fightData.d and fightData.d[2] and format(" %d:%02d",fightData.d[2]/60,fightData.d[2]%60) or "")
 							local boss_list = {
 								text = text,
 								arg1 = bossID,
@@ -3976,10 +3998,12 @@ function options:Load()
 														zoneMapID = mapID
 													end
 												end
+												local _rank = ExRT.GDB.WOTLK_RAID_RANK and ExRT.GDB.WOTLK_RAID_RANK[zoneKey]
+												local _displayText = (text and text ~= "") and text or ("Map ID "..tostring(zoneKey))
 												zEntry = {
-													text = text,
-													zoneImg = zoneImg,
-													prio = 40000+zoneKey+(zoneMapID and SORT_DUNG_LIST[ zoneMapID ] and SORT_DUNG_LIST[ zoneMapID ]*5000 or 0),
+													text = _displayText,
+													zoneImg = zoneImg or (ExRT.GDB.RaidIconByMapID and ExRT.GDB.RaidIconByMapID[zoneKey]),
+													prio = 40000+(_rank and (1000-_rank) or zoneKey)+(zoneMapID and SORT_DUNG_LIST[ zoneMapID ] and SORT_DUNG_LIST[ zoneMapID ]*5000 or 0),
 												}
 												_zoneEntryCache[zoneKey] = zEntry
 											end
@@ -4138,7 +4162,8 @@ function options:Load()
 								end
 							end
 
-							toadd = {text = text, arg3 = zone[1], subMenu = {}, zonemd = zone, prio = 40000+zone[1]+(zoneMapID and SORT_DUNG_LIST[ zoneMapID ] and SORT_DUNG_LIST[ zoneMapID ]*5000 or 0), icon = zoneImg, isHidden = ExRT.isClassic and text and text:find("^Map ID")}
+							local _rank = ExRT.GDB.WOTLK_RAID_RANK and ExRT.GDB.WOTLK_RAID_RANK[zone[1]]
+							toadd = {text = text, arg3 = zone[1], subMenu = {}, zonemd = zone, prio = 40000+(_rank and (1000-_rank) or zone[1])+(zoneMapID and SORT_DUNG_LIST[ zoneMapID ] and SORT_DUNG_LIST[ zoneMapID ]*5000 or 0), icon = zoneImg or (ExRT.GDB.RaidIconByMapID and ExRT.GDB.RaidIconByMapID[zone[1]]), isHidden = ExRT.isClassic and text and text:find("^Map ID")}
 							zoneTracker[zone[1]] = toadd
 							if not isDung then
 								cacheEntries[#cacheEntries+1] = toadd
@@ -4418,19 +4443,15 @@ function options:Load()
 			end
 		end
 
-		if not (_dbg and _dbg.SkipPreUpdateGC) then
-			if _profile then
-				local _gc0 = debugprofilestop()
-				collectgarbage("collect")
-				local _gc1 = debugprofilestop()
-				if _gc1 - _gc0 > 5 then
-					print(string.format(
-						"|cff33ff99[Reminder PreUpdate]|r post-build collectgarbage = %.1fms",
-						_gc1 - _gc0
-					))
-				end
-			else
-				collectgarbage("collect")
+		if _profile and not (_dbg and _dbg.SkipPreUpdateGC) then
+			local _gc0 = debugprofilestop()
+			collectgarbage("collect")
+			local _gc1 = debugprofilestop()
+			if _gc1 - _gc0 > 5 then
+				print(string.format(
+					"|cff33ff99[Reminder PreUpdate]|r post-build collectgarbage = %.1fms",
+					_gc1 - _gc0
+				))
 			end
 		end
 
@@ -4500,6 +4521,7 @@ function options:Load()
 	end)
 
 	self.timeLineImportFromNoteFrame = ELib:Popup(" "):Size(600,400+200)
+	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then ExRT.F.AddonScaleApply(self.timeLineImportFromNoteFrame) end
 	ELib:Border(self.timeLineImportFromNoteFrame,1,.4,.4,.4,.9)
 
 	self.timeLineImportFromNoteFrame.Edit = ELib:MultiEdit(self.timeLineImportFromNoteFrame):Point("TOP",0,-15):Size(590,355)
@@ -5346,6 +5368,7 @@ function options:Load()
 
 
 	self.quickSetupFrame = ELib:Popup(" "):Size(510,405)
+	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then ExRT.F.AddonScaleApply(self.quickSetupFrame) end
 	ELib:Border(self.quickSetupFrame,1,.4,.4,.4,.9)
 
 	function options:AddSpellCDCheckTrigger(data)
@@ -5659,6 +5682,9 @@ function options:Load()
 		self.quickSetupFrame.spellDD.spell = arg1
 		if arg1 then
 			local spellName,_,spellTexture = GetSpellInfo(arg1)
+			if (not spellName or not spellTexture) and ExRT.F.GetSpellInfoSafe then
+				spellName,_,spellTexture = ExRT.F.GetSpellInfoSafe(arg1)
+			end
 			self.quickSetupFrame.spellDD:SetText( (spellTexture and "|T"..spellTexture..":20|t " or "")..(spellName or "spell:"..arg1) )
 
 			if spellName then
@@ -5694,6 +5720,7 @@ function options:Load()
 			text = L.ReminderRecent,
 			subMenu = {},
 		}
+		local pendingWarmups = {}
 		for i=1,#cd_module.db.AllSpells do
 			local line = cd_module.db.AllSpells[i]
 			local class = strsplit(",",line[2] or "")
@@ -5716,9 +5743,10 @@ function options:Load()
 					l = l.subMenu
 				end
 
-				local name = GetSpellName(line[1])
+				local rawName = GetSpellName(line[1])
 				local texture = GetSpellTexture(line[1])
-				name = name or "spell:"..line[1]
+				local name = rawName or "spell:"..line[1]
+				local needsWarmup = (not rawName or not texture) and line[1]
 
 				for j=4,8 do
 					if line[j] then
@@ -5746,12 +5774,21 @@ function options:Load()
 							specSubMenu = l
 						end
 
-						specSubMenu[#specSubMenu+1] = {
+						local item = {
 							text = (texture and "|T"..texture..":20|t " or "")..name,
 							arg1 = line[1],
 							arg2 = name,
 							func = self.quickSetupFrame.spellDD.SetValue,
 						}
+						specSubMenu[#specSubMenu+1] = item
+						if needsWarmup then
+							local list = pendingWarmups[needsWarmup]
+							if not list then
+								list = {}
+								pendingWarmups[needsWarmup] = list
+							end
+							list[#list+1] = item
+						end
 					end
 				end
 			end
@@ -5765,6 +5802,44 @@ function options:Load()
 				end
 				sort(List[i].subMenu,function(a,b) return a.arg2 < b.arg2 end)
 			end
+		end
+		self.quickSetupFrame.spellDD._pendingWarmups = pendingWarmups
+		local function drainPending(sidList)
+			if not next(pendingWarmups) then return false end
+			local changed = false
+			local toDrain = sidList
+			if not toDrain then
+				toDrain = {}
+				for sid in pairs(pendingWarmups) do
+					toDrain[#toDrain+1] = sid
+				end
+			end
+			for k=1,#toDrain do
+				local sid = toDrain[k]
+				if pendingWarmups[sid] then
+					if ExRT.F.WarmUpSpell then ExRT.F.WarmUpSpell(sid) end
+					local n = GetSpellName(sid)
+					local t = GetSpellTexture(sid)
+					local items = pendingWarmups[sid]
+					if (n or t) and items then
+						local newName = n or "spell:"..sid
+						local newText = (t and "|T"..t..":20|t " or "")..newName
+						for idx=1,#items do
+							items[idx].text = newText
+							if n then items[idx].arg2 = n end
+						end
+						changed = true
+					end
+					if (n and t) or (not n and not t) then
+						pendingWarmups[sid] = nil
+					end
+				end
+			end
+			return changed
+		end
+		self.quickSetupFrame.spellDD._drainPendingWarmups = drainPending
+		if next(pendingWarmups) and ExRT.F.WarmUpSpell then
+			drainPending()
 		end
 		List[#List+1] = {
 			text = L.ReminderBoss,
@@ -5781,6 +5856,9 @@ function options:Load()
 			func = self.quickSetupFrame.spellDD.SetValue,
 		}
 		function self.quickSetupFrame.spellDD:PreUpdate()
+			if self._drainPendingWarmups then
+				self._drainPendingWarmups()
+			end
 			for i=1,#self.List do
 				if self.List[i].text == L.ReminderBoss then
 					local subMenu = self.List[i].subMenu
@@ -5873,15 +5951,44 @@ function options:Load()
 	self.quickSetupFrame.msgEdit.colorButton:SetPoint("LEFT", self.quickSetupFrame.msgEdit, "RIGHT", 3, 0)
 	self.quickSetupFrame.msgEdit.colorButton:SetSize(24,24)
 	self.quickSetupFrame.msgEdit.colorButton:SetScript("OnClick",function(self)
-		if ColorPickerFrame.SetupColorPickerAndShow then
-			local info = {}
-			info.r, info.g, info.b = 1,1,1
-			if options.quickSetupFrame.msgEdit then
-				local at,rt,gt,bt = options.quickSetupFrame.msgEdit:GetText():match("|c(..)(..)(..)(..)")
-				if bt then
-					info.r, info.g, info.b = tonumber(rt,16)/255,tonumber(gt,16)/255,tonumber(bt,16)/255,tonumber(at,16)/255
+		local function applyColorCode(code)
+			local hlstart,hlend = options.quickSetupFrame.msgEdit:GetTextHighlight()
+			if hlstart == hlend then
+				if options.quickSetupFrame.msgEdit:GetText():find("||cff") then
+					options.quickSetupFrame.msgEdit:SetText( options.quickSetupFrame.msgEdit:GetText():gsub("||cff......","||cff"..code) )
+				else
+					options.quickSetupFrame.msgEdit:SetText( "||cff"..code..options.quickSetupFrame.msgEdit:GetText().."||r" )
 				end
+			else
+				local text = options.quickSetupFrame.msgEdit:GetText()
+				text = text:sub(1, hlend) .. "||r" .. text:sub(hlend+1)
+				text = text:sub(1, hlstart) .. "||cff"..code .. text:sub(hlstart+1)
+				options.quickSetupFrame.msgEdit:SetText( text )
 			end
+			options.quickSetupFrame.msgEdit:GetScript("OnTextChanged")(options.quickSetupFrame.msgEdit,true)
+		end
+		local r0, g0, b0 = 1, 1, 1
+		if options.quickSetupFrame.msgEdit then
+			local at,rt,gt,bt = options.quickSetupFrame.msgEdit:GetText():match("|c(..)(..)(..)(..)")
+			if bt then
+				r0, g0, b0 = tonumber(rt,16)/255, tonumber(gt,16)/255, tonumber(bt,16)/255
+			end
+		end
+		if not ColorPickerFrame.SetupColorPickerAndShow then
+			local nilFunc = ExRT.NULLfunc
+			local function changedCallback(restore)
+				local r,g,b = ColorPickerFrame:GetColorRGB()
+				local code = format("%02x%02x%02x",r*255,g*255,b*255)
+				applyColorCode(code)
+			end
+			ColorPickerFrame.func, ColorPickerFrame.cancelFunc, ColorPickerFrame.opacityFunc = nilFunc, nilFunc, nilFunc
+			ColorPickerFrame:SetColorRGB(r0, g0, b0)
+			ColorPickerFrame.opacityFunc = changedCallback
+			ColorPickerFrame.hasOpacity = false
+			ColorPickerFrame:Show()
+		else
+			local info = {}
+			info.r, info.g, info.b = r0, g0, b0
 			info.opacity = 1
 			info.hasOpacity = false
 			info.swatchFunc = function()
@@ -5889,20 +5996,7 @@ function options:Load()
 				if not MouseIsOver(btn) or IsMouseButtonDown() then return end
 				local r,g,b = ColorPickerFrame:GetColorRGB()
 				local code = format("%02x%02x%02x",r*255,g*255,b*255)
-				local hlstart,hlend = options.quickSetupFrame.msgEdit:GetTextHighlight()
-				if hlstart == hlend then
-					if options.quickSetupFrame.msgEdit:GetText():find("||cff") then
-						options.quickSetupFrame.msgEdit:SetText( options.quickSetupFrame.msgEdit:GetText():gsub("||cff......","||cff"..code) )
-					else
-						options.quickSetupFrame.msgEdit:SetText( "||cff"..code..options.quickSetupFrame.msgEdit:GetText().."||r" )
-					end
-				else
-					local text = options.quickSetupFrame.msgEdit:GetText()
-					text = text:sub(1, hlend) .. "||r" .. text:sub(hlend+1)
-					text = text:sub(1, hlstart) .. "||cff"..code .. text:sub(hlstart+1)
-					options.quickSetupFrame.msgEdit:SetText( text )
-				end
-				options.quickSetupFrame.msgEdit:GetScript("OnTextChanged")(options.quickSetupFrame.msgEdit,true)
+				applyColorCode(code)
 			end
 			info.cancelFunc = function()
 				local newR, newG, newB, newA = ColorPickerFrame:GetPreviousValues()
@@ -6444,7 +6538,22 @@ function options:Load()
 		local msg = data.msg or ""
 		if msg:find("^{spell:%d+}") then
 			local spell = tonumber( msg:match("^{spell:(%d+)}"),nil )
+			if spell and ExRT.F.WarmUpSpell then
+				ExRT.F.WarmUpSpell(spell)
+			end
 			local name,_,texture = GetSpellInfo(spell or 0)
+			if (not name or not texture) and ExRT.F.GetSpellInfoSafe and spell then
+				name,_,texture = ExRT.F.GetSpellInfoSafe(spell)
+			end
+			if (not name or not texture) and spell and GetSpellLink then
+				local link = GetSpellLink(spell)
+				if link then
+					name = name or link:match("%[(.-)%]")
+					if not texture and GetSpellTexture then
+						texture = GetSpellTexture(spell)
+					end
+				end
+			end
 			self.spellDD:SetText( (texture and "|T"..texture..":20|t " or "")..(name or "spell:"..spell) )
 			self.spellDD.spell = spell
 			msg = msg:gsub("{spell:%d+} *","",1)
@@ -7226,6 +7335,7 @@ function options:Load()
 
 
 	options.timeLine.customTimeLineDataFrame = ELib:Popup("Edit custom encounter"):Size(800,600):OnShow(function(self) self:Update() end,true)
+	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then ExRT.F.AddonScaleApply(options.timeLine.customTimeLineDataFrame) end
 	ELib:Border(options.timeLine.customTimeLineDataFrame,1,.4,.4,.4,.9)
 
 	options.timeLine.customTimeLineDataFrame.bossList = ELib:DropDown(options.timeLine.customTimeLineDataFrame,270,2):AddText("|cffffd100"..L.ReminderBoss..":"):Size(270):Point("TOPLEFT",100,-20)
@@ -7249,11 +7359,12 @@ function options:Load()
 			subMenu = dungSubMenu,
 			Lines = 20,
 		}
-		local encountersList = ExRT.F.GetEncountersList(true,false,true,false)
+		local encountersList = ExRT.F.GetEncountersList(true,false,false,false)
 		for i=1,#encountersList do
 			local instance = encountersList[i]
 			raidSubMenu[#raidSubMenu+1] = {
 				text = type(instance[1])=='string' and instance[1] or GetMapNameByID(instance[1]) or "???",
+				icon = type(instance[1])=='number' and ExRT.GDB.RaidIconByMapID and ExRT.GDB.RaidIconByMapID[instance[1]] or nil,
 				isTitle = true,
 			}
 			for j=2,#instance do
@@ -9664,6 +9775,7 @@ function options:Load()
 		local alertWindow = options.assign.customSpellWindow
 		if not alertWindow then
 			alertWindow = ExRT.lib:Popup():Size(500,90)
+			if ExRT and ExRT.F and ExRT.F.AddonScaleApply then ExRT.F.AddonScaleApply(alertWindow) end
 			options.assign.customSpellWindow = alertWindow
 			alertWindow:SetFrameStrata("FULLSCREEN_DIALOG")
 
@@ -10520,6 +10632,7 @@ function options:Load()
 	}
 
 	options.assign.frame.quick.rosteredit = ELib:Popup("Edit custom roster"):Size(600,600):OnShow(function(self) self:Update() end,true)
+	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then ExRT.F.AddonScaleApply(options.assign.frame.quick.rosteredit) end
 	ELib:Border(options.assign.frame.quick.rosteredit,1,.4,.4,.4,.9)
 
 	options.assign.frame.quick.rosteredit.frame = ELib:ScrollFrame(options.assign.frame.quick.rosteredit):Size(600,585):Height(585):AddHorizontal(true):Width(600):Point("TOP",0,-15)
@@ -10561,6 +10674,7 @@ function options:Load()
 	end)
 
 	options.assign.frame.quick.rosteredit.importWindow = ELib:Popup(" "):Size(600,400)
+	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then ExRT.F.AddonScaleApply(options.assign.frame.quick.rosteredit.importWindow) end
 	ELib:Border(options.assign.frame.quick.rosteredit.importWindow,1,.4,.4,.4,.9)
 
 	function options.assign.frame.quick.rosteredit.importWindow:DoImport(isErase)
@@ -10850,6 +10964,7 @@ function options:Load()
 
 
 	options.assign.frame.quick.edit = ELib:Popup("Edit spells groups"):Size(900,600):OnShow(function(self) self:Update() end,true)
+	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then ExRT.F.AddonScaleApply(options.assign.frame.quick.edit) end
 	ELib:Border(options.assign.frame.quick.edit,1,.4,.4,.4,.9)
 
 	options.assign.frame.quick.edit.frame = ELib:ScrollFrame(options.assign.frame.quick.edit):Size(900,585):Height(585):AddHorizontal(true):Width(600):Point("TOP",0,-15)
@@ -12231,10 +12346,10 @@ function options:Load()
 	function self.scrollList:ModButton(button,level)
 		if level == 1 then
 			local textObj = button:GetTextObj()
-			textObj:SetPoint("LEFT",5+22+3,0)
+			textObj:SetPoint("LEFT",5+44+3,0)
 
 			button.bossImg = button:CreateTexture(nil, "ARTWORK")
-			button.bossImg:SetSize(22,22)
+			button.bossImg:SetSize(44,22)
 			button.bossImg:SetPoint("LEFT",5,0)
 
 			button.dungImg = button:CreateTexture(nil, "ARTWORK")
@@ -12322,8 +12437,9 @@ function options:Load()
 			local resetBossImg,resetDungImg = true,true
 
 			local textObj = button:GetTextObj()
-			textObj:SetPoint("LEFT",5+22+3,0)
+			textObj:SetPoint("LEFT",5+44+3,0)
 			button.bossImg:SetPoint("LEFT",5,0)
+			button.bossImg:SetSize(44,22)
 
 			if data.bossID then
 				local localPath = ResolveBossImage(data.bossID)
@@ -12340,7 +12456,7 @@ function options:Load()
 					end
 				end
 				if data.isSubData then
-					textObj:SetPoint("LEFT",5+22+3+25,0)
+					textObj:SetPoint("LEFT",5+44+3+25,0)
 					button.bossImg:SetPoint("LEFT",5+25,0)
 				end
 			elseif data.zoneID then
@@ -12990,6 +13106,7 @@ function options:Load()
 	local SETUPFRAME_HEIGHT = 610
 
 	self.setupFrame = ELib:Popup(" "):Size(510,SETUPFRAME_HEIGHT)
+	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then ExRT.F.AddonScaleApply(self.setupFrame) end
 	ELib:Border(self.setupFrame,1,.4,.4,.4,.9)
 
 	self.setupFrame.decorationLine = ELib:DecorationLine(self.setupFrame,true,"BACKGROUND",1):Point("TOPLEFT",self.setupFrame,0,-16):Point("BOTTOMRIGHT",self.setupFrame,"TOPRIGHT",0,-36)
@@ -13301,6 +13418,7 @@ function options:Load()
 
 
 	self.setupFrame.formattingHelpFrame = ELib:Popup(L.ReminderFormatTipHeader):AddScroll():Size(600,600)
+	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then ExRT.F.AddonScaleApply(self.setupFrame.formattingHelpFrame) end
 	self.setupFrame.formattingHelpFrame:SetFrameStrata("FULLSCREEN")
 
 	self.setupFrame.msgEdit.help:SetScript("OnClick",function()
@@ -14244,6 +14362,7 @@ function options:Load()
 			local instance = encountersList[i]
 			List[#List+1] = {
 				text = type(instance[1])=='string' and instance[1] or GetMapNameByID(instance[1]) or "???",
+				icon = type(instance[1])=='number' and ExRT.GDB.RaidIconByMapID and ExRT.GDB.RaidIconByMapID[instance[1]] or nil,
 				isTitle = true,
 			}
 			for j=2,#instance do
@@ -18072,6 +18191,7 @@ function options:Load()
 
 
 	self.quickStartFrame = ELib:Popup(L.ReminderQuickStart):Size(750,750)
+	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then ExRT.F.AddonScaleApply(self.quickStartFrame) end
 
 	self.quickStartFrame.img1 = self.quickStartFrame:CreateTexture()
 	self.quickStartFrame.img1:SetPoint("TOPLEFT",10,-20)
@@ -24521,6 +24641,7 @@ do
 	local queue = {}
 
 	local frame = CreateFrame("Frame",nil,UIParent,BackdropTemplateMixin and "BackdropTemplate")
+	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then ExRT.F.AddonScaleApply(frame) end
 	module.popup = frame
 
 	function frame:NextQueue()

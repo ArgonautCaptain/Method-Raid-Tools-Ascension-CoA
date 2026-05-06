@@ -5,6 +5,18 @@ local ELib,L = ExRT.lib,ExRT.L
 
 local LibDeflate = LibStub:GetLibrary("LibDeflate")
 
+local AceCommCached
+local function getAceComm()
+	if AceCommCached then return AceCommCached end
+	if type(LibStub) ~= "table" or type(LibStub.GetLibrary) ~= "function" then return nil end
+	local ok, comm = pcall(LibStub.GetLibrary, LibStub, "AceComm-3.0", true)
+	if ok and type(comm) == "table" and type(comm.SendCommMessage) == "function" then
+		AceCommCached = comm
+		return comm
+	end
+	return nil
+end
+
 local IsEncounterInProgress = C_InstanceEncounter and C_InstanceEncounter.IsEncounterInProgress or IsEncounterInProgress
 
 module.db.responces = {}
@@ -14,6 +26,76 @@ module.db.lastReq2 = {}
 module.db.lastCheck = {}
 module.db.lastCheckName = {}
 local sync_db = {}
+
+local CHUNK_SIZE = 180
+local CHUNK_BUDGET = 10
+
+local nonTxFields = {
+	authorMode = true,
+	skipWagoUpdate = true,
+	ignoreWagoUpdate = true,
+	preferToUpdate = true,
+	information = {
+		saved = true,
+	},
+}
+
+local function stripNonTx(datum, fieldMap)
+	if type(datum) ~= "table" then return end
+	for k, v in pairs(fieldMap) do
+		if type(v) == "table" and type(datum[k]) == "table" then
+			stripNonTx(datum[k], v)
+		elseif v == true then
+			datum[k] = nil
+		end
+	end
+end
+
+local sharedChunkBufs = {}
+local function chunkBufsForSender(kind, sender)
+	if not sharedChunkBufs[kind] then sharedChunkBufs[kind] = {} end
+	if not sharedChunkBufs[kind][sender] then sharedChunkBufs[kind][sender] = {} end
+	return sharedChunkBufs[kind][sender]
+end
+local function chunkBufFor(kind, sender, streamID, total)
+	local senderBufs = chunkBufsForSender(kind, sender)
+	local buf = senderBufs[streamID]
+	if not buf then
+		buf = {chunks = {}, total = total, count = 0, ts = GetTime()}
+		senderBufs[streamID] = buf
+	end
+	return buf
+end
+local function chunkBufComplete(buf, idx, chunk)
+	if not buf or not chunk then return false end
+	if buf.chunks[idx] == nil then
+		buf.chunks[idx] = chunk
+		buf.count = buf.count + 1
+	end
+	return buf.count >= buf.total
+end
+local function chunkBufAssemble(buf)
+	local pieces = {}
+	for i=1,buf.total do pieces[i] = buf.chunks[i] or "" end
+	return table.concat(pieces)
+end
+local function chunkBufDrop(kind, sender, streamID)
+	if sharedChunkBufs[kind] and sharedChunkBufs[kind][sender] then
+		sharedChunkBufs[kind][sender][streamID] = nil
+	end
+end
+local function chunkBufGC(kind, maxAge)
+	local now = GetTime()
+	local kindBufs = sharedChunkBufs[kind]
+	if not kindBufs then return end
+	for sender,senderBufs in pairs(kindBufs) do
+		for streamID,buf in pairs(senderBufs) do
+			if not buf.ts or (now - buf.ts) > maxAge then
+				senderBufs[streamID] = nil
+			end
+		end
+	end
+end
 
 function module.options:Load()
 	self:CreateTilte()
@@ -228,10 +310,12 @@ function module.options:Load()
 		line.share = CreateFrame("Button",nil,line)
 		line.share:SetPoint("LEFT",line.name,"RIGHT",0,0)
 		line.share:SetSize(LINE_HEIGHT,LINE_HEIGHT)
+		line.share:SetFrameLevel((line:GetFrameLevel() or 0)+5)
+		line.share:SetHitRectInsets(-2,-2,-2,-2)
 		line.share:SetScript("OnEnter",LineName_ShareButton_OnEnter)
 		line.share:SetScript("OnLeave",LineName_ShareButton_OnLeave)
 		line.share:SetScript("OnClick",LineName_ShareButton_OnClick)
-		line.share:RegisterForClicks("LeftButtonUp","RightButtonUp")
+		line.share:RegisterForClicks("LeftButtonDown","RightButtonDown")
 
 		line.share.background = line.share:CreateTexture(nil,"ARTWORK")
 		line.share.background:SetPoint("CENTER")
@@ -578,13 +662,10 @@ function module.options:Load()
 		do
 			local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
 			if selfName and WeakAurasSaved then
-				module.db.responces[selfName] = module.db.responces[selfName] or {}
-				module.db.responces[selfName].noWA = nil
+				module.db.responces2[selfName] = module.db.responces2[selfName] or {}
+				module.db.responces2[selfName].noWA = nil
 				if WeakAuras and WeakAuras.versionString then
-					module.db.responces[selfName].wa_ver = tostring(WeakAuras.versionString)
-				end
-				for WA_name in pairs(WeakAurasSaved.displays) do
-					module.db.responces[selfName][WA_name] = true
+					module.db.responces2[selfName].wa_ver = tostring(WeakAuras.versionString)
 				end
 			end
 		end
@@ -923,21 +1004,71 @@ function module:SendReq2(ownList)
 	if self.locked then return end
 	self.locked = true
 	module.options:ReqProgress(0)
+
+	local Comm = getAceComm()
+	if not Comm then
+		self.locked = false
+		print("MRT: AceComm-3.0 not available; cannot run Update. Make sure WeakAuras is loaded.")
+		return
+	end
+
+	sync_db.wac3_G_count = (sync_db.wac3_G_count or 0) + 1
+	local selfC = sync_db.wac3_G_count
+	local selfReqPairs = {}
+	module.db.lastReq2[selfC] = selfReqPairs
+
+	local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
+	if selfName then
+		selfReqPairs[selfName] = true
+		module.db.responces2[selfName] = module.db.responces2[selfName] or {}
+		module.db.responces2[selfName].noWA = nil
+		if WeakAuras and WeakAuras.versionString then
+			module.db.responces2[selfName].wa_ver = tostring(WeakAuras.versionString)
+		end
+		if WeakAurasSaved and WeakAurasSaved.displays then
+			for WA_name in pairs(WeakAurasSaved.displays) do
+				module.db.responces2[selfName][WA_name] = 2
+			end
+		end
+		if module.options:IsVisible() and module.options.UpdatePage then
+			module.options.UpdatePage()
+		end
+	end
+
+	local distribution
+	if IsInRaid() then
+		distribution = "RAID"
+	elseif IsInGroup() then
+		distribution = "PARTY"
+	end
+	if not distribution then
+		self.locked = false
+		module.options:ReqProgress(1,1)
+		return
+	end
+
 	ExRT.F:AddCoroutine(function()
 		local str = ""
 		local c = 0
+		local selfResp = selfName and module.db.responces2[selfName]
 		if type(ownList) == "table" then
 			for WA_name in pairs(ownList) do
 				local WA_data = WeakAurasSaved.displays[WA_name]
 				if WA_data then
-					str = str..WA_name.."''"..module:hash(ExRT.F.table_to_string(module:wa_clear(WA_data))).."''"
+					local hashStr = tostring(module:hash(ExRT.F.table_to_string(module:wa_clear(WA_data))))
+					str = str..WA_name.."''"..hashStr.."''"
+					selfReqPairs[#selfReqPairs+1] = {WA_name, hashStr}
+					if selfResp then selfResp[WA_name] = 2 end
 					c = c + 1
 				end
 			end
 		else
 			local t_len = ExRT.F.table_len(WeakAurasSaved.displays)
 			for WA_name,WA_data in pairs(WeakAurasSaved.displays) do
-				str = str..WA_name.."''"..module:hash(ExRT.F.table_to_string(module:wa_clear(WA_data))).."''"
+				local hashStr = tostring(module:hash(ExRT.F.table_to_string(module:wa_clear(WA_data))))
+				str = str..WA_name.."''"..hashStr.."''"
+				selfReqPairs[#selfReqPairs+1] = {WA_name, hashStr}
+				if selfResp then selfResp[WA_name] = 2 end
 				c = c + 1
 
 				if c % 10 == 0 then
@@ -948,52 +1079,59 @@ function module:SendReq2(ownList)
 		end
 		str = str:gsub("''$","")
 
+		C_Timer.After(300,function() if module.db.lastReq2[selfC] == selfReqPairs then module.db.lastReq2[selfC] = 0 end end)
+
 		self.locked = false
 
 		if #str == 0 then
 			module.options:ReqProgress(1,1)
+			if module.options.UpdatePage then module.options.UpdatePage() end
 			return
 		end
 
-		local compressed = LibDeflate:CompressDeflate(str,{level = 7})
+		local compressed = LibDeflate:CompressDeflate(str,{level = 9})
 		local encoded = LibDeflate:EncodeForWoWAddonChannel(compressed)
-		encoded = encoded .. "##F##"
-		local parts = ceil(#encoded / 240)
+		local payload = tostring(selfC).."\t"..encoded
 
-		local pn = WAChecker_PrefixOpt()
-		local opt = {maxPer5Sec = 50, prefixNum = pn}
-		for i=1,parts do
-			local msg = encoded:sub( (i-1)*240+1 , i*240 )
-			local progress = i
-			opt.ondone=function() module.options:ReqProgress(parts+progress,parts*2) end
-			if i == 1 then
-				ExRT.F.SendExMsgExt(opt,"wac3", ExRT.F.CreateAddonMsg("G","H",msg))
-			else
-				ExRT.F.SendExMsgExt(opt,"wac3", ExRT.F.CreateAddonMsg("G",msg))
+		Comm:SendCommMessage("MRTWAReq", payload, distribution, nil, "BULK", function(arg, doneBytes, allBytes)
+			if doneBytes and allBytes and allBytes > 0 then
+				module.options:ReqProgress(doneBytes, allBytes)
 			end
-		end
+		end, selfC)
 	end)
 end
 
 
-function module:SendResp2(reqTable)
+function module:SendResp2(reqTable, reqID, requester)
 	SendRespSch = nil
 
+	local Comm = getAceComm()
 	local pn = WAChecker_PrefixOpt()
+	local newProto = reqID and requester
+	local useAce = Comm and newProto and true or false
 
 	if not WeakAurasSaved then
-		ExRT.F.SendExMsgExt({prefixNum=pn},"wachk", ExRT.F.CreateAddonMsg("R","NOWA"))
+		if useAce then
+			Comm:SendCommMessage("MRTWARespVer", tostring(reqID).."\tNOWA", "WHISPER", requester, "BULK")
+		else
+			ExRT.F.SendExMsgExt({prefixNum=pn},"wachk", ExRT.F.CreateAddonMsg("Y","NOWA"))
+		end
 		return
 	end
 
-	ExRT.F.SendExMsgExt({prefixNum=pn},"wachk", ExRT.F.CreateAddonMsg("Y","DATA",tostring(WeakAuras.versionString)))
+	if useAce then
+		Comm:SendCommMessage("MRTWARespVer", tostring(reqID).."\tDATA\t"..tostring(WeakAuras.versionString), "WHISPER", requester, "BULK")
+	else
+		ExRT.F.SendExMsgExt({prefixNum=pn},"wachk", ExRT.F.CreateAddonMsg("Y","DATA",tostring(WeakAuras.versionString)))
+	end
 
 	local reqTable = ExRT.F.table_copy2(reqTable)
 	ExRT.F:AddCoroutine(function()
 		local res = ""
 		local c = 0
-		for i,data in pairs(reqTable) do
+		for i=1,#reqTable do
 			if IsEncounterInProgress() then return end
+			local data = reqTable[i]
 			local wa_name, wa_hash = data[1],data[2]
 			c = c + 1
 
@@ -1013,18 +1151,29 @@ function module:SendResp2(reqTable)
 
 		if #res == 0 then return end
 
-		local compressed = LibDeflate:CompressDeflate(res,{level = 7})
+		local compressed = LibDeflate:CompressDeflate(res,{level = 9})
 		local encoded = LibDeflate:EncodeForWoWAddonChannel(compressed)
-		encoded = encoded .. "#F#"
-		local parts = ceil(#encoded / 240)
 
-
-		for i=1,parts do
-			local msg = encoded:sub( (i-1)*240+1 , i*240 )
-			if i == 1 then
-				ExRT.F.SendExMsgExt({prefixNum=pn},"wachk", ExRT.F.CreateAddonMsg("Y","H",msg))
-			else
-				ExRT.F.SendExMsgExt({prefixNum=pn},"wachk", ExRT.F.CreateAddonMsg("Y",msg))
+		if useAce then
+			Comm:SendCommMessage("MRTWAResp", tostring(reqID).."\t"..encoded, "WHISPER", requester, "BULK")
+		elseif newProto then
+			local opt = {maxPer5Sec = CHUNK_BUDGET, prefixNum = pn}
+			local parts = ceil(#encoded / CHUNK_SIZE)
+			for i=1,parts do
+				local msg = encoded:sub( (i-1)*CHUNK_SIZE+1 , i*CHUNK_SIZE )
+				ExRT.F.SendExMsgExt(opt,"wachk", ExRT.F.CreateAddonMsg("Y2",requester,reqID,i,parts,msg))
+			end
+		else
+			local opt = {maxPer5Sec = CHUNK_BUDGET, prefixNum = pn}
+			encoded = encoded .. "#F#"
+			local parts = ceil(#encoded / CHUNK_SIZE)
+			for i=1,parts do
+				local msg = encoded:sub( (i-1)*CHUNK_SIZE+1 , i*CHUNK_SIZE )
+				if i == 1 then
+					ExRT.F.SendExMsgExt(opt,"wachk", ExRT.F.CreateAddonMsg("Y","H",msg))
+				else
+					ExRT.F.SendExMsgExt(opt,"wachk", ExRT.F.CreateAddonMsg("Y",msg))
+				end
 			end
 		end
 	end)
@@ -1032,6 +1181,7 @@ end
 
 function module.main:ADDON_LOADED()
 	module:RegisterAddonMessage()
+	module:RegisterAceCommHandler()
 end
 
 function module:CheckAuraIsSame(aura,id)
@@ -1045,6 +1195,184 @@ function module:CheckAuraIsSame(aura,id)
 	else
 		return false
 	end
+end
+
+local function processShareData(payload, id, playername)
+	if not WeakAurasSaved then return end
+	if type(payload) ~= "string" or #payload < 7 then return end
+	if payload:sub(1,6) ~= "!WA:2!" then return end
+
+	local deserialized
+	do
+		local str = payload:sub(7)
+		local decoded = LibDeflate:DecodeForWoWAddonChannel(str)
+		if decoded then
+			local decompressed = LibDeflate:DecompressDeflate(decoded)
+			if decompressed then
+				local LibSerialize = LibStub("LibSerialize")
+				local ok, d = LibSerialize:Deserialize(decompressed)
+				if ok and type(d) == "table" then
+					deserialized = d
+				end
+			end
+		end
+	end
+
+	if not id and deserialized and deserialized.d and deserialized.d.id then
+		id = deserialized.d.id
+	end
+
+	if deserialized and deserialized.d and id and WeakAurasSaved.displays[ id ] then
+		if module:CheckAuraIsSame(deserialized.d,id) then
+			if not deserialized.c then
+				return
+			else
+				local isPass = false
+				for i=1,#deserialized.c do
+					local child = deserialized.c[i]
+					local cid = child and child.id
+					if not child or not cid or not module:CheckAuraIsSame(child,cid) then
+						isPass = true
+						break
+					end
+				end
+				if not isPass then
+					return
+				end
+			end
+		end
+	end
+
+	if not ExRT.isWotLKOnly and id and playername then
+		local link = "|Hgarrmission:weakauras|h|cFF8800FF["..playername.." |r|cFF8800FF- "..id.."]|h|r"
+		pcall(SetItemRef, "garrmission:weakauras", link)
+	end
+
+	if ExRT.isWotLKOnly and type(_G.WeakAuras) == "table" and type(_G.WeakAuras.Import) == "function" then
+		if deserialized then
+			xpcall(function() _G.WeakAuras.Import(deserialized) end, geterrorhandler())
+		end
+	else
+		local Comm = LibStub:GetLibrary("AceComm-3.0")
+		if Comm and Comm.callbacks then
+			Comm.callbacks:Fire("WeakAuras", payload, "RAID", playername)
+		end
+	end
+end
+
+function module:RegisterAceCommHandler()
+	if module._aceCommRegistered then return end
+	local Comm = getAceComm()
+	if not Comm or type(Comm.RegisterComm) ~= "function" then return end
+	module._aceCommRegistered = true
+
+	Comm:RegisterComm("MRTWAShare", function(prefix, message, distribution, sender)
+		local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
+		if selfName and Ambiguate(sender or "", "none") == selfName then return end
+		processShareData(message, nil, sender)
+	end)
+
+	Comm:RegisterComm("MRTWAReq", function(prefix, message, distribution, sender)
+		local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
+		if selfName and Ambiguate(sender or "", "none") == selfName then return end
+		if type(message) ~= "string" then return end
+		local sep = message:find("\t", 1, true)
+		if not sep then return end
+		local reqID = tonumber(message:sub(1, sep-1))
+		local encoded = message:sub(sep+1)
+		if not reqID or #encoded == 0 then return end
+		local decoded = LibDeflate:DecodeForWoWAddonChannel(encoded)
+		if not decoded then return end
+		local decompressed = LibDeflate:DecompressDeflate(decoded)
+		if not decompressed then return end
+
+		local pairsList = {}
+		local now_time = time()
+		local pos = 1
+		while true do
+			local ns,ne = decompressed:find("''",pos,true)
+			if not ns then break end
+			local wa_name = decompressed:sub(pos,ns-1)
+			local hs,he = decompressed:find("''",ne+1,true)
+			if hs then hs = hs-1 end
+			local wa_hash = decompressed:sub(ne+1,hs)
+			pairsList[#pairsList + 1] = {wa_name,wa_hash}
+			module.db.lastCheck[wa_name] = now_time
+			module.db.lastCheckName[wa_name] = sender
+			if not he then break end
+			pos = he + 1
+		end
+		module:SendResp2(pairsList, reqID, sender)
+	end)
+
+	Comm:RegisterComm("MRTWARespVer", function(prefix, message, distribution, sender)
+		local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
+		if selfName and Ambiguate(sender or "", "none") == selfName then return end
+		if type(message) ~= "string" then return end
+		local p1, rest = message:match("^([^\t]*)\t(.+)$")
+		if not p1 then return end
+		local reqID = tonumber(p1)
+		if not reqID then return end
+		module.db.responces2[sender] = module.db.responces2[sender] or {}
+		if rest == "NOWA" then
+			module.db.responces2[sender].noWA = true
+		else
+			local kind, ver = rest:match("^([^\t]*)\t(.+)$")
+			if kind == "DATA" and ver then
+				module.db.responces2[sender].noWA = nil
+				module.db.responces2[sender].wa_ver = ver
+			end
+		end
+		if module.options:IsVisible() and module.options.UpdatePage then
+			module.options.UpdatePage()
+		end
+	end)
+
+	Comm:RegisterComm("MRTWAResp", function(prefix, message, distribution, sender)
+		local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
+		if selfName and Ambiguate(sender or "", "none") == selfName then return end
+		if type(message) ~= "string" then return end
+		local sep = message:find("\t", 1, true)
+		if not sep then return end
+		local reqID = tonumber(message:sub(1, sep-1))
+		local encoded = message:sub(sep+1)
+		if not reqID or #encoded == 0 then return end
+		local decoded = LibDeflate:DecodeForWoWAddonChannel(encoded)
+		if not decoded then return end
+		local decompressed = LibDeflate:DecompressDeflate(decoded)
+		if not decompressed then return end
+
+		local workingReq = module.db.lastReq2[reqID]
+		if type(workingReq) ~= "table" then return end
+		if #workingReq ~= #decompressed then return end
+		if workingReq[sender] then return end
+		workingReq[sender] = true
+		module.db.responces2[sender] = module.db.responces2[sender] or {}
+		for i=1,#decompressed do
+			module.db.responces2[sender][workingReq[i][1]] = tonumber(decompressed:sub(i,i),10)
+		end
+		if module.options:IsVisible() and module.options.UpdatePage then
+			module.options.UpdatePage()
+		end
+	end)
+end
+
+local pendingShareV2 = {}
+local function tryFinalizeShareV2(sender, streamID)
+	local senderEntry = pendingShareV2[sender]
+	if not senderEntry then return end
+	local entry = senderEntry[streamID]
+	if not entry then return end
+
+	local senderBufs = sharedChunkBufs.D2 and sharedChunkBufs.D2[sender]
+	local buf = senderBufs and senderBufs[streamID]
+	if not buf or not buf.total or buf.count < buf.total then return end
+
+	local payload = chunkBufAssemble(buf)
+	chunkBufDrop("D2", sender, streamID)
+	senderEntry[streamID] = nil
+
+	processShareData(payload, entry.id, entry.playername)
 end
 
 local lastSenderTime,lastSender = 0
@@ -1120,6 +1448,10 @@ function module:addonMessage(sender, prefix, prefix2, ...)
 				module.options.UpdatePage()
 			end
 		elseif prefix2 == "Y" then
+			local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
+			if selfName and Ambiguate(sender, "none") == selfName then
+				return
+			end
 			local str1, str2 = ...
 			module.db.responces2[ sender ] = module.db.responces2[ sender ] or {}
 			if str1 == "NOWA" then
@@ -1153,11 +1485,21 @@ function module:addonMessage(sender, prefix, prefix2, ...)
 				decompressed = decompressed
 
 				local workingReq
-				for j=#module.db.lastReq2,1,-1 do
+				local maxC = sync_db.wac3_G_count or #module.db.lastReq2
+				for j=maxC,1,-1 do
 					local lastReq = module.db.lastReq2[j]
-					if type(lastReq)=="table" and #lastReq == #decompressed and not lastReq[sender] then
+					if type(lastReq)=="table" and #lastReq == #decompressed and not lastReq[sender] and selfName and lastReq[selfName] then
 						workingReq = lastReq
 						break
+					end
+				end
+				if not workingReq then
+					for j=maxC,1,-1 do
+						local lastReq = module.db.lastReq2[j]
+						if type(lastReq)=="table" and #lastReq == #decompressed and not lastReq[sender] then
+							workingReq = lastReq
+							break
+						end
 					end
 				end
 				if workingReq then
@@ -1171,7 +1513,67 @@ function module:addonMessage(sender, prefix, prefix2, ...)
 			if module.options:IsVisible() and module.options.UpdatePage then
 				module.options.UpdatePage()
 			end
+		elseif prefix2 == "Y2" then
+			local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
+			if selfName and Ambiguate(sender, "none") == selfName then
+				return
+			end
+			local target, arg2, arg3, arg4, chunk = ...
+			if not target or not selfName or Ambiguate(target, "none") ~= selfName then
+				return
+			end
+			local reqID = tonumber(arg2)
+			local idx = tonumber(arg3)
+			local total = tonumber(arg4)
+			if not reqID or not idx or not total or not chunk then return end
+			if total <= 0 or idx <= 0 or idx > total then return end
+
+			module.db.responces2[ sender ] = module.db.responces2[ sender ] or {}
+
+			local buf = chunkBufFor("Y2", sender, reqID, total)
+			if not chunkBufComplete(buf, idx, chunk) then return end
+
+			local fullEncoded = chunkBufAssemble(buf)
+			chunkBufDrop("Y2", sender, reqID)
+
+			local decoded = LibDeflate:DecodeForWoWAddonChannel(fullEncoded)
+			if not decoded then return end
+			local decompressed = LibDeflate:DecompressDeflate(decoded)
+			if not decompressed then return end
+
+			local workingReq = module.db.lastReq2[reqID]
+			if type(workingReq) ~= "table" then
+				return
+			end
+			if #workingReq ~= #decompressed then return end
+			if workingReq[sender] then return end
+
+			workingReq[sender] = true
+			for i=1,#decompressed do
+				module.db.responces2[ sender ][ workingReq[i][1] ] = tonumber( decompressed:sub(i,i),10 )
+			end
+
+			if module.options:IsVisible() and module.options.UpdatePage then
+				module.options.UpdatePage()
+			end
+		elseif prefix2 == "SWA2" then
+			local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
+			if selfName and Ambiguate(sender, "none") == selfName then
+				return
+			end
+			local streamArg, id, playername = ...
+			local streamID = tonumber(streamArg)
+			if not streamID or not id or not playername then return end
+
+			pendingShareV2[sender] = pendingShareV2[sender] or {}
+			pendingShareV2[sender][streamID] = {id = id, playername = playername, ts = GetTime()}
+			tryFinalizeShareV2(sender, streamID)
+			chunkBufGC("D2", 600)
 		elseif prefix2 == "SWA" then
+			local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
+			if selfName and Ambiguate(sender, "none") == selfName then
+				return
+			end
 			local id, playername = ...
 
 			if module.db.synqWAData[sender] then
@@ -1272,6 +1674,10 @@ function module:addonMessage(sender, prefix, prefix2, ...)
 		end
 	elseif prefix == "wac3" then
 		if prefix2 == "G" then
+			local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
+			if selfName and Ambiguate(sender, "none") == selfName then
+				return
+			end
 			local now = GetTime()
 			if not sync_db.wac3_G_syncStr then sync_db.wac3_G_syncStr = {} end
 			if not sync_db.wac3_G_senderToCount then sync_db.wac3_G_senderToCount = {} end
@@ -1315,10 +1721,57 @@ function module:addonMessage(sender, prefix, prefix2, ...)
 					pos = he + 1
 				end
 
-				C_Timer.After(60,function() module.db.lastReq2[c] = 0 end)
+				C_Timer.After(300,function() module.db.lastReq2[c] = 0 end)
 				module:SendResp2(module.db.lastReq2[c])
 			end
+		elseif prefix2 == "G2" then
+			local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
+			if selfName and Ambiguate(sender, "none") == selfName then
+				return
+			end
+			local arg1, arg2, arg3, chunk = ...
+			local reqID = tonumber(arg1)
+			local idx = tonumber(arg2)
+			local total = tonumber(arg3)
+			if not reqID or not idx or not total or not chunk then return end
+			if total <= 0 or idx <= 0 or idx > total then return end
+
+			local buf = chunkBufFor("G2", sender, reqID, total)
+			if not chunkBufComplete(buf, idx, chunk) then return end
+
+			local fullEncoded = chunkBufAssemble(buf)
+			chunkBufDrop("G2", sender, reqID)
+			chunkBufGC("G2", 600)
+
+			local decoded = LibDeflate:DecodeForWoWAddonChannel(fullEncoded)
+			if not decoded then return end
+			local decompressed = LibDeflate:DecompressDeflate(decoded)
+			if not decompressed then return end
+
+			local pairsList = {}
+			local now_time = time()
+			local pos = 1
+			while true do
+				local ns,ne = decompressed:find("''",pos,true)
+				if not ns then break end
+				local wa_name = decompressed:sub(pos,ns-1)
+				local hs,he = decompressed:find("''",ne+1,true)
+				if hs then hs = hs-1 end
+				local wa_hash = decompressed:sub(ne+1,hs)
+
+				pairsList[#pairsList + 1] = {wa_name,wa_hash}
+				module.db.lastCheck[wa_name] = now_time
+				module.db.lastCheckName[wa_name] = sender
+				if not he then break end
+				pos = he + 1
+			end
+
+			module:SendResp2(pairsList, reqID, sender)
 		elseif prefix2 == "D" then
+			local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
+			if selfName and Ambiguate(sender, "none") == selfName then
+				return
+			end
 			if IsInRaid() and not ExRT.F.IsPlayerRLorOfficer(sender) then
 
 			end
@@ -1340,6 +1793,21 @@ function module:addonMessage(sender, prefix, prefix2, ...)
 				module.db.synqIndexWA[sender] = nil
 				module.db.synqWAData[sender] = str
 			end
+		elseif prefix2 == "D2" then
+			local selfName = ExRT.SDB and ExRT.SDB.charName or UnitName("player")
+			if selfName and Ambiguate(sender, "none") == selfName then
+				return
+			end
+			local arg1, arg2, arg3, chunk = ...
+			local streamID = tonumber(arg1)
+			local idx = tonumber(arg2)
+			local total = tonumber(arg3)
+			if not streamID or not idx or not total or not chunk then return end
+			if total <= 0 or idx <= 0 or idx > total then return end
+
+			local buf = chunkBufFor("D2", sender, streamID, total)
+			chunkBufComplete(buf, idx, chunk)
+			tryFinalizeShareV2(sender, streamID)
 		end
 	end
 end
@@ -1408,9 +1876,12 @@ function module:WA_DisplayToTable(id)
 	local data = WeakAurasSaved.displays[id]
 	if data then
 		data.uid = data.uid or GenerateUniqueID()
+		local copy = ExRT.F.table_copy2(data)
+		stripNonTx(copy, nonTxFields)
+		copy.tocversion = WeakAuras.BuildInfo or copy.tocversion
 		local transmit = {
 			m = "d",
-			d = data,
+			d = copy,
 			s = WeakAuras.versionString,
 			v = 2000,
 		}
@@ -1428,7 +1899,10 @@ function module:WA_DisplayToTable(id)
 				else
 					child.uid = GenerateUniqueID()
 				end
-				transmit.c[index] = child
+				local childCopy = ExRT.F.table_copy2(child)
+				stripNonTx(childCopy, nonTxFields)
+				childCopy.tocversion = WeakAuras.BuildInfo or childCopy.tocversion
+				transmit.c[index] = childCopy
 				index = index + 1
 			end
 		end
@@ -1440,7 +1914,7 @@ function module:TableToString(t)
 	local LibSerialize = LibStub("LibSerialize")
 
 	local serialized = LibSerialize:SerializeEx({errorOnUnserializableType=false}, t)
-	local compressed = LibDeflate:CompressDeflate(serialized, {level=5})
+	local compressed = LibDeflate:CompressDeflate(serialized, {level=9})
 	local encoded = LibDeflate:EncodeForWoWAddonChannel(compressed)
 	return encoded
 end
@@ -1452,39 +1926,55 @@ function module:SendWA(id)
 	end
 	module.db.prevSendWA = now
 
-	local name, realm = UnitFullName("player")
-	local fullName = name.."-"..realm
+	local Comm = getAceComm()
+	if not Comm then
+		print("MRT: AceComm-3.0 not available; cannot share WeakAura. Make sure WeakAuras is loaded.")
+		return
+	end
 
 	local encoded = "!WA:2!"..module:TableToString(module:WA_DisplayToTable(id))
 
-	encoded = encoded .. "##F##"
-
-	local newIndex = math.random(100,999)
-	while module.db.synqPrevIndex == newIndex do
-		newIndex = math.random(100,999)
-	end
-	module.db.synqPrevIndex = newIndex
-
-	newIndex = tostring(newIndex)
-	local parts = ceil(#encoded / 240)
-	local pn = WAChecker_PrefixOpt()
-	for i=1,parts do
-		local msg = encoded:sub( (i-1)*240+1 , i*240 )
-		local progress = i
-
-		local opt = {
-			maxPer5Sec = 50,
-			prefixNum = pn,
-		}
-		if i==parts then
-			opt.ondone = function() print(id,'sended') end
-		elseif parts > 50 then
-			if i%20 == 0 then
-				opt.ondone = function() print(id,'sending',progress.."/"..parts) end
+	local targets = {}
+	local seen = {}
+	if IsInRaid() then
+		for i=1,GetNumGroupMembers() do
+			local rname = GetRaidRosterInfo(i)
+			if rname then
+				local short = Ambiguate(rname, "none")
+				if short and not seen[short] and not UnitIsUnit("raid"..i, "player") then
+					seen[short] = true
+					targets[#targets+1] = rname
+				end
 			end
 		end
-		ExRT.F.SendExMsgExt(opt,"wac3","D\t"..newIndex.."\t"..msg)
+	elseif IsInGroup() then
+		for i=1,GetNumSubgroupMembers() do
+			local unit = "party"..i
+			local pname = UnitName(unit)
+			if pname and not seen[pname] and not UnitIsUnit(unit, "player") then
+				seen[pname] = true
+				targets[#targets+1] = pname
+			end
+		end
 	end
-	ExRT.F.SendExMsgExt({maxPer5Sec=50, prefixNum=pn},"wachk", "SWA\t"..id.."\t"..fullName)
 
+	if #targets == 0 then
+		print(id,"no recipients in group")
+		return
+	end
+
+	local total = #targets
+	local doneCount = 0
+	for _,target in ipairs(targets) do
+		Comm:SendCommMessage("MRTWAShare", encoded, "WHISPER", target, "BULK", function(arg, doneBytes, allBytes)
+			if doneBytes and allBytes and doneBytes >= allBytes then
+				doneCount = doneCount + 1
+				if doneCount >= total then
+					print(id, "sended to", total, "raid member(s)")
+				elseif doneCount % 5 == 0 then
+					print(id, "sended to", doneCount.."/"..total)
+				end
+			end
+		end, id)
+	end
 end

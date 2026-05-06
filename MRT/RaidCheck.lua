@@ -2016,39 +2016,38 @@ function module.frame:UpdateCols()
 		end
 	end
 	local colsAdd = 0
-	if VMRT.RaidCheck.ReadyCheckSoulstone then
-		colsAdd = colsAdd + 1
-		local idx = RCW_iconsList_ORIGIN+colsAdd
-		RCW_iconsList[idx] = "ss"
-		RCW_iconsListHeaders[idx] = GetSpellInfo(20707) or "Soulstone"
-		RCW_iconsListDebugIcons[idx] = 136210
+	local function ensureDynamicHeader(idx, key, headerText, debugIcon)
+		RCW_iconsList[idx] = key
+		RCW_iconsListHeaders[idx] = headerText
+		RCW_iconsListDebugIcons[idx] = debugIcon
 		local header = module.frame.headers[idx]
 		if not header then
-			header = ELib:Text(module.frame.headers,"",10):Color(1,1,1):Point("BOTTOMLEFT",module.frame.headers[idx-1],"BOTTOMLEFT",30,0)
+			header = ELib:Text(module.frame.headers,"",10):Color(1,1,1)
 			module.frame.headers[idx] = header
 		end
+		local prev = module.frame.headers[idx-1]
+		local offsetX = 30 + (RCW_iconsListWide[idx-1] and 15 or 0) + (RCW_iconsListWide[idx] and 15 or 0)
+		header:ClearAllPoints()
+		header:SetPoint("BOTTOMLEFT", prev, "BOTTOMLEFT", offsetX, 0)
 		header.__columnIndex = idx
 		if module.frame.headers.hookHeader then
 			module.frame.headers:hookHeader(header)
 		end
-		header:SetText(RCW_iconsListHeaders[idx])
+		header:SetText(headerText)
+	end
+	if VMRT.RaidCheck.ReadyCheckSoulstone then
+		colsAdd = colsAdd + 1
+		ensureDynamicHeader(RCW_iconsList_ORIGIN+colsAdd, "ss", GetSpellInfo(20707) or "Soulstone", 136210)
 	end
 	if VMRT.RaidCheck.ReadyCheckIlvl then
 		colsAdd = colsAdd + 1
-		local idx = RCW_iconsList_ORIGIN+colsAdd
-		RCW_iconsList[idx] = "ilvl"
-		RCW_iconsListHeaders[idx] = STAT_AVERAGE_ITEM_LEVEL or "Item level"
-		RCW_iconsListDebugIcons[idx] = 132281
-		local header = module.frame.headers[idx]
-		if not header then
-			header = ELib:Text(module.frame.headers,"",10):Color(1,1,1):Point("BOTTOMLEFT",module.frame.headers[idx-1],"BOTTOMLEFT",30,0)
-			module.frame.headers[idx] = header
+		ensureDynamicHeader(RCW_iconsList_ORIGIN+colsAdd, "ilvl", STAT_AVERAGE_ITEM_LEVEL or "Item level", 132281)
+	end
+	if module.frame.headers.applyDiagonal then
+		for i=1,#RCW_iconsListHeaders do
+			local h = module.frame.headers[i]
+			if h then module.frame.headers:applyDiagonal(h) end
 		end
-		header.__columnIndex = idx
-		if module.frame.headers.hookHeader then
-			module.frame.headers:hookHeader(header)
-		end
-		header:SetText(RCW_iconsListHeaders[idx])
 	end
 	for i=1,40 do
 		local line = module.frame.lines[i]
@@ -2174,7 +2173,7 @@ function module.frame:UpdateFont()
 		line.mini.name:SetFont(font,fontsize,"")
 
 		for i,key in pairs(RCW_iconsList) do
-			line[key].bigText:SetFont(font,fontsize-2,"")
+			line[key].bigText:SetFont(font,fontsize-1,"")
 		end
 	end
 	self.title:SetFont(font,fontsize,"")
@@ -2359,7 +2358,7 @@ do
 		headers[i] = ELib:Text(headers,key,10):Color(1,1,1)
 		headers[i].__columnIndex = i
 		if i == 1 then
-			headers[i]:Point("BOTTOMLEFT",module.frame,"TOPLEFT",155,-48)
+			headers[i]:Point("BOTTOMLEFT",module.frame,"TOPLEFT",155,-50)
 		else
 			headers[i]:Point("BOTTOMLEFT",headers[i-1],"BOTTOMLEFT",30+(RCW_iconsListWide[i-1] and 15 or 0)+(RCW_iconsListWide[i] and 15 or 0),0)
 		end
@@ -2412,11 +2411,20 @@ do
 
 	local glyphAtlas = MRT and MRT.DiagonalGlyphAtlas
 
-	local function getColumnShift(columnIndex)
-		local i = columnIndex or 1
-		local thisWide = RCW_iconsListWide[i]
-		local nextWide = RCW_iconsListWide[i+1]
-		return 30 + (thisWide and 15 or 0) + (nextWide and 15 or 0)
+	local HEADER_GLYPH_SIZE = 14
+	local HEADER_STRIDE_FRACTION = 0.40
+	local HEADER_AXIS_DX = 0.5
+	local HEADER_COLUMN_OFFSET = 10
+
+	local function getColumnShift(displayed)
+		local nChars = 0
+		if type(displayed) == "string" then
+			for _ in displayed:gmatch(".") do nChars = nChars + 1 end
+		end
+		if nChars < 1 then nChars = 1 end
+		local stride = HEADER_GLYPH_SIZE * HEADER_STRIDE_FRACTION
+		local wordCenterOffset = (nChars - 1) * stride * HEADER_AXIS_DX / 2 + HEADER_GLYPH_SIZE / 2
+		return HEADER_COLUMN_OFFSET - wordCenterOffset
 	end
 
 	local function showHeaderTooltip(self)
@@ -2444,40 +2452,68 @@ do
 	local function applyHeaderDiagonal(h)
 		if not h then return end
 		local rawText = h:GetText() or h.__rawText or ""
-		if rawText == "" then return end
+		if rawText == "" then
+			if h.__diagRenderer and h.__diagRenderer.SetText then
+				pcall(h.__diagRenderer.SetText, h.__diagRenderer, "")
+			end
+			local origSetText = h.__origSetText or h.SetText
+			h.__origSetText = origSetText
+			origSetText(h, "")
+			h:SetAlpha(0)
+			h.__rawText = ""
+			return
+		end
 		local displayed = abbreviateHeader(rawText)
 		h.__rawText = rawText
 
-		if glyphAtlas and glyphAtlas.CreateRenderer then
-			local r = h.__diagRenderer
-			if not r then
-				r = glyphAtlas:CreateRenderer(h:GetParent())
-				r:SetGlyphSize(14)
+		local origSetText = h.__origSetText or h.SetText
+		h.__origSetText = origSetText
+		origSetText(h, displayed)
+		h:SetAlpha(1)
+
+		if not (glyphAtlas and glyphAtlas.CreateRenderer) then
+			return
+		end
+
+		local r = h.__diagRenderer
+		if not r then
+			local ok, newR = pcall(function() return glyphAtlas:CreateRenderer(h:GetParent()) end)
+			if ok and newR then
+				r = newR
+				pcall(r.SetGlyphSize, r, 14)
 				h.__diagRenderer = r
 			end
-			local shift = getColumnShift(h.__columnIndex)
+		end
+		if not r then return end
+
+		local shift = getColumnShift(displayed)
+		pcall(function()
 			r:ClearAllPoints()
 			r:SetPoint("BOTTOMLEFT", h, "BOTTOMLEFT", shift, 0)
 			r:SetText(displayed)
 			local cr, cg, cb, ca = h:GetTextColor()
 			r:SetTextColor(cr or 1, cg or 1, cb or 1, ca or 1)
+			if r.Show then r:Show() end
+		end)
 
-			local rFrame = r.GetFrame and r:GetFrame()
-			if rFrame and not rFrame.__tooltipHooked then
+		local rFrame = r.GetFrame and r:GetFrame()
+		if rFrame then
+			if rFrame.SetFrameStrata then pcall(rFrame.SetFrameStrata, rFrame, "DIALOG") end
+			if rFrame.SetFrameLevel and h.GetParent and h:GetParent().GetFrameLevel then
+				pcall(rFrame.SetFrameLevel, rFrame, h:GetParent():GetFrameLevel() + 5)
+			end
+			if not rFrame.__tooltipHooked then
 				rFrame.__tooltipHooked = true
 				rFrame.__header = h
 				rFrame:EnableMouse(true)
 				rFrame:SetScript("OnEnter", showHeaderTooltip)
 				rFrame:SetScript("OnLeave", hideHeaderTooltip)
 			end
+		end
 
-			local origSetText = h.__origSetText or h.SetText
-			h.__origSetText = origSetText
+		if r._glyphs and #r._glyphs > 0 then
 			origSetText(h, "")
 			h:SetAlpha(0)
-		else
-			local origSetText = h.__origSetText or h.SetText
-			origSetText(h, displayed)
 		end
 	end
 
@@ -2487,7 +2523,9 @@ do
 		local origSetText = h.SetText
 		h.__origSetText = origSetText
 		h.SetText = function(self, text)
-			origSetText(self, text or "")
+			text = text or ""
+			self.__rawText = text
+			origSetText(self, text)
 			applyHeaderDiagonal(self)
 		end
 	end
