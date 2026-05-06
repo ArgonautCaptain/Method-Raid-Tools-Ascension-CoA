@@ -912,15 +912,19 @@ function module.main:UNIT_INVENTORY_CHANGED(arg)
 	if arg=='player' then return end
 	local name = UnitCombatlogname(arg or "?")
 	if name and name ~= ExRT.SDB.charName then
-		module.db.inspectItemsOnly[name] = true
-		module.db.inspectQuery[name] = GetTime()
+		C_Timer.After(0, function()
+			module.db.inspectItemsOnly[name] = true
+			module.db.inspectQuery[name] = GetTime()
+		end)
 	end
 end
 
 function module.main:PLAYER_EQUIPMENT_CHANGED(arg)
-	local name = UnitCombatlogname("player")
-	module.db.inspectItemsOnly[name] = true
-	module.db.inspectQuery[name] = GetTime()
+	C_Timer.After(0, function()
+		local name = UnitCombatlogname("player")
+		module.db.inspectItemsOnly[name] = true
+		module.db.inspectQuery[name] = GetTime()
+	end)
 end
 
 
