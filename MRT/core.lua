@@ -5,13 +5,8 @@ local GlobalAddonName, MRT = ...
 _G.MRT = MRT
 _G.ExRT = MRT
 
-<<<<<<< HEAD
 MRT.V = 5005
 MRT.VString = "v5.0.5"
-=======
-MRT.V = 5004
-MRT.VString = "v5.0.4"
->>>>>>> 230a266aef06be6eccc09039d574546ead211584
 MRT.T = "R"
 
 MRT.Slash = {}
