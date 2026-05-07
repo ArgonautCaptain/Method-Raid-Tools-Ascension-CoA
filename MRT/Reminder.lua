@@ -3364,7 +3364,7 @@ function options:Load()
 	end
 
 
-	self.timeLineBoss = ELib:DropDown(self.tab.tabs[4],250,30):Point("TOPLEFT",10,-10):Size(220):SetText(L.ReminderSelectBoss)
+	self.timeLineBoss = ELib:DropDown(self.tab.tabs[4],250,-1):Point("TOPLEFT",10,-10):Size(220):SetText(L.ReminderSelectBoss)
 	self.timeLineBoss.mainframe = options.timeLine
 	self.timeLineBoss.SetValue = function(self,arg1,arg2,arg3,arg4,ignoreReload)
 		ELib:DropDownClose()
@@ -3763,7 +3763,6 @@ function options:Load()
 		self.List[ #self.List+1 ] = {
 			text = L.ReminderFightSaved,
 			subMenu = subMenu,
-			Lines = 30,
 			prio = 100001,
 		}
 
@@ -5360,6 +5359,8 @@ function options:Load()
 
 
 	self.quickSetupFrame = ELib:Popup(" "):Size(510,405)
+	self.quickSetupFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+	self.quickSetupFrame:HookScript("OnShow", function(self) self:SetFrameStrata("FULLSCREEN_DIALOG") end)
 	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then ExRT.F.AddonScaleApply(self.quickSetupFrame) end
 	ELib:Border(self.quickSetupFrame,1,.4,.4,.4,.9)
 
@@ -7141,14 +7142,14 @@ function options:Load()
 						if atlas and atlas.CreateRenderer then
 							pcursor.text = atlas:CreateRenderer(self.frame.D)
 							pcursor.text:SetAtlas("vertical")
-							pcursor.text:SetGlyphSize(14)
+							pcursor.text:SetGlyphSize(16)
 							pcursor.text:SetAxis(90)
 							pcursor.text:SetAnchorPoint("BOTTOMLEFT")
 							pcursor.text:SetStrideFraction(0.55)
 							pcursor.text:SetReadDirection(1)
 							pcursor.text:SetTextColor(0, 1, 0, 0.9)
 							pcursor.text:ClearAllPoints()
-							pcursor.text:SetPoint("TOPLEFT", pcursor, "TOPRIGHT", 2, 0)
+							pcursor.text:SetPoint("TOPLEFT", pcursor, "TOPRIGHT", 1, 0)
 						else
 							pcursor.text = ELib:Text(self.frame.D, "Phase "..(i+1), 10):Color(0,1,0,.9)
 							pcursor.text:ClearAllPoints()
@@ -8133,7 +8134,7 @@ function options:Load()
 		end
 	end
 
-	self.assignBoss = ELib:DropDown(self.tab.tabs[5],250,30):Point("TOPLEFT",10,-10):Size(220):SetText(L.ReminderSelectBoss)
+	self.assignBoss = ELib:DropDown(self.tab.tabs[5],250,-1):Point("TOPLEFT",10,-10):Size(220):SetText(L.ReminderSelectBoss)
 	self.assignBoss.mainframe = options.assign
 	self.assignBoss.SetValue = function(_,arg1,arg2,arg3,arg4,ignoreReload)
 		ELib:DropDownClose()
