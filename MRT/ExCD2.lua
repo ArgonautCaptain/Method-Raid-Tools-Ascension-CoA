@@ -4686,6 +4686,19 @@ function module.main:ADDON_LOADED()
 
 	VMRT.ExCD2.userDB = VMRT.ExCD2.userDB or {}
 
+	if VMRT.ExCD2.userDB and #VMRT.ExCD2.userDB > 0 then
+		local systemSpells = {}
+		for i=1,#module.db.AllSpells do
+			systemSpells[module.db.AllSpells[i][1]] = true
+		end
+		for i=#VMRT.ExCD2.userDB,1,-1 do
+			local entry = VMRT.ExCD2.userDB[i]
+			if entry and entry[1] and systemSpells[entry[1]] then
+				tremove(VMRT.ExCD2.userDB, i)
+			end
+		end
+	end
+
 	VMRT.ExCD2.Priority = VMRT.ExCD2.Priority or {}
 
 	VMRT.ExCD2.gnGUIDs = VMRT.ExCD2.gnGUIDs or {}
@@ -6806,9 +6819,11 @@ function module.options:Load()
 
 	function self:GetAllSpells(addPvP)
 		local new = {}
+		local seenSpells = {}
 		for i=1,#module.db.AllSpells do
 			if addPvP then
 				new[i] = module.db.AllSpells[i]
+				seenSpells[module.db.AllSpells[i][1]] = true
 			else
 				local findPvP = false
 				for cat in string.gmatch(module.db.AllSpells[i][2], "[^,]+") do
@@ -6819,13 +6834,15 @@ function module.options:Load()
 				end
 				if (findPvP and addPvP) or (not findPvP and not addPvP) then
 					new[#new+1] = module.db.AllSpells[i]
+					seenSpells[module.db.AllSpells[i][1]] = true
 				end
 			end
 		end
 		for i=1,#VMRT.ExCD2.userDB do
 			local line = VMRT.ExCD2.userDB[i]
-			if type(line[2]) == "string" and type(line[3]) == "number" then
+			if type(line[2]) == "string" and type(line[3]) == "number" and not seenSpells[line[1]] then
 				new[#new+1] = line
+				seenSpells[line[1]] = true
 
 				local findUserCat = false
 				for cat in string.gmatch(line[2], "[^,]+") do
