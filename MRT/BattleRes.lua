@@ -223,9 +223,15 @@ function module:Disable()
 	module.frame:Hide()
 end
 if ExRT.isWotLKOnly then
-	function module.main.COMBAT_LOG_EVENT_UNFILTERED(_, eventType, _, sourceGUID, sourceName, _, _, _, _, _, _, spellID)
-		if eventType ~= "SPELL_CAST_SUCCESS" then return end
-		if not REBIRTH_RANKS[spellID] then return end
+	local REBIRTH_NAME = GetSpellInfo(48477)
+	function module.main.COMBAT_LOG_EVENT_UNFILTERED(_, eventType, _, sourceGUID, sourceName, _, _, _, _, _, _, spellID, spellName)
+		if eventType ~= "SPELL_CAST_SUCCESS" and eventType ~= "SPELL_RESURRECT" then return end
+		-- Check by spell ID (all ranks) or by localized spell name as fallback
+		if not REBIRTH_RANKS[spellID] then
+			if not spellName or spellName ~= REBIRTH_NAME then
+				return
+			end
+		end
 		NoteRebirthCast(sourceGUID, sourceName)
 	end
 end

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discord / general questions
+    url: https://discord.gg/your-discord
+    about: For general questions please use Discord. GitHub Issues are for bugs and feature requests only.

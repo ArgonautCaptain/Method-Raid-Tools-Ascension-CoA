@@ -115,6 +115,7 @@ function module:timer(elapsed)
 	if VMRT.Timers.enabled then
 		if not module.frame.encounter and IsEncounterInProgress() then
 			module.frame.encounter = true
+			module.frame._combatEndGrace = nil
 
 			if not module.frame.inCombat and not module.frame.groupInCombat and module.frame.total >= 0 then
 				module.frame.total = 0
@@ -157,7 +158,24 @@ function module:timer(elapsed)
 					end
 				end
 			end
-			module.frame.groupInCombat = groupInCombat or nil
+
+			if groupInCombat then
+				module.frame.groupInCombat = true
+				module.frame._combatEndGrace = nil
+			else
+				if module.frame.groupInCombat and not module.frame._combatEndGrace then
+					module.frame._combatEndGrace = GetTime()
+				end
+				if module.frame._combatEndGrace then
+					local graceElapsed = GetTime() - module.frame._combatEndGrace
+					if graceElapsed >= 3 then
+						module.frame.groupInCombat = nil
+						module.frame._combatEndGrace = nil
+					end
+				else
+					module.frame.groupInCombat = nil
+				end
+			end
 
 			if not module.frame.groupInCombat and not module.frame.inCombat and not module.frame.encounter then
 				if VMRT.Timers.OnlyInCombat and module.frame:IsShown() then
@@ -608,7 +626,9 @@ function module.main:PLAYER_REGEN_ENABLED()
 	module.frame.inCombat = nil
 
 	if VMRT.Timers.OnlyInCombat and not module.frame.encounter and not module.frame.groupInCombat then
-		module.frame:Hide()
+		if not module.frame._combatEndGrace then
+			module.frame._combatEndGrace = GetTime()
+		end
 	end
 end
 

@@ -131,7 +131,16 @@ if type(UnitSpellHaste) ~= "function" then
     return 0
   end
 end
-if type(strsplit) ~= "function" then
+local function _strsplitMaxSplitsOK()
+  if type(strsplit) ~= "function" then
+    return false
+  end
+  local ok, n = pcall(function()
+    return select("#", strsplit(":", "a:b:c:d", 2))
+  end)
+  return ok and n == 2
+end
+if not _strsplitMaxSplitsOK() then
   function strsplit(delim, str, maxSplits)
     if type(delim) ~= "string" or delim == "" then
       return str
@@ -140,6 +149,12 @@ if type(strsplit) ~= "function" then
       return str
     end
     maxSplits = tonumber(maxSplits)
+    if maxSplits and maxSplits <= 0 then
+      maxSplits = nil
+    end
+    if maxSplits == 1 then
+      return str
+    end
     local results = {}
     local pattern = "(.-)" .. delim
     local n = 0
@@ -152,7 +167,7 @@ if type(strsplit) ~= "function" then
       n = n + 1
       results[n] = cap
       lastPos = e + 1
-      if maxSplits and n >= maxSplits then
+      if maxSplits and n >= maxSplits - 1 then
         break
       end
     end
@@ -827,7 +842,9 @@ if type(SendAddonMessage) == "function" then
   end
 end
 local C_Timer = EnsureTable("C_Timer")
-if type(C_Timer.After) ~= "function" then
+if type(C_Timer.After) ~= "function"
+   or type(C_Timer.NewTimer) ~= "function"
+   or type(C_Timer.NewTicker) ~= "function" then
 
   local timerFrame = CreateFrame("Frame")
   local timers = {}
@@ -900,25 +917,31 @@ if type(C_Timer.After) ~= "function" then
     return t
   end
 
-  function C_Timer.After(delay, func)
-    if type(func) ~= "function" then
-      return
+  if type(C_Timer.After) ~= "function" then
+    function C_Timer.After(delay, func)
+      if type(func) ~= "function" then
+        return
+      end
+      return AddTimer(delay, function() func() end, 1, true)
     end
-    return AddTimer(delay, function() func() end, 1, true)
   end
 
-  function C_Timer.NewTimer(delay, func)
-    if type(func) ~= "function" then
-      return AddTimer(delay or 0, function() end, 1, true)
+  if type(C_Timer.NewTimer) ~= "function" then
+    function C_Timer.NewTimer(delay, func)
+      if type(func) ~= "function" then
+        return AddTimer(delay or 0, function() end, 1, true)
+      end
+      return AddTimer(delay, function() func() end, 1, true)
     end
-    return AddTimer(delay, function() func() end, 1, true)
   end
 
-  function C_Timer.NewTicker(delay, func, iterations)
-    if type(func) ~= "function" then
-      return AddTimer(delay or 0, function() end, iterations, false)
+  if type(C_Timer.NewTicker) ~= "function" then
+    function C_Timer.NewTicker(delay, func, iterations)
+      if type(func) ~= "function" then
+        return AddTimer(delay or 0, function() end, iterations, false)
+      end
+      return AddTimer(delay, func, iterations, false)
     end
-    return AddTimer(delay, func, iterations, false)
   end
 end
 local C_Item = EnsureTable("C_Item")
@@ -2560,17 +2583,52 @@ local function setupCompatBridge()
 end
 do
   local lastQueuedGUID
+  local lastQueuedUnit
+  local lastQueuedTime
+  local pending = 0
   if type(NotifyInspect) == "function" and type(hooksecurefunc) == "function" then
     hooksecurefunc("NotifyInspect", function(unit)
       if not unit then return end
       local guid = type(UnitGUID) == "function" and UnitGUID(unit) or nil
       if guid and (type(UnitIsConnected) ~= "function" or UnitIsConnected(unit)) then
         lastQueuedGUID = guid
+        lastQueuedUnit = unit
+        lastQueuedTime = GetTime and GetTime() or 0
+        pending = pending + 1
       end
     end)
+    if type(ClearInspectPlayer) == "function" then
+      hooksecurefunc("ClearInspectPlayer", function()
+        lastQueuedGUID = nil
+        lastQueuedUnit = nil
+      end)
+    end
   end
   function _G.MRT_GetQueuedInspectGUID()
+    if not lastQueuedGUID or not lastQueuedUnit then return nil end
+    if type(UnitGUID) == "function" then
+      local current = UnitGUID(lastQueuedUnit)
+      if current ~= lastQueuedGUID then
+        return nil
+      end
+    end
+    if lastQueuedTime and GetTime and (GetTime() - lastQueuedTime) > 10 then
+      return nil
+    end
     return lastQueuedGUID
+  end
+  function _G.MRT_GetQueuedInspectUnit()
+    if not lastQueuedGUID or not lastQueuedUnit then return nil end
+    if type(UnitGUID) == "function" and UnitGUID(lastQueuedUnit) ~= lastQueuedGUID then
+      return nil
+    end
+    return lastQueuedUnit
+  end
+  function _G.MRT_AckInspectPending()
+    if pending > 0 then pending = pending - 1 end
+  end
+  function _G.MRT_GetInspectPending()
+    return pending
   end
 end
 local function tryCompatSetup()

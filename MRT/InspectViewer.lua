@@ -1049,15 +1049,66 @@ function module.options:Load()
 							end
 						end
 					elseif module.db.page == 2 then
-						local data = data.talentsStr or (VMRT.Inspect and VMRT.Inspect.TalentsClassic and VMRT.Inspect.TalentsClassic[name])
-
 						line.spec:Hide()
 						line.refreshSoulbind:Show()
 
-						if data then
-			local it = 1
+						local talentsStr = data.talentsStr or (VMRT.Inspect and VMRT.Inspect.TalentsClassic and VMRT.Inspect.TalentsClassic[name])
 
-							local timeUpdate,tree = strsplit(":",data,2)
+						if not talentsStr and ExRT.isLK and parentModule.TALENTDATA then
+							local LibGroupTalents = LibStub and LibStub("LibGroupTalents-1.0", true)
+							if LibGroupTalents then
+								local unit
+								if UnitName("player") == name then
+									unit = "player"
+								elseif IsInRaid and IsInRaid() then
+									local n = (GetNumRaidMembers and GetNumRaidMembers()) or (GetNumGroupMembers and GetNumGroupMembers()) or 0
+									for i = 1, n do
+										local u = "raid"..i
+										if UnitExists(u) and UnitName(u) == name then unit = u; break end
+									end
+								elseif IsInGroup and IsInGroup() then
+									local n = (GetNumPartyMembers and GetNumPartyMembers()) or 0
+									for i = 1, n do
+										local u = "party"..i
+										if UnitExists(u) and UnitName(u) == name then unit = u; break end
+									end
+								end
+								local guid = unit and UnitGUID(unit)
+								local _, class = unit and UnitClass(unit)
+								local libCtd = class and LibGroupTalents.classTalentData and LibGroupTalents.classTalentData[class]
+								local mrtTalents = class and parentModule.TALENTDATA[class]
+								local rankSet = guid and LibGroupTalents:GetGUIDTalents(guid)
+								if rankSet and libCtd and mrtTalents and type(rankSet) == "table" and #rankSet >= 3 then
+									local parts
+									for tab = 1, 3 do
+										local rankStr = rankSet[tab]
+										local tabList = libCtd[tab] and libCtd[tab].list
+										local mrtTab = mrtTalents[tab]
+										if rankStr and tabList and mrtTab then
+											for i = 1, #tabList do
+												local entry = tabList[i]
+												local rank = tonumber(rankStr:sub(i, i)) or 0
+												if rank > 0 and entry then
+													local tier, column = entry.tier, entry.column
+													local tierData = mrtTab[tier]
+													local spellID = tierData and tierData[column]
+													if type(spellID) == "number" then
+														local maxRank = entry.maxRank or rank
+														parts = (parts and parts..":" or "0:") .. spellID .. ":" .. rank .. maxRank
+													end
+												end
+											end
+										end
+									end
+									talentsStr = parts
+								end
+							end
+						end
+
+						if talentsStr then
+							local it = -1
+
+							local timeUpdate,tree = strsplit(":",talentsStr,2)
 
 
 							while tree do

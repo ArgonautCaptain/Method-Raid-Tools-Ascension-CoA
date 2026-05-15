@@ -1,6 +1,8 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<Script file="libs\LibStub\LibStub.lua"/>
 	<Script file="libs\CallbackHandler-1.0\CallbackHandler-1.0.lua"/>
+	<Script file="libs\LibGroupTalents-1.0\LibTalentQuery-1.0.lua"/>
+	<Script file="libs\LibGroupTalents-1.0\LibGroupTalents-1.0.lua"/>
 	<Script file="libs\LibDataBroker-1.1\LibDataBroker-1.1.lua"/>
 	<Script file="libs\LibDeflate\LibDeflate.lua"/>
 	<Script file="libs\LibSerialize\LibSerialize.lua"/>

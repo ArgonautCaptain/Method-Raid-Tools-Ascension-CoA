@@ -5,8 +5,8 @@ local GlobalAddonName, MRT = ...
 _G.MRT = MRT
 _G.ExRT = MRT
 
-MRT.V = 5005
-MRT.VString = "v5.0.5"
+MRT.V = 5007
+MRT.VString = "v5.0.7"
 MRT.T = "R"
 
 MRT.Slash = {}
@@ -566,11 +566,12 @@ do
 		local self = nil
 		local isProfiling = MRT.Profiling.Enabled
 		local tf = isProfiling and TimerFuncProfiling or TimerFunc
+		local NewTicker = C_Timer_NewTicker or (C_Timer and C_Timer.NewTicker)
 		if delay > 0 then
-			self = C_Timer_NewTicker(delay,tf,1)
+			self = NewTicker(delay,tf,1)
 
 		else
-			self = C_Timer_NewTicker(-delay,tf)
+			self = NewTicker(-delay,tf)
 		end
 		if isProfiling then
 			local path = debugstack()

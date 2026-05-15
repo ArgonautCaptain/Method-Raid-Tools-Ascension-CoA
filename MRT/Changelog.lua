@@ -1,6 +1,11 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+v5.0.7-WotLK335a
+* Fixes
+* Reminde: Update timeline 
+* Performance improved
+
 v5.0.6-WotLK335a
 * Fixes
 * Note: Improved Autoloaded before Boss

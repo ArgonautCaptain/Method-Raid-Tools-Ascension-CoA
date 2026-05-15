@@ -639,25 +639,9 @@ do
 		self:Hide()
 	end
 		local function OnShow(self)
-			local _profSS = VMRT and VMRT.DebugReminder and VMRT.DebugReminder.ProfileShowStrata
-			local _skipFL = type(_profSS) == "table" and _profSS.SkipFrameLevel
-			local _ssThresh = (type(_profSS) == "table" and _profSS.thresholdMs) or 5
 			local _wantedLevel = 5000 + (self.Level or 1) * 100
-			if not _skipFL and self.GetFrameLevel and self:GetFrameLevel() < _wantedLevel then
-				if _profSS and debugprofilestop then
-					local _t = debugprofilestop()
-					self:SetFrameLevel(_wantedLevel)
-					local elapsed = debugprofilestop() - _t
-					if elapsed > _ssThresh then
-						print(string.format(
-							"|cffff7799[show+strata]|r [OnShow] SetFrameLevel(%d) = %.1fms",
-							_wantedLevel,
-							elapsed
-						))
-					end
-				else
-					self:SetFrameLevel(_wantedLevel)
-				end
+			if self.GetFrameLevel and self:GetFrameLevel() < _wantedLevel then
+				self:SetFrameLevel(_wantedLevel)
 			end
 		if self.Buttons then
 			local parentLevel = self:GetFrameLevel() or _wantedLevel

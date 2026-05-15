@@ -307,11 +307,11 @@ local active_segment
 local active_phase
 
 local deathMaxEvents = 100
-local BW_AURA_CAP = 30000
-local BW_CAST_CAP_PER_SOURCE = 5000
-local BW_GRAPH_CAP = 1500
-local BW_TRACKED_GUID_CAP = 1000
-local BW_TOTAL_BUDGET_KB = 153600
+local BW_AURA_CAP = 15000
+local BW_CAST_CAP_PER_SOURCE = 2000
+local BW_GRAPH_CAP = 900
+local BW_TRACKED_GUID_CAP = 400
+local BW_TOTAL_BUDGET_KB = 51200
 local _bw_aura_overflow = false
 local _bw_cast_overflow = false
 local _bw_graph_overflow = false
@@ -891,7 +891,7 @@ function _BW_Start(encounterID,encounterName)
 	_bw_graph_count = 0
 	_bw_tracked_count = 0
 
-	local maxFights = (VMRT.BossWatcher.fightsNum or 5)
+	local maxFights = (VMRT.BossWatcher.fightsNum or 3)
 	for i=maxFights+1,2,-1 do
 		module.db.data[i] = module.db.data[i-1]
 	end
@@ -1118,7 +1118,7 @@ function _BW_End(encounterID)
 	wipe(var_reductionCurrent)
 	wipe(damageTakenLog)
 
-	local maxFights = (VMRT.BossWatcher.fightsNum or 5)
+	local maxFights = (VMRT.BossWatcher.fightsNum or 3)
 	local _selfGUID = UnitGUID and UnitGUID("player") or nil
 	for i=25,1,-1 do
 		local data = module.db.data[i]
@@ -2664,21 +2664,27 @@ CLEUParser = function(timestamp,event,hideCaster,sourceGUID,sourceName,sourceFla
 			return
 		end
 		if sT and destGUID and destGUID ~= "" and not dT then
-			if _bw_tracked_count < BW_TRACKED_GUID_CAP then
-				trackedGUIDs[destGUID] = true
-				_bw_tracked_count = _bw_tracked_count + 1
-			else
-				_bw_tracked_overflow = true
-				return
+			local guidType = destGUID:sub(1,8)
+			if (guidType == "Creature" or guidType == "Vehicle-" or guidType == "Player-0") then
+				if _bw_tracked_count < BW_TRACKED_GUID_CAP then
+					trackedGUIDs[destGUID] = true
+					_bw_tracked_count = _bw_tracked_count + 1
+				else
+					_bw_tracked_overflow = true
+					return
+				end
 			end
 		end
 		if dT and sourceGUID and sourceGUID ~= "" and not sT then
-			if _bw_tracked_count < BW_TRACKED_GUID_CAP then
-				trackedGUIDs[sourceGUID] = true
-				_bw_tracked_count = _bw_tracked_count + 1
-			else
-				_bw_tracked_overflow = true
-				return
+			local guidType = sourceGUID:sub(1,8)
+			if (guidType == "Creature" or guidType == "Vehicle-" or guidType == "Player-0") then
+				if _bw_tracked_count < BW_TRACKED_GUID_CAP then
+					trackedGUIDs[sourceGUID] = true
+					_bw_tracked_count = _bw_tracked_count + 1
+				else
+					_bw_tracked_overflow = true
+					return
+				end
 			end
 		end
 	end

@@ -281,7 +281,7 @@ module.db.tableFoodIsBest = {}
 
 if ExRT.isLK then
 	module.db.classicBuffs = {
-		{"druid","Druid",136078,{[48470]=9,[26991]=8,[21850]=7,[21849]=6,[1126]=1,[5232]=2,[5234]=4,[6756]=3,[8907]=5,[9884]=6,[9885]=7,[26990]=8,[48469]=9,[69381]=9}},
+		{"druid","MotW",136078,{[48470]=9,[26991]=8,[21850]=7,[21849]=6,[1126]=1,[5232]=2,[5234]=4,[6756]=3,[8907]=5,[9884]=6,[9885]=7,[26990]=8,[48469]=9,[69381]=9}},
 		{"int","Int",135932,{[43002]=7,[27126]=6,[10157]=5,[10156]=4,[1461]=3,[1460]=2,[1459]=1,[23028]=5,[27127]=6,[42995]=7,[61316]=3,[61024]=7}},
 		{"ap","AP",132333,{[6673]=1,[5242]=2,[6192]=3,[11549]=4,[11550]=5,[11551]=6,[25289]=7,[2048]=8,[47436]=9}},
 		{"spirit","Spirit",135946,{[27681]=4,[32999]=5,[48074]=6,[14752]=1,[14818]=2,[14819]=3,[27841]=4,[25312]=5,[48073]=6}},
@@ -291,7 +291,7 @@ if ExRT.isLK then
 	}
 elseif ExRT.isBC then
 	module.db.classicBuffs = {
-		{"druid","Druid",136078,{[26991]=8,[21850]=7,[21849]=6,[1126]=1,[5232]=2,[5234]=4,[6756]=3,[8907]=5,[9884]=6,[9885]=7,[26990]=8,}},
+		{"druid","MotW",136078,{[26991]=8,[21850]=7,[21849]=6,[1126]=1,[5232]=2,[5234]=4,[6756]=3,[8907]=5,[9884]=6,[9885]=7,[26990]=8,}},
 		{"int","Int",135932,{[27126]=6,[10157]=5,[10156]=4,[1461]=3,[1460]=2,[1459]=1,[23028]=5,[27127]=6,}},
 		{"ap","AP",132333,{[6673]=1,[5242]=2,[6192]=3,[11549]=4,[11550]=5,[11551]=6,[25289]=7,[2048]=8,}},
 		{"spirit","Spirit",135946,{[27681]=4,[32999]=5,[14752]=1,[14818]=2,[14819]=3,[27841]=4,[25312]=5,}},
@@ -301,7 +301,7 @@ elseif ExRT.isBC then
 	}
 else
 	module.db.classicBuffs = {
-		{"druid","Druid",136078,{[21850]=7,[21849]=6,[1126]=1,[5232]=2,[5234]=4,[6756]=3,[8907]=5,[9884]=6,[9885]=7,}},
+		{"druid","MotW",136078,{[21850]=7,[21849]=6,[1126]=1,[5232]=2,[5234]=4,[6756]=3,[8907]=5,[9884]=6,[9885]=7,}},
 		{"int","Int",135932,{[10157]=5,[10156]=4,[1461]=3,[1460]=2,[1459]=1,[23028]=5}},
 		{"ap","AP",132333,{[6673]=1,[5242]=2,[6192]=3,[11549]=4,[11550]=5,[11551]=6,[25289]=7,}},
 		{"spirit","Spirit",135946,{[27681]=4,[14752]=1,[14818]=2,[14819]=3,[27841]=4,}},
@@ -451,10 +451,26 @@ local function GetHs(arg1)
 end
 
 
+local function IsPlayerRaidLeaderOrAssistant()
+	if not (IsInGroup and IsInGroup()) then
+		return true
+	end
+	if UnitIsGroupLeader and UnitIsGroupLeader("player") then return true end
+	if UnitIsGroupAssistant and UnitIsGroupAssistant("player") then return true end
+	if IsInRaid and IsInRaid() then
+		if IsRaidLeader and IsRaidLeader() then return true end
+		if IsRaidOfficer and IsRaidOfficer() then return true end
+	end
+	return false
+end
+
 local function PublicResults(msg,chat_type)
 	if msg == "" or not msg then
 		return
 	elseif chat_type then
+		if not IsPlayerRaidLeaderOrAssistant() then
+			return
+		end
 		msg = msg:gsub("|c........","")
 		msg = msg:gsub("|r","")
 
@@ -889,7 +905,7 @@ local function GetRaidBuffs(checkType)
 		for k=1,buffsListLen do
 			if f[k] > 0 and f[-k] then
 				isAnyBuff = false
-				result = result .. buffsList[k][1] .. " ("..f[k].."), "
+				result = result .. (buffsList[k][2] or buffsList[k][1]) .. " ("..f[k].."), "
 			end
 		end
 		if isAnyBuff then
@@ -1081,7 +1097,7 @@ function module.options:Load()
 	self.flask = ELib:Button(self.tab.tabs[1],L.raidcheckflask):Size(230,20):Point(15,-35):OnClick(function() GetFlask(IsShiftKeyDown() and 3 or nil) end)
 	self.flask.txt = ELib:Text(self.tab.tabs[1],"/rt flask",10):Size(100,20):Point("LEFT",self.flask,"RIGHT",5,0)
 
-	self.flaskToChat = ELib:Button(self.tab.tabs[1],L.raidcheckflaskchat):Size(230,20):Point("LEFT",self.flask,"RIGHT",71,0):OnClick(function() GetFlask(IsShiftKeyDown() and 2 or 1) end)
+	self.flaskToChat = ELib:Button(self.tab.tabs[1],L.raidcheckflaskchat):Size(230,20):Point("LEFT",self.flask,"RIGHT",71,0):Tooltip(L.raidcheckflaskchatTooltip):OnClick(function() GetFlask(IsShiftKeyDown() and 2 or 1) end)
 	self.flaskToChat.txt = ELib:Text(self.tab.tabs[1],"/rt flaskchat",10):Size(100,20):Point("LEFT",self.flaskToChat,"RIGHT",5,0)
 
 	self.runes = ELib:Button(self.tab.tabs[1],L.RaidCheckRunesCheck):Size(230,20):Point(15,-60):OnClick(function() GetRunes() end)
@@ -1106,7 +1122,7 @@ function module.options:Load()
 	self.level2optLine:SetPoint("TOPLEFT",10,-135)
 	self.level2optLine:SetSize(1,1)
 
-	self.chkSlak = ELib:Check(self.tab.tabs[1],L.raidcheckslak,VMRT.RaidCheck.ReadyCheck):Point("TOPLEFT",self.level2optLine,7,0):OnClick(function(self)
+	self.chkSlak = ELib:Check(self.tab.tabs[1],L.raidcheckslak,VMRT.RaidCheck.ReadyCheck):Point("TOPLEFT",self.level2optLine,7,0):Tooltip(L.raidcheckslakTooltip):OnClick(function(self)
 		if self:GetChecked() then
 			VMRT.RaidCheck.ReadyCheck = true
 		else
@@ -3239,6 +3255,8 @@ local _StepInspectQueue
 _StepInspectQueue = function()
 	if InCombatLockdown() then return end
 	if _inspectInflight then return end
+	local inspectMod = ExRT and ExRT.A and ExRT.A.Inspect
+	if inspectMod and inspectMod.db and inspectMod.db.inspectID then return end
 	local now = GetTime()
 	local wait = INSPECT_THROTTLE - (now - _inspectLastFire)
 	if wait > 0 then
