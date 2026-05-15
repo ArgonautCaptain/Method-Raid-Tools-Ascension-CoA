@@ -514,6 +514,7 @@ do
 		{187611,187614,187615},
 		{202767,202771,202768},
 		{330325,5308},
+		{48477,20484,20739,20742,20747,20748,26994},
 	}
 	if ExRT.isBC then
 		module.db.spell_runningSameSpell2[#module.db.spell_runningSameSpell2+1] = {2894,2062}
