@@ -4510,6 +4510,30 @@ function module:Enable()
 
 	module:ApplyHotfixes()
 
+	if VMRT.ExCD2.userDB and #VMRT.ExCD2.userDB > 0 and module.db.AllSpells then
+		local systemSpells = {}
+		local systemSpellNames = {}
+		for i=1,#module.db.AllSpells do
+			local sid = module.db.AllSpells[i][1]
+			systemSpells[sid] = true
+			local sname = GetSpellInfo(sid)
+			if sname then systemSpellNames[sname] = true end
+		end
+		for i=#VMRT.ExCD2.userDB,1,-1 do
+			local entry = VMRT.ExCD2.userDB[i]
+			if entry and entry[1] then
+				if systemSpells[entry[1]] then
+					tremove(VMRT.ExCD2.userDB, i)
+				else
+					local entryName = GetSpellInfo(entry[1])
+					if entryName and systemSpellNames[entryName] then
+						tremove(VMRT.ExCD2.userDB, i)
+					end
+				end
+			end
+		end
+	end
+
 	UpdateRoster()
 
 	module.main:ZONE_CHANGED_NEW_AREA()
@@ -4685,19 +4709,6 @@ function module.main:ADDON_LOADED()
 	end
 
 	VMRT.ExCD2.userDB = VMRT.ExCD2.userDB or {}
-
-	if VMRT.ExCD2.userDB and #VMRT.ExCD2.userDB > 0 then
-		local systemSpells = {}
-		for i=1,#module.db.AllSpells do
-			systemSpells[module.db.AllSpells[i][1]] = true
-		end
-		for i=#VMRT.ExCD2.userDB,1,-1 do
-			local entry = VMRT.ExCD2.userDB[i]
-			if entry and entry[1] and systemSpells[entry[1]] then
-				tremove(VMRT.ExCD2.userDB, i)
-			end
-		end
-	end
 
 	VMRT.ExCD2.Priority = VMRT.ExCD2.Priority or {}
 
@@ -7696,25 +7707,32 @@ function module.options:Load()
 		self.current = categoryNow
 		local list,cats = {},{}
 		local extraData = {}
+		local seenInList = {}
 		local AllSpells = module.options:GetAllSpells(categoryNow == "PVP")
 		for _,data in pairs(AllSpells) do
 			if not categoryNow then
-				list[#list+1] = data
-				for cat in string.gmatch(data[2], "[^,]+") do
-					cats[cat] = true
+				if not seenInList[data] then
+					list[#list+1] = data
+					seenInList[data] = true
+					for cat in string.gmatch(data[2], "[^,]+") do
+						cats[cat] = true
+					end
 				end
 			else
 				for cat in string.gmatch(data[2], "[^,]+") do
-					if cat == categoryNow then
+					if cat == categoryNow and not seenInList[data] then
 						list[#list+1] = data
+						seenInList[data] = true
 					end
 					cats[cat] = true
 				end
-				if (categoryNow == "ENABLED" and data[1] and GetSpellInfo(data[1]) and VMRT.ExCD2.CDE[ data[1] ]) then
+				if (categoryNow == "ENABLED" and data[1] and GetSpellInfo(data[1]) and VMRT.ExCD2.CDE[ data[1] ]) and not seenInList[data] then
 					list[#list+1] = data
+					seenInList[data] = true
 				end
-				if (categoryNow == "FAV" and data[1] and VMRT.ExCD2.OptFav[ data[1] ]) then
+				if (categoryNow == "FAV" and data[1] and VMRT.ExCD2.OptFav[ data[1] ]) and not seenInList[data] then
 					list[#list+1] = data
+					seenInList[data] = true
 				end
 			end
 		end
@@ -13013,7 +13031,6 @@ if ExRT.isLK then
 
 		{29166,	"DRUID",	1,	{29166,	180,	20}},
 		{48477,	"DRUID",	1,	{48477,	600,	0}},
-		{20748,	"DRUID",	3,	{20748,	600,	0}},
 		{6795,	"DRUID",	1,	{6795,	8,	0}},
 		{740,	"DRUID",	3,	{740,	480,	8}},
 		{5209,	"DRUID",	1,	{5209,	180,	6}},
