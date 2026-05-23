@@ -6759,6 +6759,7 @@ do
 		end
 
 		self.EditBox.Parent = self
+		self.EditBox:SetScript("OnEnterPressed", nil)
 		self.EditBox:SetMultiLine(true)
 		self.EditBox:SetBackdropColor(0, 0, 0, 0)
 		self.EditBox:SetBackdropBorderColor(0, 0, 0, 0)
