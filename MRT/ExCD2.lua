@@ -1443,6 +1443,7 @@ local gsub_data = {}
 local gsub_func = function(a)
 	return gsub_data[a]
 end
+local classByName = {}
 local function BarUpdateText(self)
 	local barParent = self.parent
 
@@ -1486,10 +1487,11 @@ local function BarUpdateText(self)
 		end
 	end
 
+	local tClass = barData.targetClass or (barData.targetName and classByName[barData.targetName])
 	if barParent.textShowTargetName and barData.targetName and time >= 1 then
 		local tName = barData.targetName
-		if barData.targetClass then
-			tName = "|c" .. ExRT.F.classColor(barData.targetClass) .. tName .. "|r"
+		if tClass then
+			tName = "|c" .. ExRT.F.classColor(tClass) .. tName .. "|r"
 		end
 		name = name .. " > " .. tName
 	end
@@ -1511,6 +1513,9 @@ local function BarUpdateText(self)
 	gsub_data.status = offStatus
 	gsub_data.charge = chargesCount
 	local targetStr = (barData.targetName and time >= 1) and barData.targetName or ""
+	if targetStr ~= "" and tClass and barParent.optionClassColorText then
+		targetStr = "|c" .. ExRT.F.classColor(tClass) .. targetStr .. "|r"
+	end
 	gsub_data.target = targetStr
 
 	if barParent.iconFontMode then
@@ -1519,6 +1524,9 @@ local function BarUpdateText(self)
 			gsub_data.name = utf8sub(gsub_data.name, 1, n)
 			local rawTarget = (barData.targetName and time >= 1) and barData.targetName or ""
 			rawTarget = utf8sub(rawTarget, 1, n)
+			if rawTarget ~= "" and tClass and barParent.optionClassColorText then
+				rawTarget = "|c" .. ExRT.F.classColor(tClass) .. rawTarget .. "|r"
+			end
 			gsub_data.target = rawTarget
 			gsub_data.name_time = time >= 1 and longtime or gsub_data.name
 			gsub_data.name_stime = time >= 1 and shorttime or gsub_data.name
@@ -4121,6 +4129,7 @@ local function UpdateRoster()
 	wipe(status_UnitIsDead)
 	wipe(status_UnitIsDisconnected)
 	wipe(status_UnitIsOutOfRange)
+	wipe(classByName)
 
 	wipe(_db.vars.isWarlock)
 	wipe(_db.vars.isRogue)
@@ -4165,6 +4174,16 @@ local function UpdateRoster()
 				end
 			end
 		end
+		local prevRowsByName = {}
+		for i=1,#_C do
+			local d = _C[i]
+			if d and d.fullName then
+				local b = prevRowsByName[d.fullName]
+				if not b then b = {} prevRowsByName[d.fullName] = b end
+				b[#b + 1] = d
+			end
+		end
+		local offlineNames = {}
 		wipe(_C)
 		cdsNav_wipe()
 		for i=1,#_C do _C[i].sort = nil end
@@ -4173,6 +4192,8 @@ local function UpdateRoster()
 		local unitsToCheckSet = {}
 		for j=1,n do
 			local name,subgroup,class,level,race,online,isDead = GetRaidRosterInfoFix(j)
+			if name then classByName[name] = class end
+			if name and not online then offlineNames[name] = true end
 			if name and subgroup <= gMax then
 				for i,spellData in ipairs(_db.spellDB) do
 					local SpellID = spellData[1]
@@ -4389,6 +4410,38 @@ local function UpdateRoster()
 				_db.session_gGUIDs[name] = 1
 				if isInRaid then
 					module.main:UNIT_PET("raid"..j)
+				end
+			end
+		end
+
+		if next(offlineNames) then
+			local presentRowKeys = {}
+			for i=1,#_C do
+				local d = _C[i]
+				if d and d.fullName and d.db then
+					presentRowKeys[d.fullName.."#"..tostring(d.db[1])] = true
+				end
+			end
+			for name in pairs(offlineNames) do
+				local pr = prevRowsByName[name]
+				if pr then
+					local added = false
+					for ri=1,#pr do
+						local row = pr[ri]
+						if row.db then
+							local key = name.."#"..tostring(row.db[1])
+							if not presentRowKeys[key] then
+								_C[#_C + 1] = row
+								presentRowKeys[key] = true
+								added = true
+							end
+						end
+					end
+					if added and not unitsToCheckSet[name] then
+						unitsToCheckSet[name] = true
+						status_UnitsToCheck[#status_UnitsToCheck + 1] = name
+						status_UnitIsDisconnected[name] = true
+					end
 				end
 			end
 		end
