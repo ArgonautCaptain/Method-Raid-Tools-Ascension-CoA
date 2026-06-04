@@ -23,6 +23,15 @@ function module.main:ADDON_LOADED()
 	VMRT.LootHistory.bossNames = VMRT.LootHistory.bossNames or {}
 	VMRT.LootHistory.instanceNames = VMRT.LootHistory.instanceNames or {}
 
+	if ExRT and ExRT.L and ExRT.L.bossName then
+		for encID, name in pairs(VMRT.LootHistory.bossNames) do
+			local canonical = ExRT.L.bossName[encID]
+			if type(canonical) == "string" and canonical ~= "" and canonical ~= tostring(encID) and canonical ~= name then
+				VMRT.LootHistory.bossNames[encID] = canonical
+			end
+		end
+	end
+
 	if not VMRT.LootHistory.disable then
 		module:Enable()
 	end
@@ -58,7 +67,14 @@ function module.main:BOSS_KILL(encounterID, name)
 	if encounterID == 0 or not encounterID then
 		return
 	end
-	VMRT.LootHistory.bossNames[encounterID] = name
+	local canonical
+	if ExRT and ExRT.L and ExRT.L.bossName then
+		local resolved = ExRT.L.bossName[encounterID]
+		if type(resolved) == "string" and resolved ~= "" and resolved ~= tostring(encounterID) then
+			canonical = resolved
+		end
+	end
+	VMRT.LootHistory.bossNames[encounterID] = canonical or name
 end
 
 function module.main:ENCOUNTER_LOOT_RECEIVED(encounterID, itemID, itemLink, quantity, playerName, className)
@@ -235,19 +251,35 @@ function module.main:LOOT_HISTORY_UPDATE_DROP(encounterID,lootListID)
 	module.main:LOOT_HISTORY_UPDATE_ENCOUNTER(encounterID)
 end
 
+local function CanonicalEncounterName(encounterID, fallback)
+	if encounterID and ExRT and ExRT.L and ExRT.L.bossName then
+		local name = ExRT.L.bossName[encounterID]
+		if type(name) == "string" and name ~= "" and name ~= tostring(encounterID) then
+			return name
+		end
+	end
+	return fallback
+end
+
 function module.main:ENCOUNTER_END(encounterID, encounterName)
 	module.db.prevEncounterID = encounterID
-	if ExRT.isClassic and encounterID and encounterID ~= 0 and encounterName and encounterName ~= "" then
-		VMRT.LootHistory.bossNames = VMRT.LootHistory.bossNames or {}
-		VMRT.LootHistory.bossNames[encounterID] = encounterName
+	if ExRT.isClassic and encounterID and encounterID ~= 0 then
+		local canonical = CanonicalEncounterName(encounterID, encounterName)
+		if canonical and canonical ~= "" then
+			VMRT.LootHistory.bossNames = VMRT.LootHistory.bossNames or {}
+			VMRT.LootHistory.bossNames[encounterID] = canonical
+		end
 	end
 end
 
 function module.main:ENCOUNTER_START(encounterID, encounterName)
 	module.db.prevEncounterID = encounterID
-	if encounterID and encounterID ~= 0 and encounterName and encounterName ~= "" then
-		VMRT.LootHistory.bossNames = VMRT.LootHistory.bossNames or {}
-		VMRT.LootHistory.bossNames[encounterID] = encounterName
+	if encounterID and encounterID ~= 0 then
+		local canonical = CanonicalEncounterName(encounterID, encounterName)
+		if canonical and canonical ~= "" then
+			VMRT.LootHistory.bossNames = VMRT.LootHistory.bossNames or {}
+			VMRT.LootHistory.bossNames[encounterID] = canonical
+		end
 	end
 end
 

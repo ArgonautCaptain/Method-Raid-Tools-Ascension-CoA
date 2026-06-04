@@ -80,9 +80,9 @@ local function GSUB_Icon(spellID,iconSize)
 	spellID = tonumber(spellID)
 
 	if not iconSize or iconSize == "" then
-		iconSize = 0
+		iconSize = 16
 	else
-		iconSize = min(tonumber(iconSize) + 2,42)
+		iconSize = min(tonumber(iconSize),40)
 	end
 
 	local preicon = predefSpellIcons[spellID]
@@ -531,7 +531,7 @@ end
 
 local function resizeAutoIcons(text, fontSize)
 	if not text or text == "" or not fontSize or fontSize <= 0 then return text end
-	local size = fontSize + 6
+	local size = fontSize + 4
 	if size < 18 then size = 18 end
 	local yOff = math.floor(0.4 * fontSize - size / 2)
 	return (text:gsub("|T([^|]-)|t", function(args)
@@ -545,8 +545,7 @@ local function resizeAutoIcons(text, fontSize)
 			local h = parts[2] and tonumber(parts[2])
 			local w = parts[3] and tonumber(parts[3])
 			if h and h ~= 0 and h ~= 16 then
-				local customYOff = math.floor(0.4 * fontSize - h / 2)
-				return "|T" .. path .. ":" .. h .. ":" .. h .. ":0:" .. customYOff .. ":64:64:0:64:0:64|t"
+				return "|T" .. args .. "|t"
 			end
 			if w and w ~= 0 and w ~= 16 then
 				return "|T" .. args .. "|t"
@@ -556,13 +555,12 @@ local function resizeAutoIcons(text, fontSize)
 			local h = tonumber(parts[2])
 			local w = tonumber(parts[3])
 			if h and h ~= 0 and h ~= 16 then
-				local customYOff = math.floor(0.4 * fontSize - h / 2)
-				return "|T" .. path .. ":" .. h .. ":" .. (w or h) .. ":0:" .. customYOff .. "|t"
+				return "|T" .. args .. "|t"
 			end
 			if w and w ~= 0 and w ~= 16 then
 				return "|T" .. args .. "|t"
 			end
-			return "|T" .. path .. ":" .. size .. ":" .. size .. ":0:" .. yOff .. "|t"
+			return "|T" .. path .. ":" .. size .. ":" .. size .. ":0:" .. yOff .. ":64:64:0:64:0:64|t"
 		elseif n == 11 then
 			local h = tonumber(parts[2])
 			local w = tonumber(parts[3])
@@ -573,10 +571,7 @@ local function resizeAutoIcons(text, fontSize)
 			local crT = tonumber(parts[10]) or 0
 			local crB = tonumber(parts[11]) or texH
 			if h and h ~= 0 and h ~= 16 then
-				local customYOff = math.floor(0.4 * fontSize - h / 2)
-				return "|T" .. path .. ":" .. h .. ":" .. (w or h) .. ":0:" .. customYOff
-					.. ":" .. texW .. ":" .. texH
-					.. ":" .. crL .. ":" .. crR .. ":" .. crT .. ":" .. crB .. "|t"
+				return "|T" .. args .. "|t"
 			end
 			if w and w ~= 0 and w ~= 16 then
 				return "|T" .. args .. "|t"
@@ -1447,9 +1442,9 @@ function module.options:Load()
 		spellID = tonumber(spellID)
 
 		if not iconSize or iconSize == "" then
-			iconSize = 2
+			iconSize = 0
 		else
-			iconSize = min(tonumber(iconSize) + 2,42)
+			iconSize = min(tonumber(iconSize),40)
 		end
 
 		local preicon = predefSpellIcons[spellID]
@@ -3004,45 +2999,40 @@ function module.options:Load()
 		end
 		if successful and res then
 			profilesTab:LockedFilter(res)
-			StaticPopupDialogs["EXRT_NOTE_IMPORT"] = {
-				text = L.cd2ProfileRewriteAlert,
-				button1 = APPLY,
-				button2 = L.ProfilesSaveAsNew,
-				button2 = CANCEL,
-				selectCallbackByIndex = true,
-				OnButton1 = function()
-					local saved = profilesTab:SaveDataFilter(VMRT.Note)
-					MRT.F.table_rewrite(VMRT.Note,res)
-					saved:Restore(VMRT.Note)
-					module:ReloadProfile()
-					res = nil
-				end,
-				OnButton2 = function()
-					MRT.F.ShowInput(L.ProfilesNewProfile,function(_,name)
-						if name == "" or VMRT.Note.Profiles.List[name] or name == "default" or name == VMRT.Note.Profiles.Now then
-							res = nil
-							return
-						end
-						VMRT.Note.Profiles.List[name] = res
-						module:SelectProfile(name)
+			MRT.F.ImportChoicePopup(
+				L.cd2ProfileRewriteAlert,
+				{
+					{text = APPLY, func = function()
+						local saved = profilesTab:SaveDataFilter(VMRT.Note)
+						MRT.F.table_rewrite(VMRT.Note,res)
+						saved:Restore(VMRT.Note)
+						module:ReloadProfile()
 						res = nil
-					end,nil,nil,nil,function(self)
-						local name = self:GetText()
-						if name == "" or VMRT.Note.Profiles.List[name] or name == "default" or name == VMRT.Note.Profiles.Now then
-							self:GetParent().OK:Disable()
-						else
-							self:GetParent().OK:Enable()
-						end
-					end)
-				end,
-				OnButton3 = function()
-					res = nil
-				end,
-				timeout = 0,
-				whileDead = true,
-				hideOnEscape = true,
-				preferredIndex = 3,
-			}
+					end},
+					{text = L.ProfilesSaveAsNew, func = function()
+						MRT.F.ShowInput(L.ProfilesNewProfile,function(_,name)
+							if name == "" or VMRT.Note.Profiles.List[name] or name == "default" or name == VMRT.Note.Profiles.Now then
+								res = nil
+								return
+							end
+							VMRT.Note.Profiles.List[name] = res
+							module:SelectProfile(name)
+							res = nil
+						end,nil,nil,nil,function(self)
+							local name = self:GetText()
+							if name == "" or VMRT.Note.Profiles.List[name] or name == "default" or name == VMRT.Note.Profiles.Now then
+								self:GetParent().OK:Disable()
+							else
+								self:GetParent().OK:Enable()
+							end
+						end)
+					end},
+					{text = CANCEL, func = function()
+						res = nil
+					end},
+				}
+			)
+			return
 		else
 			StaticPopupDialogs["EXRT_NOTE_IMPORT"] = {
 				text = L.ProfilesFail1..(res and "\nError code: "..res or ""),
@@ -3303,15 +3293,7 @@ local function NoteWindow_OnSizeChanged(self, width, height)
 		VMRT.Note[self.Name.."Width"] = width
 		VMRT.Note[self.Name.."Height"] = height
 
-		if not self._resizeThrottle then
-			self._resizeThrottle = true
-			C_Timer.After(0.2, function()
-				self._resizeThrottle = nil
-				if self:IsShown() then
-					self:UpdateText()
-				end
-			end)
-		end
+		self:UpdateText()
 	end
 
 	self.sf.C:SetWidth( width_ )

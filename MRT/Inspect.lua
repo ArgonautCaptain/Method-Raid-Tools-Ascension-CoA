@@ -1,4 +1,5 @@
 local GlobalAddonName, ExRT = ...
+local function dprint(...) if _G.MRT_CD_DEBUG then print(...) end end
 
 local UnitName, GetTime = UnitName, GetTime
 local pairs, type, tonumber, abs = pairs, type, tonumber, abs
@@ -72,30 +73,6 @@ local function IsRaidMember(name)
 	return false
 end
 module.IsRaidMember = IsRaidMember
-
-local function NameToUnit(name)
-	if not name or name == "" then return nil end
-	local short = name:match("^([^%-]+)") or name
-	if UnitName("player") == short then return "player" end
-	local nRaid = (GetNumRaidMembers and GetNumRaidMembers()) or 0
-	if nRaid > 0 then
-		for j = 1, nRaid do
-			local unit = "raid"..j
-			if UnitName(unit) == short then return unit end
-		end
-	else
-		local nParty = (GetNumPartyMembers and GetNumPartyMembers()) or 0
-		for j = 1, nParty do
-			local unit = "party"..j
-			if UnitName(unit) == short then return unit end
-		end
-	end
-	if UnitName("target") == short then return "target" end
-	if UnitName("focus") == short then return "focus" end
-	if UnitName("mouseover") == short then return "mouseover" end
-	return nil
-end
-module.NameToUnit = NameToUnit
 
 local function PruneNonRaidMembers()
 	local roster = {}
@@ -215,11 +192,7 @@ local function InspectNext()
 	end
 	local nowTime = GetTime()
 	for name,timeAdded in pairs(module.db.inspectQuery) do
-		local unitToInspect = name
-		if ExRT.isLK then
-			unitToInspect = NameToUnit(name)
-		end
-		if unitToInspect and name and UnitName(name) and not InCombatLockdown() and CheckInteractDistance(unitToInspect,1) and CanInspect(unitToInspect,false) and (not lastCheckNext[name] or nowTime - lastCheckNext[name] > 30) then
+		if name and UnitName(name) and not InCombatLockdown() and CheckInteractDistance(name,1) and CanInspect(name,false) and (not lastCheckNext[name] or nowTime - lastCheckNext[name] > 30) then
 			lastCheckNext[name] = nowTime
 			if ExRT.isLK then
 				MuteSoundFile(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
@@ -227,7 +200,7 @@ local function InspectNext()
 					UnmuteSoundFile(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
 				end)
 			end
-			NotifyInspect(unitToInspect)
+			NotifyInspect(name)
 
 
 			if InspectPVPFrame and not INSPECTED_UNIT then
@@ -574,15 +547,6 @@ function module.main:ADDON_LOADED()
 	VMRT.Inspect = VMRT.Inspect or {}
 	VMRT.Inspect.Soulbinds = nil
 
-	if ExRT.isLK and VMRT.ExCD2 and VMRT.ExCD2.gnGUIDs then
-		local playerShort = ExRT.SDB.charName
-		for cachedName in pairs(VMRT.ExCD2.gnGUIDs) do
-			if cachedName ~= playerShort then
-				VMRT.ExCD2.gnGUIDs[cachedName] = nil
-			end
-		end
-	end
-
 	module:Enable()
 end
 
@@ -615,10 +579,6 @@ function module.main:PLAYER_SPECIALIZATION_CHANGED(arg)
 
 		cooldownsModule:ClearSessionDataReason(name,"talent","pvptalent","autotalent")
 
-		if module.lastAppliedRankSet then
-			module.lastAppliedRankSet[name] = nil
-		end
-
 		if UnitIsUnit(unit,"player") then
 			if module.ApplySelfClassicTalents then
 				module.ApplySelfClassicTalents()
@@ -647,9 +607,6 @@ function module.main:UNIT_SPELLCAST_SUCCEEDED(unitID,castGUID,spellID)
 
 
 		if spellID == 200749 then
-			if not UnitIsUnit(unitID, "player") then
-				return
-			end
 
 			VMRT.ExCD2.gnGUIDs[name] = nil
 
@@ -665,10 +622,6 @@ function module.main:UNIT_SPELLCAST_SUCCEEDED(unitID,castGUID,spellID)
 			end
 
 			cooldownsModule:ClearSessionDataReason(name,"talent","pvptalent","autotalent")
-
-			if module.lastAppliedRankSet then
-				module.lastAppliedRankSet[name] = nil
-			end
 
 			cooldownsModule:UpdateAllData()
 
@@ -764,7 +717,6 @@ do
 		if lastInspectTime[arg] and (currTime - lastInspectTime[arg]) < 0.2 then
 			return
 		end
-		if _G.MRT_AckInspectPending then _G.MRT_AckInspectPending() end
 		lastInspectTime[arg] = currTime
 		local _,_,_,race,_,name,realm = GetPlayerInfoByGUID(arg)
 		if name then
@@ -773,28 +725,20 @@ do
 				return
 			end
 			local inspectedName = name
-			if UnitName("target") == DelUnitNameServer(name) then
+			if UnitName("player") == DelUnitNameServer(name) then
+				inspectedName = "player"
+			elseif UnitName("target") == DelUnitNameServer(name) then
 				inspectedName = "target"
 			elseif not UnitName(name) then
 				return
 			end
-			local inspectedUnit = inspectedName
-			if ExRT.isLK and NameToUnit then
-				inspectedUnit = NameToUnit(name) or inspectedName
-			end
-			if ExRT.isLK then
-				local currentGUID = UnitGUID(inspectedUnit)
-				if not currentGUID or currentGUID ~= arg then
-					return
-				end
-			end
 			module:ResetTimer()
-			local _,class,classID = UnitClass(inspectedUnit)
+			local _,class,classID = UnitClass(inspectedName)
 
 			for i,slotID in pairs(module.db.itemsSlotTable) do
-				local link = GetInventoryItemLink(inspectedUnit, slotID)
+				local link = GetInventoryItemLink(inspectedName, slotID)
 			end
-			ScheduleTimer(InspectItems, inspectForce and 0.65 or 1.3, name, inspectedUnit, module.db.inspectID)
+			ScheduleTimer(InspectItems, inspectForce and 0.65 or 1.3, name, inspectedName, module.db.inspectID)
 			if not inspectForce then
 
 			end
@@ -814,16 +758,16 @@ do
 			end
 			local data = module.db.inspectDB[name]
 
-			data.spec = floor( GetInspectSpecialization(inspectedUnit) + 0.5 )
+			data.spec = floor( GetInspectSpecialization(inspectedName) + 0.5 )
 			if data.spec < 10000 then
 				VMRT.ExCD2.gnGUIDs[name] = data.spec
 			end
 			data.class = class
 			data.classID = classID
-			data.level = UnitLevel(inspectedUnit)
+			data.level = UnitLevel(inspectedName)
 			data.race = race
 			data.time = time()
-			data.GUID = UnitGUID(inspectedUnit)
+			data.GUID = UnitGUID(inspectedName)
 			data.lastUpdate = currTime
 			data.lastUpdateTime = time()
 
@@ -841,14 +785,6 @@ do
 			end
 			data.talentsIDs = {}
 
-			local classTalents = cooldownsModule.db.spell_talentsList[class]
-			if classTalents then
-				for _,list in pairs(classTalents) do
-					for _,spellID in pairs(list) do
-						cooldownsModule.db.session_gGUIDs[name] = -spellID
-					end
-				end
-			end
 			cooldownsModule:ClearSessionDataReason(name,"talent","pvptalent","autotalent")
 
 			if not ExRT.isLK then
@@ -892,11 +828,11 @@ do
 							list[0][ #list[0]+1 ] = spellID
 						end
 						if rankSelected and (tonumber(rankSelected) or 0) > 0 then
-							cooldownsModule.db.session_gGUIDs[name] = {spellID,"talent"}
+							cooldownsModule.db.session_gGUIDs[name][spellID] = {"talent"}
 
 							if cooldownsModule.db.spell_talentProvideAnotherTalents[spellID] then
 								for k,v in pairs(cooldownsModule.db.spell_talentProvideAnotherTalents[spellID]) do
-									cooldownsModule.db.session_gGUIDs[name] = {v,"talent"}
+									cooldownsModule.db.session_gGUIDs[name][v] = {"talent"}
 								end
 							end
 
@@ -910,7 +846,7 @@ do
 
 			end
 
-			InspectItems(name, inspectedUnit, module.db.inspectID, true)
+			InspectItems(name, inspectedName, module.db.inspectID, true)
 
 			if PlayerGetTimerunningSeasonID and PlayerGetTimerunningSeasonID() == 2 then
 				for i=1,255 do
@@ -1072,18 +1008,13 @@ if ExRT.isLK then
 	function module:PrepTalentsClassicData()
 		local class = select(2,UnitClass("player"))
 		local talents
-		local totalPoints = 0
 		for spec=1,3 do
 			for talPos=1,31 do
 				local name, iconTexture, tier, column, rank, maxRank, isExceptional, available = GetTalentInfoClassic(spec, talPos)
 				if name and maxRank > 0 and rank > 0 then
 					talents = (talents and talents..":" or "") .. (module.TALENTDATA and module.TALENTDATA[class] and module.TALENTDATA[class][spec] and module.TALENTDATA[class][spec][tier] and module.TALENTDATA[class][spec][tier][column] or 0) .. ":" .. rank .. maxRank
-					totalPoints = totalPoints + rank
 				end
 			end
-		end
-		if totalPoints == 0 then
-			return nil
 		end
 		return talents
 	end
@@ -1174,7 +1105,6 @@ function module:addonMessage(sender, prefix, subPrefix, ...)
 			if select(2,strsplit("-",sender)) == ExRT.SDB.realmKey then
 				sender = strsplit("-",sender)
 			end
-			local isSelfBroadcast = (sender == UnitName("player"))
 			while str do
 				local main,next = strsplit("^",str,2)
 				str = next
@@ -1204,6 +1134,12 @@ function module:addonMessage(sender, prefix, subPrefix, ...)
 									cooldownsModule.db.session_gGUIDs[sender] = {spellID,"talent"}
 									cooldownsModule.db.spell_isTalent[spellID] = true
 
+									if cooldownsModule.db.spell_talentProvideAnotherTalents and cooldownsModule.db.spell_talentProvideAnotherTalents[spellID] then
+										for _, v in pairs(cooldownsModule.db.spell_talentProvideAnotherTalents[spellID]) do
+											cooldownsModule.db.session_gGUIDs[sender] = {v,"talent"}
+											cooldownsModule.db.spell_isTalent[v] = true
+										end
+									end
 								end
 								row = row + 1
 								if inspectData then
@@ -1252,6 +1188,12 @@ function module:addonMessage(sender, prefix, subPrefix, ...)
 									cooldownsModule.db.session_gGUIDs[sender] = {spellID,"talent"}
 									cooldownsModule.db.spell_isTalent[spellID] = true
 
+									if cooldownsModule.db.spell_talentProvideAnotherTalents and cooldownsModule.db.spell_talentProvideAnotherTalents[spellID] then
+										for _, v in pairs(cooldownsModule.db.spell_talentProvideAnotherTalents[spellID]) do
+											cooldownsModule.db.session_gGUIDs[sender] = {v,"talent"}
+											cooldownsModule.db.spell_isTalent[v] = true
+										end
+									end
 
 									if rank then
 										cooldownsModule:SetTalentClassicRank(sender,spellID,rank)
@@ -1280,9 +1222,6 @@ function module:addonMessage(sender, prefix, subPrefix, ...)
 					end
 
 				elseif key == "t" and ExRT.isClassic then
-					if isSelfBroadcast then
-						return
-					end
 					local enabled = cooldownsModule:IsEnabled()
 					if enabled then
 						if cooldownsModule.WipeSessionData then
@@ -1307,6 +1246,7 @@ function module:addonMessage(sender, prefix, subPrefix, ...)
 						end
 					end
 
+					local talentRanks = {}
 					local _,list = strsplit(":",main,2)
 					while list do
 						local spellID,ranks,on = strsplit(":",list,3)
@@ -1315,11 +1255,20 @@ function module:addonMessage(sender, prefix, subPrefix, ...)
 						spellID = tonumber(spellID or "?")
 						local rankSelected = type(ranks) == "string" and tonumber(ranks:sub(1,1)) or nil
 						if spellID and spellID ~= 0 and enabled and rankSelected and rankSelected > 0 then
+							talentRanks[spellID] = rankSelected
 							cooldownsModule.db.session_gGUIDs[sender] = {spellID,"talent"}
 
 
 							cooldownsModule.db.spell_isTalent[GetSpellInfo(spellID) or "spell:"..spellID] = true
 							cooldownsModule.db.spell_isTalent[spellID] = true
+
+							if cooldownsModule.db.spell_talentProvideAnotherTalents and cooldownsModule.db.spell_talentProvideAnotherTalents[spellID] then
+								for _, v in pairs(cooldownsModule.db.spell_talentProvideAnotherTalents[spellID]) do
+									cooldownsModule.db.session_gGUIDs[sender] = {v,"talent"}
+									cooldownsModule.db.spell_isTalent[GetSpellInfo(v) or "spell:"..v] = true
+									cooldownsModule.db.spell_isTalent[v] = true
+								end
+							end
 
 							if cooldownsModule.SetTalentClassicRank then
 								cooldownsModule:SetTalentClassicRank(sender, spellID, rankSelected)
@@ -1327,10 +1276,13 @@ function module:addonMessage(sender, prefix, subPrefix, ...)
 						end
 					end
 
+					local senderClass = select(2, UnitClass(sender))
+					local derivedSpec = senderClass and module.DeriveSpecFromTalentRanks and module.DeriveSpecFromTalentRanks(senderClass, talentRanks)
+					if derivedSpec and derivedSpec < 10000 and VMRT and VMRT.ExCD2 and VMRT.ExCD2.gnGUIDs then
+						VMRT.ExCD2.gnGUIDs[sender] = derivedSpec
+					end
+
 					if enabled then
-						if module.lastAppliedRankSet then
-							module.lastAppliedRankSet[sender] = nil
-						end
 						if cooldownsModule.db.session_TalentBroadcastReceived then
 							cooldownsModule.db.session_TalentBroadcastReceived[sender] = "broadcast"
 						end
@@ -1383,7 +1335,6 @@ if ExRT.isLK and LibStub then
 	local LibGroupTalents = LibStub("LibGroupTalents-1.0", true)
 	if LibGroupTalents then
 		local lastAppliedRankSet = {}
-		module.lastAppliedRankSet = lastAppliedRankSet
 		local function ApplyLibTalents(guid, unit)
 			if not cooldownsModule or not cooldownsModule.IsEnabled or not cooldownsModule:IsEnabled() then
 				return
@@ -1411,6 +1362,18 @@ if ExRT.isLK and LibStub then
 			if type(rankSet) ~= "table" or #rankSet < 3 then
 				return
 			end
+			local totalPoints = 0
+			for _tab = 1, 3 do
+				local _rs = rankSet[_tab]
+				if type(_rs) == "string" then
+					for _ci = 1, #_rs do
+						totalPoints = totalPoints + (tonumber(_rs:sub(_ci, _ci)) or 0)
+					end
+				end
+			end
+			if totalPoints == 0 then
+				return
+			end
 			local rsHash = tostring(rankSet[1] or "").."|"..tostring(rankSet[2] or "").."|"..tostring(rankSet[3] or "")
 			if lastAppliedRankSet[name] == rsHash then
 				return
@@ -1418,22 +1381,15 @@ if ExRT.isLK and LibStub then
 			lastAppliedRankSet[name] = rsHash
 
 			local anyTab = false
-			local totalRankPoints = 0
 			for tab = 1, 3 do
 				local rankStr = rankSet[tab]
 				local tabList = libCtd[tab] and libCtd[tab].list
 				if type(rankStr) == "string" and tabList and #tabList > 0 then
 					anyTab = true
-					for i = 1, #tabList do
-						local rank = tonumber(rankStr:sub(i, i)) or 0
-						if rank > 0 then
-							totalRankPoints = totalRankPoints + rank
-						end
-					end
+					break
 				end
 			end
-			if not anyTab or totalRankPoints == 0 then
-				lastAppliedRankSet[name] = nil
+			if not anyTab then
 				return
 			end
 
@@ -1486,11 +1442,11 @@ if ExRT.isLK and LibStub then
 									pointsInTab = pointsInTab + rank
 									cooldownsModule.db.spell_isTalent[GetSpellInfo(spellID) or "spell:"..spellID] = true
 									cooldownsModule.db.spell_isTalent[spellID] = true
-									cooldownsModule.db.session_gGUIDs[name] = {spellID, "talent"}
+									cooldownsModule.db.session_gGUIDs[name][spellID] = {"talent"}
 
 									if cooldownsModule.db.spell_talentProvideAnotherTalents and cooldownsModule.db.spell_talentProvideAnotherTalents[spellID] then
 										for _, v in pairs(cooldownsModule.db.spell_talentProvideAnotherTalents[spellID]) do
-											cooldownsModule.db.session_gGUIDs[name] = {v, "talent"}
+											cooldownsModule.db.session_gGUIDs[name][v] = {"talent"}
 										end
 									end
 
@@ -1516,45 +1472,6 @@ if ExRT.isLK and LibStub then
 				end
 			end
 
-			if cooldownsModule.db.spell_wotlkTalentMap then
-				for mappedSpellID, coords in pairs(cooldownsModule.db.spell_wotlkTalentMap) do
-					local tab, idx = coords[1], coords[2]
-					if tab and idx then
-						local rankStr = rankSet[tab]
-						local tabList = libCtd[tab] and libCtd[tab].list
-						if type(rankStr) == "string" and tabList then
-							local entry
-							for i = 1, #tabList do
-								if tabList[i] and tabList[i].index == idx then
-									entry = tabList[i]
-									break
-								end
-							end
-							if entry then
-								local rank = tonumber(rankStr:sub(entry.index, entry.index)) or 0
-								if rank > 0 then
-									cooldownsModule.db.session_gGUIDs[name] = {mappedSpellID, "talent"}
-									if cooldownsModule.SetTalentClassicRank then
-										cooldownsModule:SetTalentClassicRank(name, mappedSpellID, rank)
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-
-			if cooldownsModule.db.spell_autoTalent then
-				local specGlobal = ExRT.GDB.ClassSpecializationList and ExRT.GDB.ClassSpecializationList[class] and ExRT.GDB.ClassSpecializationList[class][maxSpec]
-				if specGlobal then
-					for autoSpellID, autoSpecID in pairs(cooldownsModule.db.spell_autoTalent) do
-						if autoSpecID == specGlobal then
-							cooldownsModule.db.session_gGUIDs[name] = {autoSpellID, "autotalent"}
-						end
-					end
-				end
-			end
-
 			if cooldownsModule.db.session_TalentBroadcastReceived then
 				cooldownsModule.db.session_TalentBroadcastReceived[name] = "lgt"
 			end
@@ -1567,6 +1484,10 @@ if ExRT.isLK and LibStub then
 		module.ApplyLibTalents = ApplyLibTalents
 
 		LibGroupTalents.RegisterCallback(module, "LibGroupTalents_Update", function(_, guid, unit)
+			if not unit then return end
+			ApplyLibTalents(guid, unit)
+		end)
+		LibGroupTalents.RegisterCallback(module, "LibGroupTalents_RoleChange", function(_, guid, unit)
 			if not unit then return end
 			ApplyLibTalents(guid, unit)
 		end)
@@ -1584,6 +1505,7 @@ end
 
 if ExRT.isLK then
 	local function MarkAllTalentsAsTalent()
+		local cooldownsModule = ExRT.A and ExRT.A.ExCD2
 		if not cooldownsModule or not cooldownsModule.db or not cooldownsModule.db.spell_isTalent then
 			return
 		end
@@ -1604,29 +1526,81 @@ if ExRT.isLK then
 				end
 			end
 		end
-		if cooldownsModule.db.spell_wotlkTalentMap then
-			for spellID, _ in pairs(cooldownsModule.db.spell_wotlkTalentMap) do
-				cooldownsModule.db.spell_isTalent[GetSpellInfo(spellID) or "spell:"..spellID] = true
-				cooldownsModule.db.spell_isTalent[spellID] = true
-			end
-		end
 	end
 	module.MarkAllTalentsAsTalent = MarkAllTalentsAsTalent
 
-	local applySelfRetryCount = 0
+	local function DeriveSpecFromTalentRanks(class, talentRanks)
+		local treeData = module.TALENTDATA and module.TALENTDATA[class]
+		if not treeData then return nil end
+		local maxSpec, maxSpecPoints = 1, -1
+		for spec=1,3 do
+			local mrtTab = treeData[spec]
+			local pointsInTab = 0
+			if mrtTab then
+				for _, tierData in pairs(mrtTab) do
+					if type(tierData) == "table" then
+						for _, sid in pairs(tierData) do
+							if type(sid) == "number" and talentRanks[sid] then
+								pointsInTab = pointsInTab + talentRanks[sid]
+							end
+						end
+					end
+				end
+			end
+			if pointsInTab > maxSpecPoints then
+				maxSpec, maxSpecPoints = spec, pointsInTab
+			end
+		end
+		return ExRT.GDB.ClassSpecializationList and ExRT.GDB.ClassSpecializationList[class] and ExRT.GDB.ClassSpecializationList[class][maxSpec]
+	end
+	module.DeriveSpecFromTalentRanks = DeriveSpecFromTalentRanks
+
+	local lastApplySelfTalentsTime = 0
 	local function ApplySelfClassicTalents()
+		-- Debounce: prevent multiple calls within 2 seconds
+		local now = GetTime()
+		if now - lastApplySelfTalentsTime < 2 then
+			if true then dprint("[ApplySelfClassicTalents] Skipping (called "..string.format("%.1f", now - lastApplySelfTalentsTime).."s ago)") end
+			return
+		end
+
+		local cooldownsModule = ExRT.A and ExRT.A.ExCD2
 		if not cooldownsModule or not cooldownsModule.db or not cooldownsModule.db.session_gGUIDs then
+			if true then dprint("[ApplySelfClassicTalents] Early return: cooldownsModule not ready") end
 			return
 		end
 		if not GetTalentInfoClassic then
+			if true then dprint("[ApplySelfClassicTalents] Early return: GetTalentInfoClassic not found") end
 			return
 		end
 		local class = select(2, UnitClass("player"))
-		if not class then return end
+		if not class then
+			if true then dprint("[ApplySelfClassicTalents] Early return: no class") end
+			return
+		end
 		local treeData = module.TALENTDATA and module.TALENTDATA[class]
-		if not treeData then return end
+		if not treeData then
+			if true then dprint("[ApplySelfClassicTalents] Early return: no treeData for "..tostring(class)) end
+			return
+		end
 		local name = UnitCombatlogname("player")
-		if not name then return end
+		if not name then
+			if true then dprint("[ApplySelfClassicTalents] Early return: no name") end
+			return
+		end
+
+		if true then dprint("[ApplySelfClassicTalents] Starting for "..name.." class="..class) end
+
+		-- Check if talent API is ready by testing first talent
+		local testName, testIcon, testTier = GetTalentInfoClassic(1, 1)
+		if not testName then
+			if true then dprint("[ApplySelfClassicTalents] Talent API not ready yet (GetTalentInfo returned nil), scheduling retry in 0.5s") end
+			C_Timer.After(0.5, function()
+				ApplySelfClassicTalents()
+			end)
+			return
+		end
+		if true then dprint("[ApplySelfClassicTalents] Talent API ready (test: "..tostring(testName)..")") end
 
 		local list0 = cooldownsModule.db.spell_talentsList[class]
 		if not list0 then
@@ -1635,15 +1609,30 @@ if ExRT.isLK then
 		end
 		list0[0] = list0[0] or {}
 
-		local readTalents = {}
+		-- Initialize session_gGUIDs[name] as empty table
+		if not cooldownsModule.db.session_gGUIDs[name] then
+			cooldownsModule.db.session_gGUIDs[name] = {}
+		end
+
+		if cooldownsModule.WipeSessionData then
+			cooldownsModule:WipeSessionData(name)
+		else
+			cooldownsModule:ClearSessionDataReason(name, "talent", "pvptalent", "autotalent")
+		end
+		if cooldownsModule.WipeTalentClassicRank then
+			cooldownsModule:WipeTalentClassicRank(name)
+		end
+
 		local maxSpec, maxSpecPoints = 1, -1
-		local totalPoints = 0
 		for spec = 1, 3 do
 			local pointsInTab = 0
 			local mrtTab = treeData[spec]
 			if mrtTab then
 				for talPos = 1, 31 do
 					local _, _, tier, column, rank, maxRank = GetTalentInfoClassic(spec, talPos)
+					if true and rank and rank > 0 then
+						dprint("[ApplySelfClassicTalents] Spec "..spec.." pos "..talPos..": tier="..tostring(tier).." col="..tostring(column).." rank="..rank.."/"..maxRank)
+					end
 					if tier and column then
 						local tierData = mrtTab[tier]
 						local spellID = tierData and tierData[column]
@@ -1653,8 +1642,20 @@ if ExRT.isLK then
 							end
 							if rank and rank > 0 then
 								pointsInTab = pointsInTab + rank
-								totalPoints = totalPoints + rank
-								readTalents[#readTalents + 1] = {spellID, rank}
+								cooldownsModule.db.spell_isTalent[GetSpellInfo(spellID) or "spell:"..spellID] = true
+								cooldownsModule.db.spell_isTalent[spellID] = true
+								cooldownsModule.db.session_gGUIDs[name][spellID] = {"talent"}
+								if true then dprint("[ApplySelfClassicTalents] Recorded talent: spellID="..spellID.." rank="..rank) end
+
+								if cooldownsModule.db.spell_talentProvideAnotherTalents and cooldownsModule.db.spell_talentProvideAnotherTalents[spellID] then
+									for _, v in pairs(cooldownsModule.db.spell_talentProvideAnotherTalents[spellID]) do
+										cooldownsModule.db.session_gGUIDs[name][v] = {"talent"}
+									end
+								end
+
+								if cooldownsModule.SetTalentClassicRank then
+									cooldownsModule:SetTalentClassicRank(name, spellID, rank)
+								end
 							end
 						end
 					end
@@ -1665,92 +1666,99 @@ if ExRT.isLK then
 			end
 		end
 
-		if totalPoints == 0 then
-			if C_Timer and C_Timer.After and applySelfRetryCount < 10 then
-				applySelfRetryCount = applySelfRetryCount + 1
-				C_Timer.After(1.5, ApplySelfClassicTalents)
-			end
-			return
-		end
-		applySelfRetryCount = 0
-
-		if cooldownsModule.WipeSessionData then
-			cooldownsModule:WipeSessionData(name)
-		else
-			if cooldownsModule.db.spell_talentsList[class] then
-				for _, list in pairs(cooldownsModule.db.spell_talentsList[class]) do
-					for _, spellID in pairs(list) do
-						if type(spellID) == "number" then
-							cooldownsModule.db.session_gGUIDs[name] = -spellID
-						end
-					end
-				end
-			end
-			cooldownsModule:ClearSessionDataReason(name, "talent", "pvptalent", "autotalent")
-		end
-		if cooldownsModule.WipeTalentClassicRank then
-			cooldownsModule:WipeTalentClassicRank(name)
-		end
-
-		for i = 1, #readTalents do
-			local spellID, rank = readTalents[i][1], readTalents[i][2]
-			cooldownsModule.db.spell_isTalent[GetSpellInfo(spellID) or "spell:"..spellID] = true
-			cooldownsModule.db.spell_isTalent[spellID] = true
-			cooldownsModule.db.session_gGUIDs[name] = {spellID, "talent"}
-
-			if cooldownsModule.db.spell_talentProvideAnotherTalents and cooldownsModule.db.spell_talentProvideAnotherTalents[spellID] then
-				for _, v in pairs(cooldownsModule.db.spell_talentProvideAnotherTalents[spellID]) do
-					cooldownsModule.db.session_gGUIDs[name] = {v, "talent"}
-				end
-			end
-
-			if cooldownsModule.SetTalentClassicRank then
-				cooldownsModule:SetTalentClassicRank(name, spellID, rank)
-			end
-		end
-
-		if cooldownsModule.db.spell_wotlkTalentMap then
-			for mappedSpellID, coords in pairs(cooldownsModule.db.spell_wotlkTalentMap) do
-				local tab, idx = coords[1], coords[2]
-				if tab and idx then
-					local _, _, _, _, rk, mrk = GetTalentInfoClassic(tab, idx)
-					if rk and rk > 0 then
-						cooldownsModule.db.session_gGUIDs[name] = {mappedSpellID, "talent"}
-						if cooldownsModule.SetTalentClassicRank then
-							cooldownsModule:SetTalentClassicRank(name, mappedSpellID, rk)
-						end
-					end
-				end
-			end
-		end
-
-		if cooldownsModule.db.spell_autoTalent then
-			local specGlobal = ExRT.GDB.ClassSpecializationList and ExRT.GDB.ClassSpecializationList[class] and ExRT.GDB.ClassSpecializationList[class][maxSpec]
-			if specGlobal then
-				for autoSpellID, autoSpecID in pairs(cooldownsModule.db.spell_autoTalent) do
-					if autoSpecID == specGlobal then
-						cooldownsModule.db.session_gGUIDs[name] = {autoSpellID, "autotalent"}
-					end
-				end
-			end
+		-- Set spec for own character
+		local specID = ExRT.GDB.ClassSpecializationList and ExRT.GDB.ClassSpecializationList[class] and ExRT.GDB.ClassSpecializationList[class][maxSpec]
+		if specID and VMRT and VMRT.ExCD2 and VMRT.ExCD2.gnGUIDs then
+			VMRT.ExCD2.gnGUIDs[name] = specID
+			if true then dprint("[ApplySelfClassicTalents] Set gnGUIDs["..name.."]="..specID.." (maxSpec="..maxSpec..", points="..maxSpecPoints..")") end
 		end
 
 		if cooldownsModule.db.session_TalentBroadcastReceived then
 			cooldownsModule.db.session_TalentBroadcastReceived[name] = "self"
 		end
 
-		if VMRT and VMRT.ExCD2 and VMRT.ExCD2.gnGUIDs and ExRT.GDB.ClassSpecializationList and ExRT.GDB.ClassSpecializationList[class] then
-			local specGlobal = ExRT.GDB.ClassSpecializationList[class][maxSpec]
-			if specGlobal and specGlobal < 10000 then
-				VMRT.ExCD2.gnGUIDs[name] = specGlobal
-			end
+		if true then
+			local cnt = 0
+			local sg = cooldownsModule.db.session_gGUIDs[name]
+			if type(sg) == "table" then for _ in pairs(sg) do cnt = cnt + 1 end end
+			dprint("[ApplySelfClassicTalents] Finished. session_gGUIDs["..name.."] has "..cnt.." entries")
 		end
 
-		if cooldownsModule.UpdateAllData then
+		lastApplySelfTalentsTime = GetTime()
+
+		dprint("[ApplySelfClassicTalents] About to call UpdateRoster, cooldownsModule=", cooldownsModule and "exists" or "nil")
+		if cooldownsModule and cooldownsModule.UpdateRoster then
+			dprint("[ApplySelfClassicTalents] Calling UpdateRoster")
+			cooldownsModule:UpdateRoster()
+			dprint("[ApplySelfClassicTalents] UpdateRoster finished")
+		else
+			dprint("[ApplySelfClassicTalents] UpdateRoster not available")
+		end
+
+		if cooldownsModule and cooldownsModule.UpdateAllData then
 			cooldownsModule:UpdateAllData()
 		end
 	end
 	module.ApplySelfClassicTalents = ApplySelfClassicTalents
+
+	function module:DumpTalentRead(unit)
+		unit = unit or "player"
+		local cd = ExRT.A and ExRT.A.ExCD2
+		if not cd or not cd.db or not cd.db.session_gGUIDs then print("|cffff5555[TalentRead]|r ExCD2 not ready"); return end
+		local class = select(2, UnitClass(unit))
+		local name = ExRT.F.UnitCombatlogname(unit)
+		local treeData = module.TALENTDATA and module.TALENTDATA[class]
+		print("|cff33ff99[TalentRead]|r "..tostring(name).." ("..tostring(class)..") unit="..unit)
+		if not treeData then print("  no TALENTDATA for class"); return end
+		local isOther = not UnitIsUnit(unit, "player")
+		local mismatch, recorded, missing = 0, 0, 0
+		for spec = 1, 3 do
+			local mrtTab = treeData[spec]
+			local n = (GetNumTalents and GetNumTalents(spec, isOther)) or 31
+			for talPos = 1, n do
+				local tName, _, tier, column, rank, maxRank = GetTalentInfoClassic(spec, talPos, isOther)
+				if tName and rank and rank > 0 then
+					local mappedID = (mrtTab and tier and column and mrtTab[tier]) and mrtTab[tier][column] or nil
+					if type(mappedID) == "number" then
+						local mappedName = (ExRT.F.GetSpellInfoSafe and ExRT.F.GetSpellInfoSafe(mappedID)) or GetSpellInfo(mappedID)
+						local inSG = cd.db.session_gGUIDs[name][mappedID] and "Y" or "-"
+						local flag
+						if not mappedName then
+							flag = "NAME?"
+						elseif mappedName == tName then
+							flag = "OK"
+						else
+							flag = "MISMATCH"; mismatch = mismatch + 1
+						end
+						if inSG == "Y" then recorded = recorded + 1 else missing = missing + 1 end
+						print(string.format("  s%d t%d c%d |%s| r%d/%d -> %d |%s| [%s] sg=%s",
+							spec, tier, column, tName, rank, maxRank or 0,
+							mappedID, tostring(mappedName), flag, inSG))
+					end
+				end
+			end
+		end
+		local sg = cd.db.session_gGUIDs[name]
+		local cnt = 0; if type(sg) == "table" then for _ in pairs(sg) do cnt = cnt + 1 end end
+		local prov = cd.db.spell_talentProvideAnotherTalents
+		if type(prov) == "table" then
+			for talID, list in pairs(prov) do
+				if sg and sg[talID] and type(list) == "table" then
+					for _, procID in ipairs(list) do
+						print(string.format("  bridge: have %d (%s) -> proc %d (%s) sg=%s",
+							talID, tostring(GetSpellInfo(talID)), procID, tostring(GetSpellInfo(procID)),
+							sg[procID] and "Y" or "-"))
+					end
+				end
+			end
+		end
+		print(string.format("  -- CD-talents: recorded=%d missing=%d MISMATCH=%d | session_gGUIDs total=%d", recorded, missing, mismatch, cnt))
+	end
+	SLASH_MRTCDTALREAD1 = "/cdtalread"
+	SlashCmdList["MRTCDTALREAD"] = function(msg)
+		local u = (msg and msg ~= "" and msg) or "player"
+		module:DumpTalentRead(u)
+	end
 
 	local lastSelfTalentBroadcast = 0
 	local pendingBroadcast = nil
@@ -1776,8 +1784,6 @@ if ExRT.isLK then
 	end
 	module.BroadcastSelfTalents = BroadcastSelfTalents
 
-	MarkAllTalentsAsTalent()
-
 	local talentBootstrap = CreateFrame("Frame")
 	talentBootstrap:RegisterEvent("PLAYER_LOGIN")
 	talentBootstrap:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -1787,47 +1793,15 @@ if ExRT.isLK then
 	talentBootstrap:RegisterEvent("GROUP_ROSTER_UPDATE")
 	talentBootstrap:RegisterEvent("RAID_ROSTER_UPDATE")
 	talentBootstrap:RegisterEvent("PARTY_MEMBERS_CHANGED")
-	local talentsMarked = false
 	talentBootstrap:SetScript("OnEvent", function(self, event)
-		if not talentsMarked or event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" then
-			MarkAllTalentsAsTalent()
-			talentsMarked = true
-		end
-		if event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_TALENT_UPDATE" or event == "CHARACTER_POINTS_CHANGED" or event == "SPELLS_CHANGED" then
-			ApplySelfClassicTalents()
-		end
-		if event == "PLAYER_TALENT_UPDATE" or event == "CHARACTER_POINTS_CHANGED" then
+		if event == "GROUP_ROSTER_UPDATE" or event == "RAID_ROSTER_UPDATE" or event == "PARTY_MEMBERS_CHANGED" then
 			BroadcastSelfTalents()
-		elseif event == "GROUP_ROSTER_UPDATE" or event == "RAID_ROSTER_UPDATE" or event == "PARTY_MEMBERS_CHANGED" then
+			return
+		end
+		MarkAllTalentsAsTalent()
+		ApplySelfClassicTalents()
+		if event == "PLAYER_TALENT_UPDATE" or event == "CHARACTER_POINTS_CHANGED" or event == "SPELLS_CHANGED" then
 			BroadcastSelfTalents()
 		end
 	end)
-end
-
-
-if ExRT.isLK and LibStub then
-	local LibGroupTalents = LibStub("LibGroupTalents-1.0", true)
-	if LibGroupTalents and module.ApplyLibTalents then
-		local pendingClassesFrame = CreateFrame("Frame")
-		local pendingTime = 0
-		pendingClassesFrame:SetScript("OnUpdate", function(self, elapsed)
-			pendingTime = pendingTime + elapsed
-			if pendingTime < 2 then return end
-			pendingTime = 0
-			if not LibGroupTalents.classTalentData then return end
-			local roster = LibGroupTalents.roster
-			if not roster then return end
-			for guid, r in pairs(roster) do
-				if r and r.class and r.unit and r.talents and r.active and r.talents[r.active] then
-					local ctd = LibGroupTalents.classTalentData[r.class]
-					if ctd and ctd[1] and ctd[2] and ctd[3] then
-						local name = UnitCombatlogname(r.unit)
-						if name and module.lastAppliedRankSet and module.lastAppliedRankSet[name] == nil then
-							module.ApplyLibTalents(guid, r.unit)
-						end
-					end
-				end
-			end
-		end)
-	end
 end

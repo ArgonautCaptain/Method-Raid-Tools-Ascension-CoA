@@ -1799,13 +1799,13 @@ if not _G.__MRT_LineCompatPatched then
 		tex:SetTexture("Interface\\Buttons\\WHITE8X8")
 		tex:SetVertexColor(1,1,1,1)
 		tex:Hide()
-		local obj={
-			_f=lf,_t=tex,_th=1,
-			_segs={},
-			_layer=layer or "ARTWORK",_subLevel=subLevel or 0,
-			_cR=1,_cG=1,_cB=1,_cA=1,
-			_mode="solid",
-		}
+		lf._t=tex
+		lf._th=1
+		lf._segs={}
+		lf._layer=layer or "ARTWORK"
+		lf._subLevel=subLevel or 0
+		lf._cR,lf._cG,lf._cB,lf._cA=1,1,1,1
+		lf._mode="solid"
 		local function parse(point,a,b,c,d)
 			local rel,relp,x,y
 			if type(a)=="number" or a==nil then
@@ -1828,27 +1828,27 @@ if not _G.__MRT_LineCompatPatched then
 			return {p=point,r=rel,rp=relp,x=x,y=y}
 		end
 		local function _AcquireSegment(i)
-			local seg = obj._segs[i]
+			local seg = lf._segs[i]
 			if not seg then
-				seg = lf:CreateTexture(nil, obj._layer, nil, obj._subLevel)
+				seg = lf:CreateTexture(nil, lf._layer, nil, lf._subLevel)
 				seg:SetTexture(LINE_DOT_TEXTURE)
 				if seg.SetBlendMode then seg:SetBlendMode("BLEND") end
-				obj._segs[i] = seg
+				lf._segs[i] = seg
 			end
 			if seg.SetVertexColor then
-				seg:SetVertexColor(obj._cR or 1, obj._cG or 1, obj._cB or 1, obj._cA or 1)
+				seg:SetVertexColor(lf._cR or 1, lf._cG or 1, lf._cB or 1, lf._cA or 1)
 			end
 			return seg
 		end
-		function obj:_Update()
-			local s=self._s
-			local e=self._e
+		local function _Update()
+			local s=lf._s
+			local e=lf._e
 			if s and e and s.r==e.r and s.p==e.p and (s.p=="TOPLEFT" or s.p=="CENTER" or s.p=="BOTTOMLEFT") then
 				local x1,y1,x2,y2=s.x,s.y,e.x,e.y
 				local dx,dy=x2-x1,y2-y1
 				local len=(dx*dx+dy*dy)^0.5
 				if len<1 then len=1 end
-				local thickness = self._th or 1
+				local thickness = lf._th or 1
 				lf:ClearAllPoints()
 				lf:SetPoint(s.p, s.r, s.rp, 0, 0)
 				lf:SetSize(1, 1)
@@ -1856,8 +1856,8 @@ if not _G.__MRT_LineCompatPatched then
 				local n = math.max(2, math.ceil(len / step) + 1)
 				if n > 200 then n = 200 end
 				local denom = (n > 1) and (n - 1) or 1
-				local dashOn  = (self._mode == "dashed") and 2 or 1
-				local dashLen = (self._mode == "dashed") and 4 or 1
+				local dashOn  = (lf._mode == "dashed") and 2 or 1
+				local dashLen = (lf._mode == "dashed") and 4 or 1
 				for i = 1, n do
 					local f = (i - 1) / denom
 					local px = x1 + dx * f
@@ -1866,88 +1866,68 @@ if not _G.__MRT_LineCompatPatched then
 					seg:ClearAllPoints()
 					seg:SetPoint("CENTER", s.r, s.p, px, py)
 					seg:SetSize(thickness, thickness)
-					if self._mode == "dashed" and ((i - 1) % dashLen) >= dashOn then
+					if lf._mode == "dashed" and ((i - 1) % dashLen) >= dashOn then
 						seg:Hide()
 					else
 						seg:Show()
 					end
 				end
-				for i = n + 1, #self._segs do
-					self._segs[i]:Hide()
+				for i = n + 1, #lf._segs do
+					lf._segs[i]:Hide()
 				end
 			else
-				for i = 1, #self._segs do self._segs[i]:Hide() end
+				for i = 1, #lf._segs do lf._segs[i]:Hide() end
 				lf:ClearAllPoints()
 				if s then lf:SetPoint(s.p,s.r,s.rp,s.x,s.y) end
 				if e then lf:SetPoint(e.p,e.r,e.rp,e.x,e.y) end
-				if not e then lf:SetSize(self._th or 1,self._th or 1) end
+				if not e then lf:SetSize(lf._th or 1,lf._th or 1) end
 			end
 		end
-		function obj:SetStartPoint(point,a,b,c,d)
-			self._s=parse(point,a,b,c,d)
-			self:_Update()
-			if lf.Show then lf:Show() end
+		lf._Update = function() _Update() end
+		lf.SetStartPoint = function(_self,point,a,b,c,d)
+			lf._s=parse(point,a,b,c,d)
+			_Update()
+			lf:Show()
 		end
-		function obj:SetEndPoint(point,a,b,c,d)
-			self._e=parse(point,a,b,c,d)
-			self:_Update()
-			if lf.Show then lf:Show() end
+		lf.SetEndPoint = function(_self,point,a,b,c,d)
+			lf._e=parse(point,a,b,c,d)
+			_Update()
+			lf:Show()
 		end
-		function obj:SetThickness(v)
-			self._th=v or 1
-			self:_Update()
+		lf.SetThickness = function(_self,v)
+			lf._th=v or 1
+			_Update()
 		end
-		function obj:SetColorTexture(r,g,b,a)
-			self._cR, self._cG, self._cB, self._cA = r, g, b, a or 1
-			self._mode = "solid"
-			self:_Update()
+		lf.SetColorTexture = function(_self,r,g,b,a)
+			lf._cR, lf._cG, lf._cB, lf._cA = r, g, b, a or 1
+			lf._mode = "solid"
+			_Update()
 		end
-		function obj:SetVertexColor(r,g,b,a)
+		lf.SetVertexColor = function(_self,r,g,b,a)
 			if r == 1 and g == 1 and b == 1 and (a == 1 or a == nil)
-				and not (self._cR == 1 and self._cG == 1 and self._cB == 1) then
+				and not (lf._cR == 1 and lf._cG == 1 and lf._cB == 1) then
 				return
 			end
-			self._cR, self._cG, self._cB, self._cA = r, g, b, a or 1
-			self:_Update()
+			lf._cR, lf._cG, lf._cB, lf._cA = r, g, b, a or 1
+			_Update()
 		end
-		function obj:SetTexture(path, mode)
+		lf.SetTexture = function(_self,path, mode)
 			if type(path) == "string" and path:lower():find("linegapped") then
-				self._mode = "dashed"
+				lf._mode = "dashed"
 			else
-				self._mode = "solid"
+				lf._mode = "solid"
 			end
 			if tex and tex.SetTexture then
 				pcall(tex.SetTexture, tex, path, mode)
 			end
-			self:_Update()
+			_Update()
 		end
-		function obj:SetTexCoord(...)
+		lf.SetTexCoord = function(_self,...)
 			if tex and tex.SetTexCoord then
 				pcall(tex.SetTexCoord, tex, ...)
 			end
 		end
-		local __fwdCache = {}
-		setmetatable(obj,{__index=function(t,k)
-			local cached = __fwdCache[k]
-			if cached ~= nil then return cached end
-			local target
-			if __mrt_texOnly[k] then
-				target = tex
-			else
-				if type(lf[k]) == "function" then
-					target = lf
-				elseif type(tex[k]) == "function" then
-					target = tex
-				end
-			end
-			if not target then return nil end
-			local fn = target[k]
-			if type(fn) ~= "function" then return fn end
-			local wrap = function(_, ...) return fn(target, ...) end
-			__fwdCache[k] = wrap
-			return wrap
-		end})
-		return obj
+		return lf
 	end
 	local __mrt_f = __mrt_probe("Frame")
 	__mrt_force_add(__mrt_f,"CreateLine",__mrt_CreateLine)
@@ -2268,17 +2248,71 @@ local function setupCompatEncounter()
 		bossTable[mapID] = bossTable[mapID] or {}
 		bossTable[mapID][creatureID] = encounterID
 	end
-	E.RegisterBoss(0, 33350, 754)
-	E.RegisterBoss(0, 33432, 754)
-	E.RegisterBoss(0, 33651, 754)
-	E.RegisterBoss(0, 33670, 754)
-	E.RegisterBoss(0, 33134, 755)
-	E.RegisterBoss(0, 33288, 755)
-	E.RegisterBoss(0, 33890, 755)
-	E.RegisterBoss(0, 34796, 629)
-	E.RegisterBoss(0, 35144, 629)
-	E.RegisterBoss(0, 34799, 629)
-	E.RegisterBoss(0, 34797, 629)
+	do
+		local WOTLK_BOSS_CIDS = {
+			[742]  = {28860,30449,30451,30452},
+			[734]  = {28859},
+			[744]  = {33113},
+			[745]  = {33118},
+			[746]  = {33186},
+			[747]  = {33293},
+			[748]  = {32867,32927,32857},
+			[749]  = {32930,32933,32934},
+			[750]  = {33515},
+			[751]  = {32845},
+			[752]  = {32865},
+			[753]  = {32906,32913,32914,32915,32916,33203,33202},
+			[754]  = {33350,33432,33651,33670,34071},
+			[755]  = {33271,33288,33890},
+			[756]  = {33136,33135,33433},
+			[757]  = {32871},
+			[629]  = {34796,35144,34799,34797},
+			[633]  = {34780},
+			[637]  = {34461,34460,34469,34467,34468,34465,34471,34466,34473,34472,34474,34470,34475,34458,34459,34449,34448,34445,34441,34439,34444,34456,34447,34455},
+			[641]  = {34496,34497},
+			[645]  = {34564},
+			[845]  = {36612},
+			[846]  = {36855},
+			[848]  = {37813},
+			[849]  = {36626},
+			[850]  = {36627},
+			[851]  = {36678},
+			[852]  = {37970,37972,37973},
+			[853]  = {37955},
+			[854]  = {36789},
+			[855]  = {36853},
+			[856]  = {36597},
+			[887]  = {39863},
+			[890]  = {39751},
+			[891]  = {39747},
+			[893]  = {39746},
+			[772]  = {31125},
+			[774]  = {33993},
+			[776]  = {35013},
+			[885]  = {38433},
+			[1084] = {10184},
+			[1107] = {15956},
+			[1110] = {15953},
+			[1116] = {15952},
+			[1117] = {15954},
+			[1118] = {15936},
+			[1119] = {16011},
+			[1111] = {16061},
+			[1112] = {16060},
+			[1121] = {16063,16064,16065,30549},
+			[1113] = {16028},
+			[1114] = {15931},
+			[1115] = {15932},
+			[1120] = {15928,15929,15930},
+			[1109] = {15989},
+			[1108] = {15990},
+		}
+		for encID, cids in pairs(WOTLK_BOSS_CIDS) do
+			for i = 1, #cids do
+				E.RegisterBoss(0, cids[i], encID)
+			end
+		end
+	end
 
 	function E.GetCurrentEncounterID() return currentEncounterID end
 
@@ -2320,6 +2354,23 @@ local function setupCompatEncounter()
 		return false
 	end
 
+	local _nameToEncIDCache
+	local function nameToEncIDLookup(bn)
+		if not bn or bn == "" then return nil end
+		if not _nameToEncIDCache and ExRT and ExRT.L and ExRT.L.bossName then
+			_nameToEncIDCache = {}
+			for id, name in pairs(ExRT.L.bossName) do
+				if type(id) == "number" and type(name) == "string" and name ~= "" then
+					if not _nameToEncIDCache[name] then
+						_nameToEncIDCache[name] = id
+					end
+				end
+			end
+		end
+		return _nameToEncIDCache and _nameToEncIDCache[bn] or nil
+	end
+	function E.InvalidateBossNameCache() _nameToEncIDCache = nil end
+
 	local function tryEngage(unit)
 		local cid = scanUnit(unit)
 		if not cid then return nil end
@@ -2328,6 +2379,15 @@ local function setupCompatEncounter()
 		local encID = tbl and tbl[cid]
 		if not encID and bossTable[0] then
 			encID = bossTable[0][cid]
+		end
+		local bossName = (UnitName and UnitName(unit)) or ""
+		if not encID then
+			local resolved = nameToEncIDLookup(bossName)
+			if resolved then
+				encID = resolved
+				bossTable[0] = bossTable[0] or {}
+				bossTable[0][cid] = resolved
+			end
 		end
 		if not encID and IsInInstance and IsInInstance() and isBossLike(unit) then
 			local zoneType
@@ -2347,7 +2407,6 @@ local function setupCompatEncounter()
 			lastEngageTime = GetTime()
 			lastBossKillID = nil
 			lastBossKillTime = 0
-			local bossName = (UnitName and UnitName(unit)) or ""
 			fireMRTEvent("MRT_ENCOUNTER_START", encID, mapForEvent, cid, bossName)
 		end
 		return encID
@@ -2568,9 +2627,14 @@ local function setupCompatBridge()
 	ExRT.F.registerEvent("MRT_ENCOUNTER_START", function(encID, _mapID, _cid, encName)
 		if _G.MRT_SetEncounterFlag then _G.MRT_SetEncounterFlag(true) end
 		local diffID = getCurrentDiffID()
-		logTrace(string.format("|cffffaa00[bridge]|r MRT_ENCOUNTER_START enc=%s name=%s diff=%s -> %s",
-			tostring(encID), tostring(encName or ""), tostring(diffID), listSubscribers("ENCOUNTER_START")))
-		dispatch("ENCOUNTER_START", encID or 0, encName or "", diffID, getCurrentGroupSize())
+		local canonicalName = ExRT and ExRT.L and ExRT.L.bossName and encID and ExRT.L.bossName[encID]
+		if type(canonicalName) ~= "string" or canonicalName == "" or canonicalName == tostring(encID) then
+			canonicalName = encName
+		end
+		logTrace(string.format("|cffffaa00[bridge]|r MRT_ENCOUNTER_START enc=%s name=%s (raw=%s) diff=%s -> %s",
+			tostring(encID), tostring(canonicalName or ""), tostring(encName or ""),
+			tostring(diffID), listSubscribers("ENCOUNTER_START")))
+		dispatch("ENCOUNTER_START", encID or 0, canonicalName or "", diffID, getCurrentGroupSize())
 	end)
 
 	ExRT.F.registerEvent("MRT_ENCOUNTER_END", function(encID, _mapID, success)
@@ -2583,52 +2647,17 @@ local function setupCompatBridge()
 end
 do
   local lastQueuedGUID
-  local lastQueuedUnit
-  local lastQueuedTime
-  local pending = 0
   if type(NotifyInspect) == "function" and type(hooksecurefunc) == "function" then
     hooksecurefunc("NotifyInspect", function(unit)
       if not unit then return end
       local guid = type(UnitGUID) == "function" and UnitGUID(unit) or nil
       if guid and (type(UnitIsConnected) ~= "function" or UnitIsConnected(unit)) then
         lastQueuedGUID = guid
-        lastQueuedUnit = unit
-        lastQueuedTime = GetTime and GetTime() or 0
-        pending = pending + 1
       end
     end)
-    if type(ClearInspectPlayer) == "function" then
-      hooksecurefunc("ClearInspectPlayer", function()
-        lastQueuedGUID = nil
-        lastQueuedUnit = nil
-      end)
-    end
   end
   function _G.MRT_GetQueuedInspectGUID()
-    if not lastQueuedGUID or not lastQueuedUnit then return nil end
-    if type(UnitGUID) == "function" then
-      local current = UnitGUID(lastQueuedUnit)
-      if current ~= lastQueuedGUID then
-        return nil
-      end
-    end
-    if lastQueuedTime and GetTime and (GetTime() - lastQueuedTime) > 10 then
-      return nil
-    end
     return lastQueuedGUID
-  end
-  function _G.MRT_GetQueuedInspectUnit()
-    if not lastQueuedGUID or not lastQueuedUnit then return nil end
-    if type(UnitGUID) == "function" and UnitGUID(lastQueuedUnit) ~= lastQueuedGUID then
-      return nil
-    end
-    return lastQueuedUnit
-  end
-  function _G.MRT_AckInspectPending()
-    if pending > 0 then pending = pending - 1 end
-  end
-  function _G.MRT_GetInspectPending()
-    return pending
   end
 end
 local function tryCompatSetup()

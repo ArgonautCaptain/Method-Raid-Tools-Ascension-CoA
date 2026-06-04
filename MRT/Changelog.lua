@@ -1,6 +1,12 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+v5.0.8-WotLK335a
+* Fixes
+* Raid Cooldowns: fixes talent detection
+* Reminder: update to 71 version
+* Visual note: add checkbox Fix Area
+
 v5.0.7-WotLK335a
 * Fixes
 * Reminde: Update timeline 

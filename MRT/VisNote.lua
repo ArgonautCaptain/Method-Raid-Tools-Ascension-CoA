@@ -192,17 +192,17 @@ function module.options:Load()
 		{"Interface\\LFGFrame\\UI-LFG-ICON-ROLES",0.26171875,0.5234375,0,0.26171875},
 		{"Interface\\LFGFrame\\UI-LFG-ICON-ROLES",0.26171875,0.5234375,0.26171875,0.5234375},
 		UnitFactionGroup("player") == "Alliance" and "Interface\\FriendsFrame\\PlusManz-Alliance" or "Interface\\FriendsFrame\\PlusManz-Horde",
-		{"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES",0,0.25,0,0.25},
-		{"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES",0,0.25,0.5,0.75},
-		{"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES",0,0.25,0.25,0.5},
-		{"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES",0.49609375,0.7421875,0,0.25},
-		{"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES",0.49609375,0.7421875,0.25,0.5},
-		{"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES",0.25,0.5,0.5,0.75},
-		{"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES",0.25,0.49609375,0.25,0.5},
-		{"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES",0.25,0.49609375,0,0.25},
-		{"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES",0.7421875,0.98828125,0.25,0.5},
+		{ExRT.F.classSquareIcon["WARRIOR"],0,1,0,1},
+		{ExRT.F.classSquareIcon["PALADIN"],0,1,0,1},
+		{ExRT.F.classSquareIcon["HUNTER"],0,1,0,1},
+		{ExRT.F.classSquareIcon["ROGUE"],0,1,0,1},
+		{ExRT.F.classSquareIcon["PRIEST"],0,1,0,1},
+		{ExRT.F.classSquareIcon["DEATHKNIGHT"],0,1,0,1},
+		{ExRT.F.classSquareIcon["SHAMAN"],0,1,0,1},
+		{ExRT.F.classSquareIcon["MAGE"],0,1,0,1},
+		{ExRT.F.classSquareIcon["WARLOCK"],0,1,0,1},
 		{"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES",0.5,0.73828125,0.5,0.75},
-		{"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES",0.7421875,0.98828125,0,0.25},
+		{ExRT.F.classSquareIcon["DRUID"],0,1,0,1},
 		{"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES",0.7421875,0.98828125,0.5,0.75},
 	}
 
@@ -273,6 +273,10 @@ function module.options:Load()
 
 		for d,_ in pairs(images) do
 			d:Hide()
+		end
+
+		if self.main and self.main.ResetScale then
+			self.main:ResetScale()
 		end
 	end
 
@@ -851,6 +855,7 @@ function module.options:Load()
 	}
 
 	local function SetBackground(background,centerX,centerY,scale)
+		self.bgState = nil
 		for b,_ in pairs(backgrounds) do
 			b:Hide()
 		end
@@ -913,6 +918,8 @@ function module.options:Load()
 				local adjustX = mainW / 2 - layerW * (centerX or 0.5) * scale
 				local adjustY = mainH / 2 - layerH * (centerY or 0.5) * scale
 
+				self.bgState = {layerW = layerW, layerH = layerH, cx = (centerX or 0.5), cy = (centerY or 0.5), scale = scale, mainW = mainW, mainH = mainH}
+
 				-- 3.3.5a: dungeon level <floor> turns "<file>N" into "<file><floor>_N"
 				local prefix = (md.floor and md.floor > 0) and (md.file .. md.floor .. "_") or md.file
 				for i=1,heightCount do
@@ -941,6 +948,8 @@ function module.options:Load()
 				local adjustX = self.main:GetWidth() / 2 - layerInfo.layerWidth * (centerX or 0.5) * scale
 				local adjustY = self.main:GetHeight() / 2 - layerInfo.layerHeight * (centerY or 0.5) * scale
 
+				self.bgState = {layerW = layerInfo.layerWidth, layerH = layerInfo.layerHeight, cx = (centerX or 0.5), cy = (centerY or 0.5), scale = scale, mainW = self.main:GetWidth(), mainH = self.main:GetHeight()}
+
 				for i=1,heightCount do
 					for j=1,widthCount do
 						local p = (i-1)*widthCount + j
@@ -962,6 +971,10 @@ function module.options:Load()
 	local maps
 	local function SelectMapDropDown_SetValue(_,arg1,arg2)
 		ELib:DropDownClose()
+		curr_data.lockCX = nil
+		curr_data.lockCY = nil
+		curr_data.lockScale = nil
+		if module.options.chkLockArea then module.options.chkLockArea:SetChecked(false) end
 		SetBackground(unpack(arg1))
 		curr_map = arg2
 		curr_data[2] = arg2
@@ -1171,13 +1184,14 @@ function module.options:Load()
 		end
 	end
 	function self:SetPredefinedMap(pos)
-		if not maps[pos] then
-			SetBackground(unpack(maps[1][2]))
-			curr_map = 1
+		local mapPos = maps[pos] and pos or 1
+		local args = maps[mapPos][2]
+		if curr_data and curr_data.lockScale then
+			SetBackground(args[1], curr_data.lockCX, curr_data.lockCY, curr_data.lockScale)
 		else
-			SetBackground(unpack(maps[pos][2]))
-			curr_map = pos
+			SetBackground(unpack(args))
 		end
+		curr_map = mapPos
 		if maps[curr_map] and maps[curr_map][1] then
 			module.options.SelectMapDropDown:SetText(maps[curr_map][1])
 		end
@@ -2683,6 +2697,15 @@ function module.options:Load()
 
 
 		local str = live and "" or (string.char(254)..string.char(1)..string.char(DATA_VERSION)..string.char(#curr_data[1])..curr_data[1]..string.char(#(curr_data.name or "")+1)..(curr_data.name or "")..string.char(254)..string.char(2)..ConvertMapIDToString(curr_map))
+		if not live and curr_data.lockScale then
+			local cxRaw = min(max(floor(curr_data.lockCX * 10000 + 0.5) + 25000, 0), 62499)
+			local cyRaw = min(max(floor(curr_data.lockCY * 10000 + 0.5) + 25000, 0), 62499)
+			local sRaw = min(max(floor(curr_data.lockScale * 1000 + 0.5), 0), 62499)
+			str = str .. string.char(254) .. string.char(3)
+				.. string.char(floor(cxRaw / 250) + 1) .. string.char(cxRaw % 250 + 1)
+				.. string.char(floor(cyRaw / 250) + 1) .. string.char(cyRaw % 250 + 1)
+				.. string.char(floor(sRaw / 250) + 1) .. string.char(sRaw % 250 + 1)
+		end
 		local prevGroup,prevX,prevY,prevDiffX,prevDiffY
 
 		local function UpdateHeader(i)
@@ -2950,8 +2973,8 @@ function module.options:Load()
 	end
 	function self:LoadData(data)
 		module.options:Clear()
-		module.options:SetPredefinedMap(data[2])
 		curr_data = data
+		module.options:SetPredefinedMap(data[2])
 
 		local pos = 3
 		local color,size
@@ -3037,6 +3060,7 @@ function module.options:Load()
 		end
 
 		module.options.chkStopUpdate:SetChecked(data.disableUpdate)
+		module.options.chkLockArea:SetChecked(data.lockScale and true)
 	end
 	function self:CreateNew()
 		local new = {}
@@ -3202,6 +3226,57 @@ function module.options:Load()
 
 	self.chkStopUpdate = ELib:Check(self,L.VisualNoteDisableUpdateShort):Tooltip(L.VisualNoteDisableUpdate):Point("BOTTOMRIGHT",self,"BOTTOMRIGHT",-240,5):Scale(.8):Size(10,10):Left():OnClick(function(self)
 		curr_data.disableUpdate = self:GetChecked()
+	end)
+
+	self.chkLockArea = ELib:Check(self,L.VisualNoteLockArea):Tooltip(L.VisualNoteLockAreaTip):Point("BOTTOMRIGHT",self,"BOTTOMRIGHT",-360,5):Scale(.8):Size(10,10):Left():OnClick(function(self)
+		local opt = module.options
+		if self:GetChecked() then
+			local st = opt.bgState
+			if not st then
+				self:SetChecked(false)
+				return
+			end
+			local W,H = opt.main:GetWidth(), opt.main:GetHeight()
+			local Z = opt.main.C:GetScale()
+			local sH,sV = opt.main:GetHorizontalScroll(), opt.main:GetVerticalScroll()
+			local ccX = sH + (W/2)/Z
+			local ccY = sV + (H/2)/Z
+			curr_data.lockCX = st.cx + (ccX - st.mainW/2) / (st.layerW * st.scale)
+			curr_data.lockCY = st.cy + (ccY - st.mainH/2) / (st.layerH * st.scale)
+			curr_data.lockScale = st.scale * Z
+			opt:SetPredefinedMap(curr_map)
+			opt.main:ResetScale()
+		else
+			local cx,cy,sc = curr_data.lockCX, curr_data.lockCY, curr_data.lockScale
+			curr_data.lockCX = nil
+			curr_data.lockCY = nil
+			curr_data.lockScale = nil
+			opt:SetPredefinedMap(curr_map)
+			local st = opt.bgState
+			if st and sc then
+				local Z = sc / st.scale
+				if Z < 1 then Z = 1 elseif Z > 7 then Z = 7 end
+				local W,H = opt.main:GetWidth(), opt.main:GetHeight()
+				local ccX = W/2 + st.layerW * st.scale * ((cx or .5) - st.cx)
+				local ccY = H/2 + st.layerH * st.scale * ((cy or .5) - st.cy)
+				opt.main.C:SetScale(Z)
+				opt.main.scrollH = W - W/Z
+				opt.main.scrollV = H - H/Z
+				local nH = ccX - (W/2)/Z
+				local nV = ccY - (H/2)/Z
+				if nH > opt.main.scrollH then nH = opt.main.scrollH elseif nH < 0 then nH = 0 end
+				if nV > opt.main.scrollV then nV = opt.main.scrollV elseif nV < 0 then nV = 0 end
+				opt.main:SetHorizontalScroll(nH)
+				opt.main:SetVerticalScroll(nV)
+			else
+				opt.main:ResetScale()
+			end
+		end
+		if isLiveSession then
+			opt:GenerateString()
+		else
+			opt:SaveData()
+		end
 	end)
 
 	self.copyButton = ELib:Button(self,L.BossmodsKormrokCopy):Size(90,20):Point("TOPLEFT",710,-5):OnClick(function()
@@ -3418,6 +3493,21 @@ function module:UnpackString(str,sender)
 			end
 			module.db.await[2] = c
 			str = str:sub(2+#mapIDstr+1)
+		end
+	end
+	if str:sub(1,1):byte() == 254 then
+		local c = str:sub(2,2):byte()
+		if c == 3 then
+			if not module.db.await then
+				return
+			end
+			local cxRaw = (str:sub(3,3):byte() - 1) * 250 + (str:sub(4,4):byte() - 1)
+			local cyRaw = (str:sub(5,5):byte() - 1) * 250 + (str:sub(6,6):byte() - 1)
+			local sRaw  = (str:sub(7,7):byte() - 1) * 250 + (str:sub(8,8):byte() - 1)
+			module.db.await.lockCX = (cxRaw - 25000) / 10000
+			module.db.await.lockCY = (cyRaw - 25000) / 10000
+			module.db.await.lockScale = sRaw / 1000
+			str = str:sub(9)
 		end
 	end
 	if not module.db.await then

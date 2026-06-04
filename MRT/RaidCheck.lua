@@ -2571,10 +2571,13 @@ function module.frame:PrepToHide()
 	end
 
 	local delay = tonumber(VMRT.RaidCheck.ReadyCheckFrameTimerFade or "4") or 4
-	module.frame.hideTimer = C_Timer.NewTimer(max(0.01,delay),function()
+	if module.frame.hideTimer then
+		ExRT.F.CancelTimer(module.frame.hideTimer)
+	end
+	module.frame.hideTimer = ExRT.F.ScheduleTimer(function()
 		module.frame.hideTimer = nil
 		module.frame.anim:Play()
-	end)
+	end, max(0.01,delay))
 	module.frame.timeLeftLine:Stop()
 end
 
@@ -3255,8 +3258,6 @@ local _StepInspectQueue
 _StepInspectQueue = function()
 	if InCombatLockdown() then return end
 	if _inspectInflight then return end
-	local inspectMod = ExRT and ExRT.A and ExRT.A.Inspect
-	if inspectMod and inspectMod.db and inspectMod.db.inspectID then return end
 	local now = GetTime()
 	local wait = INSPECT_THROTTLE - (now - _inspectLastFire)
 	if wait > 0 then

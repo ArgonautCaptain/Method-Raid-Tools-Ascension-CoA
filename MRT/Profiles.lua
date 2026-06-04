@@ -427,44 +427,35 @@ function module:TextToProfile(str,uncompressed)
 			end
 		end
 		if successful and res then
-			StaticPopupDialogs["EXRT_PROFILES_IMPORT"] = {
-				text = L.ProfilesNewProfile.." \""..profileName.."\"",
-				button1 = L.ProfilesRewrite,
-				button2 = L.ProfilesSaveAsNew,
-				button3 = L.ProfilesSelectModules,
-				button4 = CANCEL,
-				selectCallbackByIndex = true,
-				OnButton1 = function()
-					for k,v in pairs(res) do
-						VMRT[k] = v
-					end
-					ReloadUI()
-				end,
-				OnShow = function(self)
-
-				end,
-				OnButton2 = function()
-					local name = profileName
-					while VMRT.Profiles[name] do
-						name = name .. "*"
-					end
-					print(L.ProfilesAddedText.." |cff00ff00"..name)
-					VMRT.Profiles[name] = res
-				end,
-				OnButton3 = function()
-					if not module.SelectedReplace then
-						module.options:Load()
-					end
-					module:SelectedReplace(res,profileName)
-				end,
-				OnButton4 = function()
-					res = nil
-				end,
-				timeout = 0,
-				whileDead = true,
-				hideOnEscape = true,
-				preferredIndex = 3,
-			}
+			ExRT.F.ImportChoicePopup(
+				L.ProfilesNewProfile.." \""..profileName.."\"",
+				{
+					{text = L.ProfilesRewrite, func = function()
+						for k,v in pairs(res) do
+							VMRT[k] = v
+						end
+						ReloadUI()
+					end},
+					{text = L.ProfilesSaveAsNew, func = function()
+						local name = profileName
+						while VMRT.Profiles[name] do
+							name = name .. "*"
+						end
+						print(L.ProfilesAddedText.." |cff00ff00"..name)
+						VMRT.Profiles[name] = res
+					end},
+					{text = L.ProfilesSelectModules, func = function()
+						if not module.SelectedReplace then
+							module.options:Load()
+						end
+						module:SelectedReplace(res,profileName)
+					end},
+					{text = CANCEL, func = function()
+						res = nil
+					end},
+				}
+			)
+			return
 		else
 			StaticPopupDialogs["EXRT_PROFILES_IMPORT"] = {
 				text = L.ProfilesFail1..(res and "\nError code: "..res or ""),

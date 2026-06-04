@@ -1145,6 +1145,8 @@ L.VisualNoteOpen = "Open"
 L.VisualNoteDisablePopup = "Disable popup"
 L.VisualNoteDisableUpdate = "Disable updates from players for this note"
 L.VisualNoteDisableUpdateShort = "Disable updates"
+L.VisualNoteLockArea = "Lock Area"
+L.VisualNoteLockAreaTip = "Zoom to the boss area, then lock it as the base view so notes and icons keep normal size. Wheel-zoom still works on top. The locked area is saved, shared via Send / Live Session and shown in the popup window."
 PH.VisualNotePopupButTooltip = "Display a note in a separate window"
 PH.VisualNotePopupButTooltip2 = "Hold SHIFT key to reset window settings"
 

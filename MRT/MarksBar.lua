@@ -247,7 +247,7 @@ do
 		{"ping_chat_warning",SLASH_PING1 and PING_TYPE_WARNING and SLASH_PING1.."  [@target] "..PING_TYPE_WARNING or "/ping warning"},
 		{"ping_chat_nonthreat",SLASH_PING1 or "/ping"},
 	}
-	for i=1,#icons do
+	for i=1,(ExRT.isClassic and 0 or #icons) do
 		local frame = CreateFrame("Frame",nil,mainFrame, BackdropTemplateMixin and "BackdropTemplate")
 		mainFrame.pingbuts[i] = frame
 		frame:SetSize(26,26)

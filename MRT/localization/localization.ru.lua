@@ -1150,6 +1150,8 @@ L.VisualNoteOpen = "Открыть"
 L.VisualNoteDisablePopup = "Отключить всплывающее окно"
 L.VisualNoteDisableUpdate = "Отключить обновления от других игроков для этой заметки"
 L.VisualNoteDisableUpdateShort = "Отключить обновления"
+L.VisualNoteLockArea = "Зафиксировать область"
+L.VisualNoteLockAreaTip = "Приблизьте область босса и зафиксируйте её как базовый вид — заметки и иконки сохранят нормальный размер. Зум колесом продолжает работать поверх. Зафиксированная область сохраняется, передаётся через Send / Live-сессию и отображается в отдельном окне."
 L.VisualNotePopupButTooltip = "Вывести заметку в отдельное окно"
 L.VisualNotePopupButTooltip2 = "Удерживайте клавишу SHIFT для сброса настроек окна"
 

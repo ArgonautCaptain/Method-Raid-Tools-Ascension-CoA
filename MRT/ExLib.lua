@@ -639,15 +639,36 @@ do
 		self:Hide()
 	end
 		local function OnShow(self)
+			local _profSS = VMRT and VMRT.DebugReminder and VMRT.DebugReminder.ProfileShowStrata
+			local _skipFL = type(_profSS) == "table" and _profSS.SkipFrameLevel
+			local _ssThresh = (type(_profSS) == "table" and _profSS.thresholdMs) or 5
 			local _wantedLevel = 5000 + (self.Level or 1) * 100
-			if self.GetFrameLevel and self:GetFrameLevel() < _wantedLevel then
-				self:SetFrameLevel(_wantedLevel)
+			if not _skipFL and self.GetFrameLevel and self:GetFrameLevel() < _wantedLevel then
+				if _profSS and debugprofilestop then
+					local _t = debugprofilestop()
+					self:SetFrameLevel(_wantedLevel)
+					local elapsed = debugprofilestop() - _t
+					if elapsed > _ssThresh then
+						print(string.format(
+							"|cffff7799[show+strata]|r [OnShow] SetFrameLevel(%d) = %.1fms",
+							_wantedLevel,
+							elapsed
+						))
+					end
+				else
+					self:SetFrameLevel(_wantedLevel)
+				end
 			end
+		local parentLevel = self:GetFrameLevel() or _wantedLevel
+		if self.Backdrop and self.Backdrop.SetFrameLevel then
+			self.Backdrop:SetFrameLevel(parentLevel + 1)
+		end
 		if self.Buttons then
-			local parentLevel = self:GetFrameLevel() or _wantedLevel
-			for i=1,(self.MaxLines or #self.Buttons) do
+			local count = #self.Buttons
+			if (self.MaxLines or 0) > count then count = self.MaxLines end
+			for i=1,count do
 				local b = self.Buttons[i]
-				if b and b.SetFrameLevel and (b:GetFrameLevel() or 0) <= parentLevel then
+				if b and b.SetFrameLevel then
 					b:SetFrameLevel(parentLevel + 2)
 				end
 				if b and b.checkButton and b.checkButton.SetFrameLevel then
@@ -659,7 +680,7 @@ do
 			end
 		end
 		if self.Slider and self.Slider.SetFrameLevel then
-			self.Slider:SetFrameLevel((self:GetFrameLevel() or _wantedLevel) + 6)
+			self.Slider:SetFrameLevel(parentLevel + 6)
 		end
 		if self.OnShow then
 			self:OnShow()
@@ -5505,12 +5526,15 @@ function ELib.ScrollDropDown.ToggleDropDownMenu(self,level,customList,customWidt
 	_logicalShow(dropDown)
 	_ssEnd("dropDown:Show")
 
-	local baseLevel = 5000
+	local baseLevel = 5000 + level * 100
 	if level > 1 and ELib.ScrollDropDown.DropDownList[level-1] and ELib.ScrollDropDown.DropDownList[level-1].GetFrameLevel then
-		baseLevel = (ELib.ScrollDropDown.DropDownList[level-1]:GetFrameLevel() or 5000) + 50
+		baseLevel = max(baseLevel, (ELib.ScrollDropDown.DropDownList[level-1]:GetFrameLevel() or 5000) + 50)
+	end
+	if dropDown.SetFrameStrata then
+		pcall(dropDown.SetFrameStrata, dropDown, "TOOLTIP")
 	end
 	_ssBegin("dropDown:SetFrameLevel")
-	if not _skipFL and dropDown.GetFrameLevel and dropDown:GetFrameLevel() < baseLevel then
+	if not _skipFL and dropDown.GetFrameLevel and dropDown.SetFrameLevel then
 		dropDown:SetFrameLevel(baseLevel)
 	end
 	_ssEnd("dropDown:SetFrameLevel")
@@ -5521,6 +5545,9 @@ function ELib.ScrollDropDown.ToggleDropDownMenu(self,level,customList,customWidt
 	_ssBegin("border:SetFrameLevel")
 	if not _skipFL and dropDown.border and dropDown.border.SetFrameLevel and dropDown.border:GetFrameLevel() ~= (dropDown:GetFrameLevel() - 1) then
 		dropDown.border:SetFrameLevel(dropDown:GetFrameLevel() - 1)
+	end
+	if dropDown.border and dropDown.border.SetFrameStrata then
+		pcall(dropDown.border.SetFrameStrata, dropDown.border, dropDown:GetFrameStrata())
 	end
 	_ssEnd("border:SetFrameLevel")
 	_profEnd("show+strata")
@@ -6759,8 +6786,8 @@ do
 		end
 
 		self.EditBox.Parent = self
-		self.EditBox:SetScript("OnEnterPressed", nil)
 		self.EditBox:SetMultiLine(true)
+		self.EditBox:SetScript("OnEnterPressed", nil)
 		self.EditBox:SetBackdropColor(0, 0, 0, 0)
 		self.EditBox:SetBackdropBorderColor(0, 0, 0, 0)
 		self.EditBox:SetTextInsets(5,5,2,2)

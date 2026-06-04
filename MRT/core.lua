@@ -5,8 +5,8 @@ local GlobalAddonName, MRT = ...
 _G.MRT = MRT
 _G.ExRT = MRT
 
-MRT.V = 5007
-MRT.VString = "v5.0.7"
+MRT.V = 5008
+MRT.VString = "v5.0.8"
 MRT.T = "R"
 
 MRT.Slash = {}

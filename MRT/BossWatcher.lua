@@ -307,11 +307,11 @@ local active_segment
 local active_phase
 
 local deathMaxEvents = 100
-local BW_AURA_CAP = 15000
-local BW_CAST_CAP_PER_SOURCE = 2000
-local BW_GRAPH_CAP = 900
-local BW_TRACKED_GUID_CAP = 400
-local BW_TOTAL_BUDGET_KB = 51200
+local BW_AURA_CAP = 30000
+local BW_CAST_CAP_PER_SOURCE = 5000
+local BW_GRAPH_CAP = 1500
+local BW_TRACKED_GUID_CAP = 1000
+local BW_TOTAL_BUDGET_KB = 153600
 local _bw_aura_overflow = false
 local _bw_cast_overflow = false
 local _bw_graph_overflow = false
@@ -482,7 +482,7 @@ function module.options:Load()
 		else
 			VMRT.BossWatcher.optionNoBuffs = nil
 		end
-	end)
+	end):Shown(false)
 
 	self.optionLessSegments = ELib:Check(
 		self,
@@ -496,7 +496,7 @@ function module.options:Load()
 		else
 			VMRT.BossWatcher.optionLessSegments = nil
 		end
-	end)
+	end):Shown(false)
 	self.saveVariables = ELib:Check(self,L.BossWatcherSaveVariables,VMRT.BossWatcher.saveFightsPersist):Point(260,-35):Tooltip(L.BossWatcherSaveVariablesWarring):OnClick(function(self)
 		if self:GetChecked() then
 			VMRT.BossWatcher.saveFightsPersist = true
@@ -505,7 +505,7 @@ function module.options:Load()
 		else
 			VMRT.BossWatcher.saveFightsPersist = nil
 		end
-	end)
+	end):Shown(false)
 
 	self.showButton = ELib:Button(self,L.BossWatcherGoToBossWatcher):Size(550,20):Point("TOP",0,-200):OnClick(function ()
 		if SettingsPanel then
@@ -891,7 +891,7 @@ function _BW_Start(encounterID,encounterName)
 	_bw_graph_count = 0
 	_bw_tracked_count = 0
 
-	local maxFights = (VMRT.BossWatcher.fightsNum or 3)
+	local maxFights = (VMRT.BossWatcher.fightsNum or 5)
 	for i=maxFights+1,2,-1 do
 		module.db.data[i] = module.db.data[i-1]
 	end
@@ -1118,7 +1118,7 @@ function _BW_End(encounterID)
 	wipe(var_reductionCurrent)
 	wipe(damageTakenLog)
 
-	local maxFights = (VMRT.BossWatcher.fightsNum or 3)
+	local maxFights = (VMRT.BossWatcher.fightsNum or 5)
 	local _selfGUID = UnitGUID and UnitGUID("player") or nil
 	for i=25,1,-1 do
 		local data = module.db.data[i]
@@ -1310,7 +1310,24 @@ local function GetCurrentZoneID()
 	return zoneID, zoneName
 end
 
+local subBossToParent = {
+	[714] = {709, "Northrend Beasts"},
+	[715] = {709, "Northrend Beasts"},
+	[716] = {709, "Northrend Beasts"},
+}
+module.db.subBossToParent = subBossToParent
+
+local function NormalizeEncounter(encounterID, encounterName)
+	if encounterID and subBossToParent[encounterID] then
+		local p = subBossToParent[encounterID]
+		return p[1], p[2]
+	end
+	return encounterID, encounterName
+end
+module.db.NormalizeEncounter = NormalizeEncounter
+
 function module.main:ENCOUNTER_START(encounterID,encounterName)
+	encounterID, encounterName = NormalizeEncounter(encounterID, encounterName)
 	local zoneID = GetCurrentZoneID()
 	if zoneID == 1 then
 		if fightData then
@@ -1339,6 +1356,7 @@ function module.main:CHALLENGE_MODE_START()
 end
 
 function module.main:ENCOUNTER_END(encounterID)
+	encounterID = NormalizeEncounter(encounterID)
 	local zoneID = GetCurrentZoneID()
 	if zoneID == 1 then
 		if fightData and encounterID and not fightData.encounterID then
@@ -2664,27 +2682,21 @@ CLEUParser = function(timestamp,event,hideCaster,sourceGUID,sourceName,sourceFla
 			return
 		end
 		if sT and destGUID and destGUID ~= "" and not dT then
-			local guidType = destGUID:sub(1,8)
-			if (guidType == "Creature" or guidType == "Vehicle-" or guidType == "Player-0") then
-				if _bw_tracked_count < BW_TRACKED_GUID_CAP then
-					trackedGUIDs[destGUID] = true
-					_bw_tracked_count = _bw_tracked_count + 1
-				else
-					_bw_tracked_overflow = true
-					return
-				end
+			if _bw_tracked_count < BW_TRACKED_GUID_CAP then
+				trackedGUIDs[destGUID] = true
+				_bw_tracked_count = _bw_tracked_count + 1
+			else
+				_bw_tracked_overflow = true
+				return
 			end
 		end
 		if dT and sourceGUID and sourceGUID ~= "" and not sT then
-			local guidType = sourceGUID:sub(1,8)
-			if (guidType == "Creature" or guidType == "Vehicle-" or guidType == "Player-0") then
-				if _bw_tracked_count < BW_TRACKED_GUID_CAP then
-					trackedGUIDs[sourceGUID] = true
-					_bw_tracked_count = _bw_tracked_count + 1
-				else
-					_bw_tracked_overflow = true
-					return
-				end
+			if _bw_tracked_count < BW_TRACKED_GUID_CAP then
+				trackedGUIDs[sourceGUID] = true
+				_bw_tracked_count = _bw_tracked_count + 1
+			else
+				_bw_tracked_overflow = true
+				return
 			end
 		end
 	end

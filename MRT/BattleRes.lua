@@ -27,27 +27,61 @@ local function ShortName(name)
 	return (strsplit("-",name))
 end
 
-local function CountRaidDruids()
-	local total = 0
+local function IsUnitEligibleDruid(unit, name)
+	if not name then return false end
+	if UnitIsConnected and not UnitIsConnected(unit) then return false end
+	if UnitIsDeadOrGhost and UnitIsDeadOrGhost(unit) then return false end
+	if UnitInRange then
+		local inRange, checked = UnitInRange(unit)
+		if checked then
+			if not inRange then return false end
+		end
+	end
+	return true
+end
+
+local function CollectCurrentDruids()
+	local out = {}
 	local raidNum = GetNumRaidMembers and GetNumRaidMembers() or 0
 	local partyNum = GetNumPartyMembers and GetNumPartyMembers() or 0
 	if raidNum > 0 then
 		for i=1,raidNum do
-			local _,_,_,_,_,classFile = GetRaidRosterInfo(i)
-			if classFile == "DRUID" then total = total + 1 end
+			local name,_,_,_,_,classFile = GetRaidRosterInfo(i)
+			if classFile == "DRUID" and name then
+				local unit = "raid"..i
+				if IsUnitEligibleDruid(unit, name) then
+					out[ShortName(name)] = name
+				end
+			end
 		end
 	elseif partyNum > 0 then
-		local _, classFile = UnitClass("player")
-		if classFile == "DRUID" then total = total + 1 end
+		do
+			local _, classFile = UnitClass("player")
+			if classFile == "DRUID" then
+				local name = UnitName("player")
+				if name and IsUnitEligibleDruid("player", name) then
+					out[ShortName(name)] = name
+				end
+			end
+		end
 		for i=1,partyNum do
-			local _, cf = UnitClass("party"..i)
-			if cf == "DRUID" then total = total + 1 end
+			local unit = "party"..i
+			local _, cf = UnitClass(unit)
+			if cf == "DRUID" then
+				local name = UnitName(unit)
+				if name and IsUnitEligibleDruid(unit, name) then
+					out[ShortName(name)] = name
+				end
+			end
 		end
 	else
 		local _, classFile = UnitClass("player")
-		if classFile == "DRUID" then total = 1 end
+		if classFile == "DRUID" then
+			local name = UnitName("player")
+			if name then out[ShortName(name)] = name end
+		end
 	end
-	return total
+	return out
 end
 
 local function NoteRebirthCast(sourceGUID, sourceName)
@@ -74,8 +108,13 @@ local function NoteRemoteCD(sender, remaining)
 	}
 end
 local function GetAggregateBattleRes()
-	local total = CountRaidDruids()
-	if total == 0 then return nil end
+	local currentDruids = CollectCurrentDruids()
+	local total = 0
+	for _ in pairs(currentDruids) do total = total + 1 end
+	if total == 0 then
+		for k in pairs(druidCDs) do druidCDs[k] = nil end
+		return nil
+	end
 
 	if IsDruidBattleResFallback() then
 		local cdStart, cdDuration = GetSpellCooldown(20484)
@@ -93,6 +132,12 @@ local function GetAggregateBattleRes()
 	end
 
 	local now = GetTime()
+	for key in pairs(druidCDs) do
+		if not currentDruids[key] then
+			druidCDs[key] = nil
+		end
+	end
+
 	local nOnCD = 0
 	local minCDEnd
 	for key, info in pairs(druidCDs) do
@@ -223,15 +268,9 @@ function module:Disable()
 	module.frame:Hide()
 end
 if ExRT.isWotLKOnly then
-	local REBIRTH_NAME = GetSpellInfo(48477)
-	function module.main.COMBAT_LOG_EVENT_UNFILTERED(_, eventType, _, sourceGUID, sourceName, _, _, _, _, _, _, spellID, spellName)
-		if eventType ~= "SPELL_CAST_SUCCESS" and eventType ~= "SPELL_RESURRECT" then return end
-		-- Check by spell ID (all ranks) or by localized spell name as fallback
-		if not REBIRTH_RANKS[spellID] then
-			if not spellName or spellName ~= REBIRTH_NAME then
-				return
-			end
-		end
+	function module.main.COMBAT_LOG_EVENT_UNFILTERED(_, eventType, _, sourceGUID, sourceName, _, _, _, _, _, _, spellID)
+		if eventType ~= "SPELL_CAST_SUCCESS" then return end
+		if not REBIRTH_RANKS[spellID] then return end
 		NoteRebirthCast(sourceGUID, sourceName)
 	end
 end
@@ -357,9 +396,6 @@ do
 			local charges, total, minCDEnd = GetAggregateBattleRes()
 			if not charges or total == 0 then
 				if not stateHidden then
-					if VMRT.BattleRes.fix then
-						module.frame:Hide()
-					end
 					module.frame.time:SetText("")
 					module.frame.charge:SetText("")
 					module.frame.cooldown:Hide()
@@ -369,6 +405,7 @@ do
 					cooldownDur = nil
 					stateHidden = true
 				end
+				module.frame:Hide()
 				return
 			elseif stateHidden then
 				module.frame:Show()

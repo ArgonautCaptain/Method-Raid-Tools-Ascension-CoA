@@ -36,7 +36,7 @@ if not GetSpecialization and ExRT.isClassic then
 		for spec=1,3 do
 			local selectedNum = 0
 			for talPos=1,22 do
-				local name, iconTexture, tier, column, rank, maxRank, isExceptional, available = GetTalentInfo(spec, talPos)
+				local name, iconTexture, tier, column, rank, maxRank, isExceptional, available = (GetTalentInfoClassic or GetTalentInfo)(spec, talPos)
 				if name and maxRank > 0 and rank > 0 then
 					selectedNum = selectedNum + 1
 				end
@@ -1583,6 +1583,47 @@ do
 end
 
 do
+	local choiceWindow
+	local BTN_W, BTN_H, GAP, PAD = 120, 22, 8, 24
+	function ExRT.F.ImportChoicePopup(text,buttons)
+		if not choiceWindow then
+			choiceWindow = ELib:Popup(""):Size(500,150)
+			choiceWindow:SetFrameStrata("FULLSCREEN_DIALOG")
+			choiceWindow.text = ELib:Text(choiceWindow,"",12):Size(460,90):Point("TOP",0,-30):Center()
+			choiceWindow.buttons = {}
+			for i=1,4 do
+				choiceWindow.buttons[i] = ELib:Button(choiceWindow,""):Size(BTN_W,BTN_H)
+			end
+		end
+		choiceWindow.text:SetText(text or "")
+		local n = 0
+		for i=1,4 do if buttons[i] then n = i end end
+		local totalW = n*BTN_W + (n-1)*GAP
+		for i=1,4 do
+			local b = choiceWindow.buttons[i]
+			local info = buttons[i]
+			b:ClearAllPoints()
+			if info then
+				b:SetText(info.text or "")
+				b:SetScript("OnClick",function()
+					choiceWindow:Hide()
+					if info.func then info.func() end
+				end)
+				b:SetPoint("BOTTOMLEFT",choiceWindow,"BOTTOM",-totalW/2 + (i-1)*(BTN_W+GAP),12)
+				b:Show()
+			else
+				b:SetScript("OnClick",nil)
+				b:Hide()
+			end
+		end
+		choiceWindow:Size(math.max(totalW + PAD*2, 360),150)
+		choiceWindow:ClearAllPoints()
+		choiceWindow:SetPoint("CENTER",UIParent,0,0)
+		choiceWindow:Show()
+	end
+end
+
+do
 	local alertWindow = nil
 	local alertFunc = nil
 	local alertArg1 = nil
@@ -2999,14 +3040,25 @@ do
 		if not spellID then return nil end
 		local id = tonumber(spellID)
 		local name, rank, tex = GetSpellInfo(spellID)
+		if id then
+			if name and name ~= "" then cacheName[id] = name end
+			if tex then cacheTex[id] = tex end
+		end
+		name = name or (id and cacheName[id]) or nil
+		tex  = tex  or (id and cacheTex[id]) or nil
 		if name and tex then return name, rank, tex end
 		ExRT.F.WarmUpSpell(spellID)
 		local n2, r2, t2 = GetSpellInfo(spellID)
-		name = name or n2
+		if id then
+			if n2 and n2 ~= "" then cacheName[id] = n2 end
+			if t2 then cacheTex[id] = t2 end
+		end
+		name = name or n2 or (id and cacheName[id])
 		rank = rank or r2
-		tex  = tex  or t2
+		tex  = tex  or t2 or (id and cacheTex[id])
 		if not tex then
 			tex = (GetSpellTexture and GetSpellTexture(spellID)) or (id and cacheTex[id]) or nil
+			if tex and id then cacheTex[id] = tex end
 		end
 		if name and tex then return name, rank, tex end
 		if name then return name, rank, "Interface\\Icons\\INV_Misc_QuestionMark" end
@@ -3022,5 +3074,133 @@ do
 		local name = ExRT.F.GetSpellInfoSafe(spellID)
 		if not name or name == "" then return nil end
 		return "|cff71d5ff|Hspell:"..spellID.."|h["..name.."]|h|r"
+	end
+end
+
+do
+	local function nameWithoutRealm(n)
+		if not n then return nil end
+		local s = strsplit("-", n)
+		return s
+	end
+
+	local function NameToUnit(name)
+		if not name then return nil end
+		local pname = UnitName("player")
+		if pname == name then return "player" end
+		local nRaid = GetNumRaidMembers and GetNumRaidMembers() or 0
+		if nRaid > 0 then
+			for i = 1, nRaid do
+				local u = "raid"..i
+				if UnitName(u) == name then return u end
+			end
+		end
+		local nParty = GetNumPartyMembers and GetNumPartyMembers() or 0
+		for i = 1, nParty do
+			local u = "party"..i
+			if UnitName(u) == name then return u end
+		end
+		return nil
+	end
+
+	local function getExCD2()
+		return MRT and MRT.A and MRT.A.ExCD2 or nil
+	end
+
+	function ExRT.F.UnitHasTalent(name, spellID)
+		if not name or type(spellID) ~= "number" then return nil end
+		name = nameWithoutRealm(name)
+
+		if name == UnitName("player") and IsSpellKnown and IsSpellKnown(spellID) then
+			return true
+		end
+
+		local mod = getExCD2()
+		if mod and mod.db then
+			local sg = mod.db.session_gGUIDs
+			if sg then
+				local row = sg[name]
+				if row and row[spellID] then
+					return true
+				end
+			end
+			local provides = mod.db.spell_talentProvideAnotherTalents
+			if provides and sg then
+				local row = sg[name]
+				if row then
+					for src, list in pairs(provides) do
+						if row[src] and type(list) == "table" then
+							for _, v in pairs(list) do
+								if v == spellID then return true end
+							end
+						end
+					end
+				end
+			end
+		end
+
+		local TALENT_SPELL_ALIASES = {
+			[31230] = {31228, 31229, 31230},
+			[14185] = {14185},
+			[66233] = {31850, 31851, 31852, 66233},
+			[31850] = {31850, 31851, 31852, 66233},
+			[31851] = {31850, 31851, 31852, 66233},
+			[31852] = {31850, 31851, 31852, 66233},
+		}
+		local LGT = LibStub and LibStub("LibGroupTalents-1.0", true)
+		if LGT then
+			local unit = NameToUnit(name)
+			local guid = unit and UnitGUID(unit) or nil
+			local function tryName(sname)
+				if not sname then return nil end
+				if guid and LGT.GUIDHasTalent then
+					local r = LGT:GUIDHasTalent(guid, sname)
+					if r ~= nil then return r and true or false end
+				end
+				if unit and LGT.UnitHasTalent then
+					local r = LGT:UnitHasTalent(unit, sname)
+					if r ~= nil then return r and true or false end
+				end
+				if not unit and LGT.roster then
+					for rguid, r in pairs(LGT.roster) do
+						if r and r.name == name and LGT.GUIDHasTalent then
+							local hit = LGT:GUIDHasTalent(rguid, sname)
+							if hit ~= nil then return hit and true or false end
+						end
+					end
+				end
+				return nil
+			end
+			local primary = GetSpellInfo(spellID)
+			local r = tryName(primary)
+			if r ~= nil then return r end
+			local aliases = TALENT_SPELL_ALIASES[spellID]
+			if aliases then
+				for i = 1, #aliases do
+					if aliases[i] ~= spellID then
+						local aname = GetSpellInfo(aliases[i])
+						if aname and aname ~= primary then
+							local r2 = tryName(aname)
+							if r2 ~= nil then return r2 end
+						end
+					end
+				end
+			end
+		end
+
+		return nil
+	end
+
+	function ExRT.F.GetUnitTalents(name)
+		if not name then return nil end
+		name = nameWithoutRealm(name)
+		local mod = getExCD2()
+		if not mod or not mod.db or not mod.db.session_gGUIDs then return nil end
+		local sg = mod.db.session_gGUIDs
+		local row = sg[name]
+		if not row then return nil end
+		local copy = {}
+		for k, v in pairs(row) do copy[k] = v end
+		return copy
 	end
 end

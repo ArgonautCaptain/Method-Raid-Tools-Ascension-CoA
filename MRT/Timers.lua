@@ -113,13 +113,8 @@ function module:timer(elapsed)
 		end
 	end
 	if VMRT.Timers.enabled then
-		if not module.frame.encounter and IsEncounterInProgress() then
+		if not module.frame.encounter and IsEncounterInProgress() and (module.frame.inCombat or module.frame.groupInCombat) then
 			module.frame.encounter = true
-			module.frame._combatEndGrace = nil
-
-			if not module.frame.inCombat and not module.frame.groupInCombat and module.frame.total >= 0 then
-				module.frame.total = 0
-			end
 
 			if VMRT.Timers.OnlyInCombat then
 				module.frame:Show()
@@ -158,23 +153,22 @@ function module:timer(elapsed)
 					end
 				end
 			end
+			local prevGroupInCombat = module.frame.groupInCombat
+			module.frame.groupInCombat = groupInCombat or nil
 
-			if groupInCombat then
-				module.frame.groupInCombat = true
-				module.frame._combatEndGrace = nil
-			else
-				if module.frame.groupInCombat and not module.frame._combatEndGrace then
-					module.frame._combatEndGrace = GetTime()
-				end
-				if module.frame._combatEndGrace then
-					local graceElapsed = GetTime() - module.frame._combatEndGrace
-					if graceElapsed >= 3 then
-						module.frame.groupInCombat = nil
-						module.frame._combatEndGrace = nil
+			if VMRT.ExCD2 and VMRT.ExCD2.CDDebug and (prevGroupInCombat and true or false) ~= (module.frame.groupInCombat and true or false) then
+				local who = ""
+				if module.frame.groupInCombat then
+					if n == 0 then
+						who = "player"
+					elseif IsInRaid and IsInRaid() then
+						for i=1,n do if UnitAffectingCombat("raid"..i) then who = who..(UnitName("raid"..i) or "?").." " end end
+					else
+						if UnitAffectingCombat("player") then who = who.."player " end
+						for i=1,(n-1) do if UnitAffectingCombat("party"..i) then who = who..(UnitName("party"..i) or "?").." " end end
 					end
-				else
-					module.frame.groupInCombat = nil
 				end
+				print(string.format("|cff33ff99[MRT/Timer]|r groupInCombat %s->%s inCombat=%s [%s]", tostring(prevGroupInCombat), tostring(module.frame.groupInCombat), tostring(module.frame.inCombat), who))
 			end
 
 			if not module.frame.groupInCombat and not module.frame.inCombat and not module.frame.encounter then
@@ -186,11 +180,20 @@ function module:timer(elapsed)
 	end
 end
 
+local function GetSpecForName(name)
+	local spec = VMRT.ExCD2 and VMRT.ExCD2.gnGUIDs and VMRT.ExCD2.gnGUIDs[name]
+	if not spec then
+		local data = ExRT.A.Inspect and ExRT.A.Inspect.db.inspectDB[name]
+		spec = data and data.spec
+	end
+	return spec
+end
+
 local function GetDynamicPullTime()
 	local time_needed = 10
 	local n = GetNumGroupMembers() or 0
 	if n == 0 then
-		local spec = ExRT.A.Inspect.db.inspectDB[ ExRT.SDB.charName ] and ExRT.A.Inspect.db.inspectDB[ ExRT.SDB.charName ].spec
+		local spec = GetSpecForName( ExRT.SDB.charName )
 		if spec then
 			local currTime = VMRT.Timers.specTimes[spec] or defaultSpecTimers[spec] or 10
 			if currTime > time_needed then
@@ -201,7 +204,7 @@ local function GetDynamicPullTime()
 	for i=1,n do
 		local name,_, subgroup, _, _, _, _, online = GetRaidRosterInfo(i)
 		if subgroup <= 6 and online then
-			local spec = ExRT.A.Inspect.db.inspectDB[name] and ExRT.A.Inspect.db.inspectDB[name].spec
+			local spec = GetSpecForName(name)
 			if spec then
 				local currTime = VMRT.Timers.specTimes[spec] or defaultSpecTimers[spec] or 10
 				if currTime > time_needed then
@@ -359,14 +362,14 @@ function module.options:Load()
 			VMRT.Timers.enabled = true
 			module.frame:Show()
 			module.frame:SetScript("OnUpdate", module.frame.OnUpdateFunc)
-			module:RegisterEvents('PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED')
+			module:RegisterEvents('PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','ENCOUNTER_START','ENCOUNTER_END')
 			module.options.chkTimeToKill:SetEnabled(true)
 		else
 			VMRT.Timers.enabled = nil
 			VMRT.Timers.timeToKill = nil
 			module.frame:Hide()
 			module.frame:SetScript("OnUpdate", nil)
-			module:UnregisterEvents('PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED')
+			module:UnregisterEvents('PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','ENCOUNTER_START','ENCOUNTER_END')
 			module.options.chkTimeToKill:SetEnabled(false)
 			module.options.chkTimeToKill:SetChecked(nil)
 		end
@@ -398,7 +401,7 @@ function module.options:Load()
 		end
 	end)
 
-	self.chkTimeToKill = ELib:Check(self.TabTimerFrame,L.TimerTimeToKill,VMRT.Timers.timeToKill):Point(339,-30):Tooltip(L.TimerTimeToKillHelp):OnClick(function(self)
+	self.chkTimeToKill = ELib:Check(self.TabTimerFrame,L.TimerTimeToKill,VMRT.Timers.timeToKill):Point(339,-95):Tooltip(L.TimerTimeToKillHelp):OnClick(function(self)
 		if self:GetChecked() then
 			VMRT.Timers.timeToKill = true
 			timeToKillEnabled = true
@@ -480,6 +483,62 @@ function module.options:Load()
 		self:tooltipReload(self)
 	end)
 
+	local function dropDownFontButtonClick(_,arg1)
+		ELib:DropDownClose()
+		VMRT.Timers.Font = arg1
+		module.frame:UpdateFont()
+	end
+
+	self.dropDownFont = ELib:DropDown(self.TabTimerFrame,275,10):Size(100):Point(338,-35):SetText(L.cd2OtherSetFont)
+	do
+		local fontMedia = ExRT.F.GetSharedMediaList("font", ExRT.F.fontList)
+		for i = 1, #fontMedia do
+			local entry = fontMedia[i]
+			self.dropDownFont.List[i] = {
+				text = entry.name,
+				arg1 = entry.path,
+				func = dropDownFontButtonClick,
+				font = entry.path,
+				justifyH = "CENTER",
+			}
+		end
+	end
+
+	self.SliderFontSize = ELib:Slider(self.TabTimerFrame,L.NoteFontSize):Size(60):Point("LEFT",self.dropDownFont,"RIGHT",5,0):Range(6,48):SetTo(VMRT.Timers.FontSize or 16):OnChange(function(self,event)
+		event = event - event%1
+		VMRT.Timers.FontSize = event
+		module.frame:UpdateFont()
+		self.tooltipText = event
+		self:tooltipReload(self)
+	end)
+
+	self.SliderBoxSize = ELib:Slider(self.TabTimerFrame,L.cd2width):Size(60):Point("LEFT",self.SliderFontSize,"RIGHT",5,0):Range(40,300):SetTo(VMRT.Timers.BoxSize or 77):OnChange(function(self,event)
+		event = event - event%1
+		VMRT.Timers.BoxSize = event
+		module.frame:UpdateFont()
+		self.tooltipText = event
+		self:tooltipReload(self)
+	end)
+
+	self.SliderBoxHeight = ELib:Slider(self.TabTimerFrame,L.ReminderHeight):Size(60):Point("LEFT",self.SliderBoxSize,"RIGHT",5,0):Range(10,100):SetTo(VMRT.Timers.BoxHeight or 27):OnChange(function(self,event)
+		event = event - event%1
+		VMRT.Timers.BoxHeight = event
+		module.frame:UpdateFont()
+		self.tooltipText = event
+		self:tooltipReload(self)
+	end)
+
+	self.ButtonReset = ELib:Button(self.TabTimerFrame,"R"):Size(20,20):Point("LEFT",self.SliderBoxHeight,"RIGHT",5,0):Tooltip(RESET or "Reset"):OnClick(function()
+		VMRT.Timers.FontSize = nil
+		VMRT.Timers.BoxSize = nil
+		VMRT.Timers.BoxHeight = nil
+		VMRT.Timers.Font = nil
+		module.frame:UpdateFont()
+		module.options.SliderFontSize:SetTo(16)
+		module.options.SliderBoxSize:SetTo(77)
+		module.options.SliderBoxHeight:SetTo(27)
+	end)
+
 
 	self.chkDPT = ELib:Check(self,L.TimerUseDptInstead,VMRT.Timers.useDPT):Point(15,-370):OnClick(function(self)
 		if self:GetChecked() then
@@ -497,8 +556,8 @@ function module.options:Load()
 		local val = tonumber(self:GetText())
 		if not val then
 			val = 0
-		elseif val > 60 then
-			val = 60
+		elseif val > 600 then
+			val = 600
 		elseif val < 0 then
 			val = 0
 		end
@@ -552,7 +611,7 @@ function module.options:Load()
 			specFrame.specEditBox.id = spec
 		end
 	end
-	self.scrollFrame.C.ButtonToDefaultTimers = ELib:Button(self.scrollFrame.C,L.TimerSpecTimerDefault):Size(255,20):Point("TOP",0,-670):OnClick(function()
+	self.scrollFrame.C.ButtonToDefaultTimers = ELib:Button(self.scrollFrame.C,L.TimerSpecTimerDefault):Size(255,20):Point("TOP",0,-530):OnClick(function()
 		VMRT.Timers.specTimes = tableCopy(defaultSpecTimers)
 		for key, class in ipairs(module.db.classNames) do
 			for specRow, spec in ipairs(module.db.specByClass[class]) do
@@ -585,7 +644,7 @@ function module.main:ADDON_LOADED()
 			module.frame:Show()
 		end
 		module.frame:SetScript("OnUpdate", module.frame.OnUpdateFunc)
-		module:RegisterEvents('PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED')
+		module:RegisterEvents('PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED','ENCOUNTER_START','ENCOUNTER_END')
 	end
 	if VMRT.Timers.enabled and VMRT.Timers.timeToKill then
 		timeToKillEnabled = true
@@ -609,13 +668,16 @@ function module.main:ADDON_LOADED()
 
 	if VMRT.Timers.Alpha then module.frame:SetAlpha(VMRT.Timers.Alpha/100) end
 	if VMRT.Timers.Scale then module.frame:SetScale(VMRT.Timers.Scale/100) end
+
+	module.frame:UpdateFont()
 end
 
 function module.main:PLAYER_REGEN_DISABLED()
-	if not module.frame.encounter and not module.frame.groupInCombat and module.frame.total >= 0 then
-		module.frame.total = 0
-	end
 	module.frame.inCombat = true
+
+	if VMRT.ExCD2 and VMRT.ExCD2.CDDebug then
+		print(string.format("|cff33ff99[MRT/Timer]|r REGEN_DISABLED (enter combat) total=%.1f enc=%s grp=%s", module.frame.total or -1, tostring(module.frame.encounter), tostring(module.frame.groupInCombat)))
+	end
 
 	if VMRT.Timers.OnlyInCombat then
 		module.frame:Show()
@@ -625,10 +687,35 @@ end
 function module.main:PLAYER_REGEN_ENABLED()
 	module.frame.inCombat = nil
 
-	if VMRT.Timers.OnlyInCombat and not module.frame.encounter and not module.frame.groupInCombat then
-		if not module.frame._combatEndGrace then
-			module.frame._combatEndGrace = GetTime()
-		end
+	if module.frame.encounter and not IsEncounterInProgress() then
+		module.frame.encounter = nil
+	end
+
+	if module.db.timertopull > 0 then
+		module.db.timertopull = 0
+		module.db.lasttimertopull = 0
+	end
+
+	if VMRT.ExCD2 and VMRT.ExCD2.CDDebug then
+		print(string.format("|cff33ff99[MRT/Timer]|r REGEN_ENABLED (leave combat) total=%.1f enc=%s grp=%s shown=%s", module.frame.total or -1, tostring(module.frame.encounter), tostring(module.frame.groupInCombat), tostring(module.frame:IsShown())))
+	end
+
+	if VMRT.Timers.OnlyInCombat and not module.frame.encounter then
+		module.frame:Hide()
+	end
+end
+
+function module.main:ENCOUNTER_START()
+	module.frame.encounter = true
+	if VMRT.Timers.OnlyInCombat then
+		module.frame:Show()
+	end
+end
+
+function module.main:ENCOUNTER_END()
+	module.frame.encounter = nil
+	if VMRT.Timers.OnlyInCombat and not module.frame.inCombat then
+		module.frame:Hide()
 	end
 end
 
@@ -674,6 +761,8 @@ function module:UpdateView(t)
 		self.txt_s:SetText("")
 		self.txt:Size(77,27):Point("LEFT",11,0):Left():Font(ExRT.F.defFont,16):Color():Shadow():Outline()
 		self.killTime:Size(77,27):Point("TOP",self,"BOTTOM",0,0):Top():Center():Font(ExRT.F.defFont,14):Color():Shadow():Outline()
+
+		module.frame:UpdateFont()
 	elseif t == 2 then
 		self:SetSize(77,27)
 		self:SetBackdropBorderColor(0.1,0.1,0.1,0)
@@ -690,13 +779,42 @@ function module:UpdateView(t)
 	end
 end
 
+function module.frame:UpdateFont()
+	self.txt:Font(VMRT.Timers.Font or ExRT.F.defFont,VMRT.Timers.FontSize or 16)
+	self:SetSize(VMRT.Timers.BoxSize or 77,VMRT.Timers.BoxHeight or 27)
+end
+
 do
 	local hpSnapshots,timeSnapshots,iSnapshot,guidSnapshot = {},{},0
 	local tmr = 0
 	local tmr2 = 0
 	local MAX_SEGMENTS = 90
 
+	local function updateCombatState(self)
+		if self.encounter and not self.inCombat and not self.groupInCombat then
+			self._encStuckSince = self._encStuckSince or GetTime()
+			if (GetTime() - self._encStuckSince) > 5 then
+				self.encounter = nil
+			end
+		else
+			self._encStuckSince = nil
+		end
+		local active = self.inCombat or self.encounter or self.groupInCombat
+		if active then
+			if not self.running then
+				if (GetTime() - (self.combatEndTime or 0)) > 3 and self.total >= 0 then
+					self.total = 0
+				end
+				self.running = true
+			end
+		elseif self.running then
+			self.running = nil
+			self.combatEndTime = GetTime()
+		end
+	end
+
 	local function timerType1(self,elapsed)
+		updateCombatState(self)
 		tmr2 = tmr2 + elapsed
 		if tmr2 > 0.05 and (self.inCombat or self.encounter or self.groupInCombat or self.total < 0) then
 			self.total = self.total + tmr2
@@ -763,6 +881,7 @@ do
 	end
 
 	local function timerType2(self,elapsed)
+		updateCombatState(self)
 		tmr2 = tmr2 + elapsed
 		if tmr2 > 0.05 and (self.inCombat or self.encounter or self.groupInCombat or self.total < 0) then
 			self.total = self.total + tmr2

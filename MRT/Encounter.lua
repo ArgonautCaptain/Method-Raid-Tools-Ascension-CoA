@@ -53,6 +53,31 @@ function module.options:Load()
 		[5]=true,
 		[6]=true,
 	}
+	local _nameToSortIndex
+	local _nameToMapID
+	local function _buildNameCaches()
+		_nameToSortIndex = {}
+		_nameToMapID = {}
+		if not (ExRT and ExRT.L and ExRT.L.bossName) then return end
+		for i=1,#module.db.sortedList do
+			local dung = module.db.sortedList[i]
+			local mapID = dung[1]
+			for j=2,#dung do
+				local id = dung[j]
+				local name = ExRT.L.bossName[id]
+				if type(name) == "string" and name ~= "" and not _nameToSortIndex[name] then
+					_nameToSortIndex[name] = i * 100 + j
+					_nameToMapID[name] = mapID
+				end
+			end
+		end
+	end
+	local function _resolveByName(id)
+		if not _nameToSortIndex then _buildNameCaches() end
+		local recordedName = VMRT and VMRT.Encounter and VMRT.Encounter.names and VMRT.Encounter.names[id]
+		if type(recordedName) ~= "string" or recordedName == "" then return nil, nil end
+		return _nameToSortIndex[recordedName], _nameToMapID[recordedName]
+	end
 	local function GetEncounterSortIndex(id,unk)
 		for i=1,#module.db.sortedList do
 			local dung = module.db.sortedList[i]
@@ -62,6 +87,8 @@ function module.options:Load()
 				end
 			end
 		end
+		local byName = _resolveByName(id)
+		if byName then return byName end
 		return unk
 	end
 	local function GetEncounterMapID(id)
@@ -73,6 +100,8 @@ function module.options:Load()
 				end
 			end
 		end
+		local _, mapID = _resolveByName(id)
+		if mapID then return mapID end
 		return -999
 	end
 	self:CreateTilte()
@@ -682,18 +711,23 @@ function module.options:Load()
 
 	self.dropDown:SetValue(#module.db.diffPos)
 
-	self:SetScript("OnMouseWheel",function (self,delta)
+	local function OnWheel(_,delta)
 		if module.options:IsLocked() then return end
-		local min,max = self.ScrollBar:GetMinMaxValues()
-		local val = self.ScrollBar:GetValue()
+		local sb = self.ScrollBar
+		local min,max = sb:GetMinMaxValues()
+		local val = sb:GetValue()
 		if (val - delta) < min then
-			self.ScrollBar:SetValue(min)
+			sb:SetValue(min)
 		elseif (val - delta) > max then
-			self.ScrollBar:SetValue(max)
+			sb:SetValue(max)
 		else
-			self.ScrollBar:SetValue(val - delta)
+			sb:SetValue(val - delta)
 		end
-	end)
+	end
+	self:EnableMouseWheel(true)
+	self:SetScript("OnMouseWheel", OnWheel)
+	self.borderList:EnableMouseWheel(true)
+	self.borderList:SetScript("OnMouseWheel", OnWheel)
 end
 
 local function DiffInArray(diff)
@@ -758,6 +792,15 @@ function module.main:ADDON_LOADED()
 	module.db.playerName = UnitName("player") or 0
 	VMRT.Encounter.list[module.db.playerName] = VMRT.Encounter.list[module.db.playerName] or {}
 
+	if ExRT and ExRT.L and ExRT.L.bossName then
+		for encID, name in pairs(VMRT.Encounter.names) do
+			local canonical = ExRT.L.bossName[encID]
+			if type(canonical) == "string" and canonical ~= "" and canonical ~= tostring(encID) and canonical ~= name then
+				VMRT.Encounter.names[encID] = canonical
+			end
+		end
+	end
+
 	module:RegisterEvents('ENCOUNTER_START','ENCOUNTER_END','BOSS_KILL')
 end
 
@@ -779,7 +822,14 @@ function module.main:ENCOUNTER_START(encounterID, encounterName, difficultyID, g
 	VMRT.Encounter.list[module.db.playerName][module.db.nowInTable] =
 		"^".. encounterID .. "^" .. difficultyID .. "^" .. module.db.pullTime .. "^0^0^" .. (groupSize or 0) .. "^" .. format("%.2f",ExRT.F.RaidItemLevel and ExRT.F:RaidItemLevel() or 0) .. "^"
 
-	VMRT.Encounter.names[encounterID] = encounterName
+	local canonical
+	if ExRT and ExRT.L and ExRT.L.bossName then
+		local resolved = ExRT.L.bossName[encounterID]
+		if type(resolved) == "string" and resolved ~= "" and resolved ~= tostring(encounterID) then
+			canonical = resolved
+		end
+	end
+	VMRT.Encounter.names[encounterID] = canonical or encounterName
 	module:RegisterEvents('COMBAT_LOG_EVENT_UNFILTERED')
 
 	module.db.chachedDB = nil

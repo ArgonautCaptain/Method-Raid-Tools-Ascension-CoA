@@ -1,4 +1,10 @@
 local GlobalAddonName, ExRT = ...
+if _G.MRT_CD_DEBUG == nil then _G.MRT_CD_DEBUG = false end
+local function dprint(...) if _G.MRT_CD_DEBUG then print(...) end end
+SLASH_MRTCDDEBUG1 = "/cddebug"
+SlashCmdList["MRTCDDEBUG"] = function() _G.MRT_CD_DEBUG = not _G.MRT_CD_DEBUG; print("|cff33ff99[MRT]|r CD debug:", _G.MRT_CD_DEBUG and "ON" or "OFF") end
+SLASH_MRTREZDEBUG1 = "/rezdebug"
+SlashCmdList["MRTREZDEBUG"] = function() _G.MRT_REZ_DEBUG = not _G.MRT_REZ_DEBUG; print("|cff33ff99[MRT]|r Rez debug:", _G.MRT_REZ_DEBUG and "ON" or "OFF") end
 local GetTime, IsEncounterInProgress, RAID_CLASS_COLORS, GetInstanceInfo, GetSpellCharges, SecondsToTime, IsInJailersTower = GetTime, IsEncounterInProgress, RAID_CLASS_COLORS, GetInstanceInfo, GetSpellCharges, SecondsToTime, IsInJailersTower
 local string_gsub, wipe, tonumber, pairs, ipairs, string_trim, format, floor, ceil, abs, type, sort, select, Enum = string.gsub, table.wipe, tonumber, pairs, ipairs, string.trim, format, floor, ceil, abs, type, sort, select, Enum
 if not string_trim then
@@ -43,6 +49,7 @@ end
 local LibDeflate = LibStub:GetLibrary("LibDeflate")
 module._C = {}
 module.db.spellDB = {}
+module.db.spell_isTalentCD = {[17116]=true,[50334]=true,[61336]=true,[33831]=true,[18562]=true,[50516]=true,[12975]=true,[12809]=true,[46924]=true,[12292]=true,[12328]=true,[60970]=true,[46968]=true,[11958]=true,[12472]=true,[31687]=true,[12042]=true,[12043]=true,[11129]=true,[31661]=true,[11426]=true,[44572]=true,[64205]=true,[31821]=true,[20066]=true,[31842]=true,[20216]=true,[31935]=true,[16190]=true,[51490]=true,[16166]=true,[30823]=true,[55198]=true,[16188]=true,[51533]=true,[30283]=true,[18708]=true,[47193]=true,[17877]=true,[19577]=true,[19574]=true,[23989]=true,[34490]=true,[19386]=true,[724]=true,[10060]=true,[47788]=true,[33206]=true,[47585]=true,[64044]=true,[15487]=true,[14751]=true,[47540]=true,[34861]=true,[13750]=true,[51690]=true,[14185]=true,[13877]=true,[36554]=true,[14177]=true,[51052]=true,[49028]=true,[49016]=true,[55233]=true,[49222]=true,[49206]=true,[49203]=true,[49039]=true,[51271]=true,[48982]=true,[49005]=true,[66233]=true,[31230]=true,}
 module.db.Cmirror = module._C
 module.db.dbCountDef = #module.db.spellDB
 module.db.findspecspells = {
@@ -106,19 +113,18 @@ for class,classData in pairs(ExRT.GDB.ClassSpecializationList) do
 end
 module.db.specIcons = ExRT.GDB.ClassSpecializationIcons
 module.db.specInDBase = {
-	[253] = 5,	[254] = 6,	[255] = 7,
-	[71] = 5,	[72] = 6,	[73] = 7,
-	[65] = 5,	[66] = 6,	[70] = 7,
-	[62] = 5,	[63] = 6,	[64] = 7,
-	[256] = 5,	[257] = 6,	[258] = 7,
-	[265] = 5,	[266] = 6,	[267] = 7,
-	[250] = 5,	[251] = 6,	[252] = 7,
-	[259] = 5,	[260] = 6,	[261] = 7,
-	[102] = 5,	[103] = 6,	[104] = 7,	[105] = 8,
-	[268] = 5,	[269] = 6,	[270] = 7,
-	[262] = 5,	[263] = 6,	[264] = 7,
-	[577] = 5,	[581] = 6,
-	[1467] = 5,	[1468] = 6,
+	[253] = 5,	[254] = 6,	[255] = 7,	-- Hunter
+	[71] = 5,	[72] = 6,	[73] = 7,	-- Warrior
+	[65] = 5,	[66] = 6,	[70] = 7,	-- Paladin
+	[62] = 5,	[63] = 6,	[64] = 7,	-- Mage
+	[256] = 5,	[257] = 6,	[258] = 7,	-- Priest
+	[265] = 5,	[266] = 6,	[267] = 7,	-- Warlock
+	[250] = 5,	[251] = 6,	[252] = 7,	-- Death Knight
+	[259] = 5,	[260] = 6,	[261] = 7,	-- Rogue
+	[102] = 5,	[103] = 6,	[104] = 7,	[105] = 8,	-- Druid (4 specs)
+	[262] = 5,	[263] = 6,	[264] = 7,	-- Shaman
+	[577] = 5,	[581] = 6,	-- Demon Hunter (2 specs, но это не 3.3.5a)
+	[1467] = 5,	[1468] = 6,	-- Evoker (2 specs, но это не 3.3.5a)
 	[0] = 4,
 }
 
@@ -352,8 +358,6 @@ module.db.spell_isPvpTalent = {}
 
 module.db.spell_isRaidCD = {}
 
-module.db.spell_wotlkTalentMap = {}
-
 do
 	local nilData = {}
 	local talentEntriesData = {}
@@ -514,7 +518,6 @@ do
 		{187611,187614,187615},
 		{202767,202771,202768},
 		{330325,5308},
-		{48477,20484,20739,20742,20747,20748,26994},
 	}
 	if ExRT.isBC then
 		module.db.spell_runningSameSpell2[#module.db.spell_runningSameSpell2+1] = {2894,2062}
@@ -539,6 +542,7 @@ module.db.spell_dispellsList = {
 
 module.db.spell_startCDbyAuraFade = {
 	[5215]=5215,
+	[5384]=5384,
 }
 module.db.spell_startCDbyAuraFadeExt = {
 }
@@ -560,16 +564,41 @@ module.db.spell_aoe_no_target = {
 	[16190]=true,
 }
 if ExRT.isLK then
-	module.db.spell_startCDbyAuraApplied[20707] = 20765
-	module.db.spell_startCDbyAuraApplied[20762] = 20765
-	module.db.spell_startCDbyAuraApplied[20764] = 20765
-	module.db.spell_startCDbyAuraApplied[20765] = 20765
-	module.db.spell_startCDbyAuraApplied[20772] = 20765
-	module.db.spell_startCDbyAuraApplied[27240] = 20765
-	module.db.spell_startCDbyAuraApplied[47883] = 20765
+	module.db.spell_aura_list[35079] = 34477
+	module.db.spell_aura_list_onTarget = {
+		[20707] = 20765,
+		[20727] = 20765,
+		[20762] = 20765,
+		[20763] = 20765,
+		[20764] = 20765,
+		[20765] = 20765,
+		[27239] = 20765,
+		[27240] = 20765,
+		[47882] = 20765,
+		[47883] = 20765,
+	}
 end
 module.db.spell_startCDbyAuraApplied_fix = {}
 for _,spellID in pairs(module.db.spell_startCDbyAuraApplied) do module.db.spell_startCDbyAuraApplied_fix[spellID] = true end
+
+module.db.spell_startCDbyUnitAura = {
+	[31821] = 31821,
+	[64205] = 64205,
+	[498]   = 498,
+	[642]   = 642,
+	[48792] = 48792,
+	[55233] = 55233,
+	[22812] = 22812,
+	[61336] = 61336,
+	[871]   = 871,
+	[55694] = 55694,
+	[47585] = 47585,
+	[12472] = 12472,
+	[12042] = 12042,
+	[16166] = 16166,
+	[30823] = 30823,
+}
+
 
 module.db.spell_reduceCdByAuraFade = {
 }
@@ -970,6 +999,13 @@ local colorSetupFrameColorsNames = {"Default","Active","Cooldown"}
 local colorSetupFrameColorsObjectsNames = {"Text","Background","TimeLine"}
 local globalGUIDs = nil
 
+local function FindAnyUserColumn(cdecol, spellID)
+	for n=1,5 do
+		local c = cdecol[spellID..";"..n]
+		if c then return c end
+	end
+end
+
 module.db.maxLinesInCol = 100
 module.db.maxColumns = 10
 
@@ -1143,6 +1179,7 @@ module.db.status_UnitIsOutOfRange = {}
 local UpdateAllData = nil
 local SaveCDtoVar = nil
 local CLEUstartCD = nil
+local RecordHistoryUsage = nil
 
 local L_Offline,L_Dead = L.cd2StatusOffline, L.cd2StatusDead
 local _C, _db = module._C, module.db
@@ -1353,6 +1390,15 @@ do
 			end
 		end
 
+		local _in49206, _in66233 = false, false
+		for _i=1,#spellDB do
+			local _id = spellDB[_i] and spellDB[_i][1]
+			if _id == 49206 then _in49206 = true elseif _id == 66233 then _in66233 = true end
+		end
+		dprint("[CreateSpellDB] #spellDB=", #spellDB,
+			"| CDE[49206]=", tostring(VMRT.ExCD2.CDE[49206]), "inDB=", tostring(_in49206),
+			"| CDE[66233]=", tostring(VMRT.ExCD2.CDE[66233]), "inDB=", tostring(_in66233))
+
 		module:CreateSpellData()
 
 	end
@@ -1465,9 +1511,6 @@ local function BarUpdateText(self)
 	gsub_data.status = offStatus
 	gsub_data.charge = chargesCount
 	local targetStr = (barData.targetName and time >= 1) and barData.targetName or ""
-	if barData.targetClass and targetStr ~= "" then
-		targetStr = "|c" .. ExRT.F.classColor(barData.targetClass) .. targetStr .. "|r"
-	end
 	gsub_data.target = targetStr
 
 	if barParent.iconFontMode then
@@ -1476,9 +1519,6 @@ local function BarUpdateText(self)
 			gsub_data.name = utf8sub(gsub_data.name, 1, n)
 			local rawTarget = (barData.targetName and time >= 1) and barData.targetName or ""
 			rawTarget = utf8sub(rawTarget, 1, n)
-			if barData.targetClass and rawTarget ~= "" then
-				rawTarget = "|c" .. ExRT.F.classColor(barData.targetClass) .. rawTarget .. "|r"
-			end
 			gsub_data.target = rawTarget
 			gsub_data.name_time = time >= 1 and longtime or gsub_data.name
 			gsub_data.name_stime = time >= 1 and shorttime or gsub_data.name
@@ -2933,103 +2973,119 @@ do
 		end
 		return nil
 	end
+	local TALENT_SPELL_ALIASES = {
+		[31230] = {31228, 31229, 31230},
+		[14185] = {14185},
+		[66233] = {31850, 31851, 31852, 66233},
+		[31850] = {31850, 31851, 31852, 66233},
+		[31851] = {31850, 31851, 31852, 66233},
+		[31852] = {31850, 31851, 31852, 66233},
+	}
+	local function LGT_TryName(guid, unit, sname)
+		if guid and LibGroupTalents.GUIDHasTalent then
+			local r = LibGroupTalents:GUIDHasTalent(guid, sname)
+			if r ~= nil then return r end
+		end
+		if unit and LibGroupTalents.UnitHasTalent then
+			local r = LibGroupTalents:UnitHasTalent(unit, sname)
+			if r ~= nil then return r end
+		end
+		return nil
+	end
 	local function LGT_UnitHasTalent(name, spellID)
 		if not LibGroupTalents or not name or type(spellID) ~= "number" then return nil end
-		local sname = GetSpellInfo(spellID)
-		if not sname then return nil end
 		local unit = LGT_NameToUnit(name)
-		if unit then
-			local guid = UnitGUID(unit)
-			if guid then
-				return LibGroupTalents:GUIDHasTalent(guid, sname)
-			end
-			return LibGroupTalents:UnitHasTalent(unit, sname)
+		local guid = unit and UnitGUID(unit) or nil
+		local primaryName = GetSpellInfo(spellID)
+		if primaryName then
+			local r = LGT_TryName(guid, unit, primaryName)
+			if r then return r end
 		end
-		if LibGroupTalents.roster then
-			for guid, r in pairs(LibGroupTalents.roster) do
-				if r and r.name == name then
-					return LibGroupTalents:GUIDHasTalent(guid, sname)
-				end
-			end
-		end
-		return nil
-	end
-
-	local function UnitHasTalent(name, spellID)
-		if not spell_isTalent[spellID] then return true end
-		if not LibGroupTalents then return nil end
-		local sname = GetSpellInfo(spellID)
-		if not sname then return nil end
-		local unit = LGT_NameToUnit(name)
-		if unit then
-			return LibGroupTalents:UnitHasTalent(unit, sname)
-		end
-		if LibGroupTalents.roster then
-			for guid, r in pairs(LibGroupTalents.roster) do
-				if r and r.name == name then
-					return LibGroupTalents:GUIDHasTalent(guid, sname)
-				end
-			end
-		end
-		return nil
-	end
-	local function LGT_HasInspectData(name)
-		if not LibGroupTalents or not name then return false end
-		local unit = LGT_NameToUnit(name)
-		local guid = unit and UnitGUID(unit)
-		if guid and LibGroupTalents.roster and LibGroupTalents.roster[guid] then
-			local r = LibGroupTalents.roster[guid]
-			if r and r.talents and r.active and r.talents[r.active] then
-				return true
-			end
-		end
-		if LibGroupTalents.roster then
-			for g, r in pairs(LibGroupTalents.roster) do
-				if r and r.name == name and r.talents and r.active and r.talents[r.active] then
-					return true
-				end
-			end
-		end
-		return false
-	end
-	local spell_wotlkTalentMap = _db.spell_wotlkTalentMap
-	local GetTalentInfoLocal = GetTalentInfo
-	local function HasWotlkTalent(name, spellID)
-		if not spell_wotlkTalentMap then return nil end
-		local coords = spell_wotlkTalentMap[spellID]
-		if not coords then return nil end
-		local tab, idx = coords[1], coords[2]
-		if not tab or not idx then return nil end
-		if name == playerName then
-			local _, _, _, _, rank = GetTalentInfoLocal(tab, idx)
-			if rank and rank > 0 then return rank end
-			return nil
-		end
-		if LibGroupTalents and LibGroupTalents.roster then
-			local unit = LGT_NameToUnit(name)
-			local guid = unit and UnitGUID(unit)
-			local r = guid and LibGroupTalents.roster[guid]
-			if not r and LibGroupTalents.roster then
-				for g, info in pairs(LibGroupTalents.roster) do
-					if info and info.name == name then
-						r = info
-						break
+		local aliases = TALENT_SPELL_ALIASES[spellID]
+		if aliases then
+			for i = 1, #aliases do
+				local aliasID = aliases[i]
+				if aliasID ~= spellID then
+					local aname = GetSpellInfo(aliasID)
+					if aname and aname ~= primaryName then
+						local r = LGT_TryName(guid, unit, aname)
+						if r then return r end
 					end
 				end
 			end
-			if r and r.talents and r.active and r.talents[r.active] then
-				local rankStr = r.talents[r.active][tab]
-				if type(rankStr) == "string" then
-					local rank = tonumber(rankStr:sub(idx, idx)) or 0
-					if rank > 0 then return rank end
+		end
+		if not unit and LibGroupTalents.roster then
+			for rguid, r in pairs(LibGroupTalents.roster) do
+				if r and r.name == name then
+					if primaryName then
+						local hit = LibGroupTalents:GUIDHasTalent(rguid, primaryName)
+						if hit then return hit end
+					end
+					if aliases then
+						for i = 1, #aliases do
+							local aname = GetSpellInfo(aliases[i])
+							if aname then
+								local hit = LibGroupTalents:GUIDHasTalent(rguid, aname)
+								if hit then return hit end
+							end
+						end
+					end
 				end
 			end
 		end
 		return nil
 	end
-
-	local function HasTalentBroadcast(name)
-		return session_TalentBroadcastReceived and session_TalentBroadcastReceived[name] ~= nil
+	local function LGT_HasTalentData(name)
+		if not LibGroupTalents or not name or not LibGroupTalents.roster then return nil end
+		local unit = LGT_NameToUnit(name)
+		local guid = unit and UnitGUID(unit) or nil
+		if guid then
+			local r = LibGroupTalents.roster[guid]
+			if r and r.active and r.talents and r.talents[r.active] then return true end
+		end
+		for _, r in pairs(LibGroupTalents.roster) do
+			if r and r.name == name and r.active and r.talents and r.talents[r.active] then return true end
+		end
+		return nil
+	end
+	local playerTalentSet = nil
+	local playerTalentSetClass = nil
+	local function RebuildPlayerTalentSet()
+		playerTalentSet = {}
+		playerTalentSetClass = select(2, UnitClass("player"))
+		if not ExRT.isLK or not GetTalentInfoClassic then return end
+		local InspectModule = MRT.A and MRT.A.Inspect
+		local treeData = InspectModule and InspectModule.TALENTDATA and InspectModule.TALENTDATA[playerTalentSetClass or ""]
+		if not treeData then return end
+		for spec = 1, 3 do
+			local mrtTab = treeData[spec]
+			if mrtTab then
+				for talPos = 1, 31 do
+					local _, _, tier, column, rank = GetTalentInfoClassic(spec, talPos)
+					if tier and column and rank and rank > 0 then
+						local tierData = mrtTab[tier]
+						local talentSpellID = tierData and tierData[column]
+						if type(talentSpellID) == "number" then
+							playerTalentSet[talentSpellID] = rank
+							local provides = module.db.spell_talentProvideAnotherTalents and module.db.spell_talentProvideAnotherTalents[talentSpellID]
+							if provides then
+								for _, v in pairs(provides) do
+									if type(v) == "number" then playerTalentSet[v] = rank end
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	module.RebuildPlayerTalentSet = RebuildPlayerTalentSet
+	local function PlayerHasTalentDirect(spellID)
+		if not ExRT.isLK or type(spellID) ~= "number" then return nil end
+		if not playerTalentSet or playerTalentSetClass ~= select(2, UnitClass("player")) then
+			RebuildPlayerTalentSet()
+		end
+		return playerTalentSet[spellID]
 	end
 
 	local _CV = {}
@@ -3037,6 +3093,94 @@ do
 	module.db._CV = _CV
 
 	local playerName = ExRT.SDB.charName
+
+	function module:DumpTalentDebug()
+		local pName = playerName
+		print("|cff33ff99[MRT/CD debug]|r player="..tostring(pName).." class="..tostring(select(2,UnitClass("player"))))
+		print("  VMRT.ExCD2.CDE[13750]="..tostring(VMRT.ExCD2.CDE[13750]))
+		print("  VMRT.ExCD2.CDE[51690]="..tostring(VMRT.ExCD2.CDE[51690]))
+		print("  spell_isTalent[13750]="..tostring(spell_isTalent[13750]))
+		print("  spell_isTalent[51690]="..tostring(spell_isTalent[51690]))
+		RebuildPlayerTalentSet()
+		local cnt = 0
+		for sid in pairs(playerTalentSet or {}) do cnt = cnt + 1 end
+		print("  playerTalentSet entries: "..cnt)
+		print("  playerTalentSet[13750]="..tostring(playerTalentSet[13750]))
+		print("  playerTalentSet[51690]="..tostring(playerTalentSet[51690]))
+		local sg = session_gGUIDs[pName]
+		local sgcnt = 0
+		if type(sg) == "table" then for _ in pairs(sg) do sgcnt = sgcnt + 1 end end
+		print("  session_gGUIDs["..tostring(pName).."] entries: "..sgcnt)
+		print("  session_gGUIDs["..tostring(pName).."][13750]="..tostring(sg and sg[13750]))
+		print("  session_gGUIDs["..tostring(pName).."][51690]="..tostring(sg and sg[51690]))
+		print("  specID="..tostring(globalGUIDs and globalGUIDs[pName]).." (raw gnGUIDs)")
+		local specID = globalGUIDs and globalGUIDs[pName] or 0
+		local unitSpecID = specInDBase[specID] or 4
+		print("  unitSpecID="..tostring(unitSpecID).." (from specInDBase["..tostring(specID).."])")
+		local shown, total = 0, 0
+		for i=1,#_C do
+			local data = _C[i]
+			local db = data.db
+			local name = data.fullName
+			local spellID = db[1]
+			if name == pName and spell_isTalent[spellID] then
+				total = total + 1
+				local sn = GetSpellInfo(spellID) or "?"
+				local inSG = session_gGUIDs[name][spellID] and "Y" or "-"
+				local inLGT = LGT_UnitHasTalent(name, spellID) and "Y" or "-"
+				local inDirect = PlayerHasTalentDirect(spellID) and "Y" or "-"
+				local specID = globalGUIDs[name] or 0
+				local unitSpecID = specInDBase[specID] or 4
+				local specOk = (db[unitSpecID] or db[4] or db[5] or db[6] or db[7] or db[8]) and "Y" or "-"
+				local talentPass = (session_gGUIDs[name][spellID] or LGT_UnitHasTalent(name, spellID) or PlayerHasTalentDirect(spellID)) and "Y" or "-"
+				if talentPass == "Y" then shown = shown + 1 end
+				print(string.format("  %d %s | spec=%s talent=%s [sg=%s lgt=%s direct=%s]", spellID, sn, specOk, talentPass, inSG, inLGT, inDirect))
+			end
+		end
+		print(string.format("  TOTAL talent-CD for self: %d, passing talent-gate: %d", total, shown))
+	end
+
+	function module:CDDump(spellID)
+		spellID = tonumber(spellID)
+		if not spellID then print("|cffff4444[CDDump]|r usage: /mrt cddump <spellID>"); return end
+		local sn = GetSpellInfo(spellID) or "?"
+		local now = GetTime()
+		print("|cff33ff99[CDDump]|r "..spellID.." "..sn
+			.." | isTalent="..tostring(spell_isTalent[spellID])
+			.." CDE="..tostring(VMRT.ExCD2.CDE[spellID])
+			.." auraList="..tostring(module.db.spell_aura_list[spellID])
+			.." startByFade="..tostring(module.db.spell_startCDbyAuraFade[spellID])
+			.." threatBuff="..tostring(module.db.spell_threatBuff and module.db.spell_threatBuff[spellID]))
+		local start, dur = GetSpellCooldown(spellID)
+		local realRemain = (start and dur and dur > 0) and (start + dur - now) or 0
+		print(string.format("  self: known=%s realCD start=%s dur=%s remain=%.1f",
+			tostring(IsSpellKnown and IsSpellKnown(spellID)), tostring(start), tostring(dur), realRemain))
+		local found = 0
+		for i = 1, #_C do
+			local data = _C[i]
+			if data.db and data.db[1] == spellID then
+				found = found + 1
+				local name = data.fullName
+				local specID = globalGUIDs[name] or 0
+				local uSpec = specInDBase[specID] or 4
+				local cdRem = (data.lastUse and data.cd) and (data.lastUse + data.cd - now) or 0
+				local durRem = (data.lastUse and data.duration) and (data.lastUse + data.duration - now) or 0
+				print(string.format("  %s spec=%d/%d vis=%s | cd=%s dur=%s lastUse=%s | cdRem=%.1f durRem=%.1f",
+					tostring(name), specID, uSpec, data.vis and "Y" or "N",
+					tostring(data.cd), tostring(data.duration), tostring(data.lastUse), cdRem, durRem))
+				print(string.format("     db4=%s sg=%s lgt=%s lgtData=%s target=%s",
+					data.db[4] and "Y" or "N",
+					session_gGUIDs[name][spellID] and "Y" or "N",
+					LGT_UnitHasTalent(name, spellID) and "Y" or "N",
+					(spell_isTalent[spellID] and LGT_HasTalentData(name)) and "Y" or "N",
+					tostring(data.targetName)))
+			end
+		end
+		if found == 0 then
+			print("  NOT in _C (no tracked line). CDE="..tostring(VMRT.ExCD2.CDE[spellID])
+				.." -> либо выключен, либо отфильтрован на сборке ростера")
+		end
+	end
 
 	local IsPvpTalentsOn = module.IsPvpTalentsOn
 
@@ -3157,6 +3301,8 @@ do
 	function UpdateAllData()
 		reviewID = reviewID + 1
 
+		playerTalentSet = nil
+
 		local isTestMode = _db.testMode
 		local CDECol = VMRT.ExCD2.CDECol
 		local VMRT_CDE = VMRT.ExCD2.CDE
@@ -3172,9 +3318,19 @@ do
 			local specID = globalGUIDs[name] or 0
 			local unitSpecID = specInDBase[specID] or 4
 
-			if isTestMode or (VMRT_CDE[spellID] and
+			local lgtHasData = spell_isTalent[spellID] and LGT_HasTalentData(name)
+			local ownsTalent
+			if lgtHasData then
+				ownsTalent = LGT_UnitHasTalent(name, spellID) or (name == playerName and PlayerHasTalentDirect(spellID))
+			else
+				ownsTalent = session_gGUIDs[name][spellID] or LGT_UnitHasTalent(name, spellID) or (name == playerName and (PlayerHasTalentDirect(spellID) or (not spell_isTalent[spellID] and IsSpellKnown and IsSpellKnown(spellID))))
+			end
+			if module.db.phaseDebug and (spellID == 31230 or spellID == 31821 or spellID == 64205) then
+				print("|cffff4444[PH GATE]|r",spellID,name,"spec="..tostring(specID).."/"..tostring(unitSpecID),"db4="..(db[4] and "Y" or "N"),"sg="..(session_gGUIDs[name][spellID] and "Y" or "N"),"lgt="..(LGT_UnitHasTalent(name, spellID) and "Y" or "N"),"lgtData="..(lgtHasData and "Y" or "N"),"self="..(name==playerName and "Y" or "N"))
+			end
+			if isTestMode or ((VMRT_CDE[spellID]) and
 			(db[unitSpecID] or db[4] or db[5] or db[6] or db[7] or db[8]) and
-			(not spell_isTalent[spellID] or UnitHasTalent(name, spellID)) and
+			(db[4] or ownsTalent) and
 			(not spell_isPvpTalent[spellID] or (session_gGUIDs[name][spellID] and IsPvpTalentsOn(name))) and
 			(not spell_isPetAbility[spellID] or session_Pets[name] == spell_isPetAbility[spellID] or (session_Pets[name] and petsAbilities[ session_Pets[name] ] and petsAbilities[ session_Pets[name] ][1] == spell_isPetAbility[spellID]) or (type(spell_isPetAbility[spellID]) == "table" and session_Pets[name] and ExRT.F.table_find(spell_isPetAbility[spellID],session_Pets[name]))) and
 			(not spell_talentReplaceOther[spellID] or not TalentReplaceOtherCheck(spellID,name)) and
@@ -3183,7 +3339,7 @@ do
 				data.vis = true
 
 				local unitRole = data.checkRole and ExRT.F.GetUnitRaidRole and ExRT.F.GetUnitRaidRole(name)
-				local col = (data.checkRole and unitRole and CDECol[spellID..";"..unitRole]) or CDECol[spellID..";"..(unitSpecID-3)] or CDECol[spellID..";1"] or def_col[spellID..";"..(unitSpecID-3)] or def_col[spellID..";1"] or db[3] or 1
+				local col = (data.checkRole and unitRole and CDECol[spellID..";"..unitRole]) or CDECol[spellID..";"..(unitSpecID-3)] or CDECol[spellID..";1"] or (unitSpecID == 4 and FindAnyUserColumn(CDECol, spellID)) or def_col[spellID..";"..(unitSpecID-3)] or def_col[spellID..";1"] or db[3] or 1
 				if type(col) ~= "number" or col < 1 or col > module.db.maxColumns then col = 1 end
 				data.column = col
 
@@ -3256,7 +3412,7 @@ do
 				local prevDisabledStatus = data.disabled
 				local isDead = status_UnitIsDead[ name ]
 				local isOffline = status_UnitIsDisconnected[ name ]
-				if (isDead or isOffline) and not columnFrame.methodsCDOnlyTime then
+				if (isDead or isOffline) and not columnFrame.methodsCDOnlyTime and spellID ~= 20608 then
 					data.disabled = isOffline and 2 or 1
 				else
 					data.disabled = nil
@@ -3322,6 +3478,7 @@ do
 	module.UpdateAllData = UpdateAllData
 
 	local statusTimer2 = 0
+	local auraPollTimer = 0
 	local timerATFRepos = 0
 	local timerATFReset = 15
 	local ATFFrames = {}
@@ -3417,6 +3574,33 @@ do
 				if not IsOnCD(data) then
 					forceUpdateAllData = true
 					HiddenOnCD[data] = nil
+				end
+			end
+		end
+
+		auraPollTimer = auraPollTimer + elapsed
+		if auraPollTimer > 1 then
+			auraPollTimer = 0
+			local startMap = _db.spell_startCDbyUnitAura
+			if startMap and (_db.isEncounter or RaidInCombat()) then
+				local nowT = GetTime()
+				for i=1,#status_UnitsToCheck do
+					local unit = status_UnitsToCheck[i]
+					local lines = _db.cdsNavData[unit]
+					if lines then
+						for idx=1,40 do
+							local auraName,_,_,_,_,_,_,_,_,c10,c11 = UnitAura(unit,idx)
+							if not auraName then break end
+							local auraSpellID = c11 or c10
+							local cdSpellID = auraSpellID and startMap[auraSpellID]
+							if cdSpellID then
+								local line = lines[cdSpellID]
+								if line and (not line.lastUse or (line.lastUse + (line.cd or 0)) <= nowT) then
+									CLEUstartCD(line)
+								end
+							end
+						end
+					end
 				end
 			end
 		end
@@ -3917,6 +4101,22 @@ local lineFuncs = {
 }
 
 local function UpdateRoster()
+	dprint("[UpdateRoster] Called")
+	local playerName = ExRT.SDB.charName
+	dprint("[UpdateRoster] playerName=", playerName)
+	if playerName and _db.session_gGUIDs and _db.session_gGUIDs[playerName] then
+		local count = 0
+		for spellID in pairs(_db.session_gGUIDs[playerName]) do
+			count = count + 1
+		end
+		dprint("[UpdateRoster] session_gGUIDs[", playerName, "] has", count, "talents")
+		-- Check specific talents
+		dprint("[UpdateRoster] Has 13877 (Blade Flurry)?", _db.session_gGUIDs[playerName][13877] and "YES" or "NO")
+		dprint("[UpdateRoster] Has 13750 (Adrenaline Rush)?", _db.session_gGUIDs[playerName][13750] and "YES" or "NO")
+		dprint("[UpdateRoster] Has 14185 (Preparation)?", _db.session_gGUIDs[playerName][14185] and "YES" or "NO")
+	else
+		dprint("[UpdateRoster] session_gGUIDs not available for", playerName)
+	end
 	wipe(status_UnitsToCheck)
 	wipe(status_UnitIsDead)
 	wipe(status_UnitIsDisconnected)
@@ -3951,6 +4151,22 @@ local function UpdateRoster()
 			for ci=1,#_db.classNames do classNameToIndex[_db.classNames[ci]] = ci end
 		end
 
+		local liveCDSnapshot = {}
+		for i=1,#_C do
+			local d = _C[i]
+			if d and d.fullName and d.db and d.db[1] then
+				local hasRuntimeState = (d.lastUse and d.lastUse > 0) or (d.targetName ~= nil)
+				if hasRuntimeState then
+					liveCDSnapshot[ d.fullName.."#"..d.db[1] ] = {
+						lastUse = d.lastUse, cd = d.cd, duration = d.duration,
+						charge = d.charge,
+						targetName = d.targetName, targetSetTime = d.targetSetTime, targetClass = d.targetClass,
+					}
+				end
+			end
+		end
+		wipe(_C)
+		cdsNav_wipe()
 		for i=1,#_C do _C[i].sort = nil end
 		local gMax = GetRaidDiffMaxGroup()
 		local isInRaid = IsInRaid()
@@ -3970,12 +4186,28 @@ local function UpdateRoster()
 					if _db.spell_isRacial[ SpellID ] and race ~= _db.spell_isRacial[ SpellID ] then
 						AddThisSpell = false
 					end
-					if not GetSpellInfo(SpellID) then
-						AddThisSpell = false
-					end
+						if ExRT.F.WarmUpSpell and not GetSpellInfo(SpellID) then
+							ExRT.F.WarmUpSpell(SpellID)
+						end
 					local spellClass = strsplit(",",spellData[2])
 					if not ExRT.GDB.ClassID[spellClass] and spellClass ~= "NO" then
 						spellClass = "ALL"
+					end
+
+					if class == "ROGUE" and (SpellID==13750 or SpellID==13877 or SpellID==14185 or SpellID==51690 or SpellID==31230 or SpellID==14177) then
+						dprint("[RosterGate]",SpellID,
+							"|GSI=",GetSpellInfo(SpellID) and "Y" or "NIL",
+							"|lvlLearned=",tostring(GetSpellLevelLearned(SpellID)),
+							"|plvl=",tostring(level),
+							"|spellClass=",tostring(spellClass),"vs",tostring(class),
+							"|AddThisSpell=",tostring(AddThisSpell),
+							"|specCheck=",spellData.specialCheck and "fn" or "none")
+					end
+
+					if SpellID == 49206 or SpellID == 66233 then
+						dprint("[Gate]", SpellID, "name=", name, "AddThisSpell=", tostring(AddThisSpell),
+							"spellClass=", tostring(spellClass), "class=", tostring(class),
+							"specCheck=", spellData.specialCheck and (spellData.specialCheck(SpellID,name,class,race) and "pass" or "FAIL") or "none")
 					end
 
 					if AddThisSpell and (spellClass == class or spellClass == "ALL") and (not spellData.specialCheck or spellData.specialCheck(SpellID,name,class,race)) then
@@ -3999,7 +4231,7 @@ local function UpdateRoster()
 						local uSpecID = _db.specInDBase[_specID] or 4
 						local checkRaidRole = (VMRT.ExCD2.CDECol[SpellID..";HEALER"] or VMRT.ExCD2.CDECol[SpellID..";TANK"] or VMRT.ExCD2.CDECol[SpellID..";DAMAGER"]) and true or false
 						local unitRaidRole = checkRaidRole and ExRT.F.GetUnitRaidRole and ExRT.F.GetUnitRaidRole(name)
-						local spellColumn = (checkRaidRole and unitRaidRole and VMRT.ExCD2.CDECol[SpellID..";"..unitRaidRole]) or VMRT.ExCD2.CDECol[SpellID..";"..(uSpecID-3)] or VMRT.ExCD2.CDECol[SpellID..";1"] or _db.def_col[SpellID..";"..(uSpecID-3)] or _db.def_col[SpellID..";1"] or spellData[3] or 1
+						local spellColumn = (checkRaidRole and unitRaidRole and VMRT.ExCD2.CDECol[SpellID..";"..unitRaidRole]) or VMRT.ExCD2.CDECol[SpellID..";"..(uSpecID-3)] or VMRT.ExCD2.CDECol[SpellID..";1"] or (uSpecID == 4 and FindAnyUserColumn(VMRT.ExCD2.CDECol, SpellID)) or _db.def_col[SpellID..";"..(uSpecID-3)] or _db.def_col[SpellID..";1"] or spellData[3] or 1
 
 						local getSpellColumn = module.frame.colFrame[spellColumn]
 						local prior = nil
@@ -4021,16 +4253,29 @@ local function UpdateRoster()
 						end
 						local secondPrior = (VMRT.ExCD2.Priority[SpellID] or 50) * 1000000 + (SpellID or 0)
 
+						if SpellID == 49206 or SpellID == 66233 then
+							dprint("[Prior]", SpellID, "col=", spellColumn,
+								"colFrame=", getSpellColumn and "Y" or "N",
+								"msr=", tostring(getSpellColumn and getSpellColumn.methodsSortingRules),
+								"prior=", tostring(prior))
+						end
+
 						local sName = format("%s%d",name or "?",SpellID or 0)
 						local lastUse,nowCd = 0,0
 						if VMRT.ExCD2.Save[sName] and NumberInRange(VMRT.ExCD2.Save[sName][1] + VMRT.ExCD2.Save[sName][2] - GetTime(),0,2000,false,true) then
 							lastUse,nowCd = VMRT.ExCD2.Save[sName][1],VMRT.ExCD2.Save[sName][2]
 						end
+						local snap = liveCDSnapshot[ (name or "?").."#"..SpellID ]
 
-						local spellName,_,spellTexture = GetSpellInfo(SpellID)
-						if not spellTexture and ExRT.F.WarmUpSpell then
-							ExRT.F.WarmUpSpell(SpellID)
+						local spellName,_,spellTexture
+						if ExRT.F.GetSpellInfoSafe then
+							spellName,_,spellTexture = ExRT.F.GetSpellInfoSafe(SpellID)
+						else
 							spellName,_,spellTexture = GetSpellInfo(SpellID)
+							if not spellTexture and ExRT.F.WarmUpSpell then
+								ExRT.F.WarmUpSpell(SpellID)
+								spellName,_,spellTexture = GetSpellInfo(SpellID)
+							end
 						end
 						spellTexture = spellTexture or "Interface\\Icons\\INV_MISC_QUESTIONMARK"
 						spellName = spellName or "unk"
@@ -4048,6 +4293,17 @@ local function UpdateRoster()
 									if lastUse ~= 0 and nowCd ~= 0 and h.lastUse == 0 and h.cd == 0 then
 										h.cd = nowCd
 										h.lastUse = lastUse
+									end
+									if snap then
+										if not h.lastUse or h.lastUse == 0 then
+											h.lastUse = snap.lastUse
+											h.cd = snap.cd
+											h.charge = snap.charge
+										end
+										h.duration = snap.duration
+										h.targetName = snap.targetName
+										h.targetSetTime = snap.targetSetTime
+										h.targetClass = snap.targetClass
 									end
 									h.sort = prior
 									h.sort2 = secondPrior
@@ -4072,6 +4328,10 @@ local function UpdateRoster()
 							end
 						end
 
+						if class == "ROGUE" and (SpellID==13750 or SpellID==13877 or SpellID==14185 or SpellID==51690 or SpellID==31230 or SpellID==14177) then
+							dprint("[AddGate]",SpellID,"|alreadyInCds=",tostring(alreadyInCds),"|spellColumn=",tostring(spellColumn),"|prior=",tostring(prior))
+						end
+
 						if not alreadyInCds then
 							local guid = UnitGUID(name)
 
@@ -4092,6 +4352,17 @@ local function UpdateRoster()
 								guid = guid,
 								checkRole = checkRaidRole,
 							}
+							if snap then
+								if new.lastUse == 0 then
+									new.lastUse = snap.lastUse
+									new.cd = snap.cd
+									new.charge = snap.charge
+								end
+								new.duration = snap.duration or 0
+								new.targetName = snap.targetName
+								new.targetSetTime = snap.targetSetTime
+								new.targetClass = snap.targetClass
+							end
 							_C [#_C + 1] = new
 
 							if
@@ -4133,6 +4404,7 @@ local function UpdateRoster()
 			if not line then
 				break
 			elseif not line.sort then
+				dprint("[Removed-nilSort]", line.db and line.db[1], "col=", line.column, "name=", line.fullName)
 				tremove(_C,j)
 				j = j - 1
 			else
@@ -4181,6 +4453,15 @@ local function UpdateRoster()
 			tremove(_C, math.random(1,#_C))
 		end
 	end
+	do
+		local dump = {}
+		for i=1,#_C do
+			local d = _C[i]
+			dump[#dump+1] = tostring(d.db and d.db[1]).."(c"..tostring(d.column)..",s"..(d.sort and "Y" or "NIL")..")"
+		end
+		dprint("[UpdateRoster] _C dump:", table.concat(dump, " "))
+	end
+	dprint("[UpdateRoster] Finished, _C has", #_C, "entries")
 	UpdateAllData()
 end
 module.UpdateRoster = UpdateRoster
@@ -4202,6 +4483,36 @@ do
 			end
 		end
 	end
+	function RecordHistoryUsage(line, targetName)
+		if not line or not line.db then
+			return
+		end
+		local fullName = line.fullName
+		local uSpecID = _db.specInDBase[globalGUIDs[fullName] or 0]
+		if not line.db[uSpecID] then
+			for sid = 4, 8 do
+				if line.db[sid] then uSpecID = sid; break end
+			end
+		end
+		if not line.db[uSpecID] then
+			return
+		end
+		local spellID = line.db[uSpecID][1]
+		local hist = _db.historyUsage
+		local tnow = time()
+		local from = #hist - 10
+		if from < 1 then from = 1 end
+		for k = #hist, from, -1 do
+			local e = hist[k]
+			if e and e[2] == spellID and e[3] == fullName and (tnow - e[1]) < 2 then
+				return
+			end
+		end
+		local _, hp_class = UnitClass(fullName)
+		hist[#hist + 1] = {tnow, spellID, fullName, GetEncounterTime(), targetName, hp_class or line.db[2]}
+	end
+	module.RecordHistoryUsage = RecordHistoryUsage
+
 	function CLEUstartCD(i,targetName)
 		local currTime = GetTime()
 		local data = nil
@@ -4239,14 +4550,18 @@ do
 			return
 		end
 
-		data.targetName = targetName
 		if targetName then
+			data.targetName = targetName
 			data.targetSetTime = currTime
 			local _,tc = UnitClass(targetName)
 			data.targetClass = tc
 		else
-			data.targetSetTime = nil
-			data.targetClass = nil
+			local preserveByCast = ExRT.isLK and _db.spell_target_byCast and data.spellName and _db.spell_target_byCast[data.spellName] and data.targetSetTime and (currTime - data.targetSetTime) < 3
+			if not preserveByCast then
+				data.targetName = nil
+				data.targetSetTime = nil
+				data.targetClass = nil
+			end
 		end
 
 		data.cd = data.db[uSpecID][2]
@@ -4267,7 +4582,7 @@ do
 						local talent_rank = _db.talent_classic_rank[fullName][talentSpellID] or #timeReduce
 						timeReduce = timeReduce[talent_rank] or timeReduce[#timeReduce]
 					end
-					local mod = type(session_gGUID) == "table" and session_gGUID[1] or 1
+					local mod = (type(session_gGUID) == "table" and type(session_gGUID[1]) == "number") and session_gGUID[1] or 1
 					if tonumber(timeReduce) then
 						data.duration = data.duration + timeReduce * mod
 					else
@@ -4315,7 +4630,7 @@ do
 							end
 						end
 					end
-					local mod = type(session_gGUID) == "table" and session_gGUID[1] or 1
+					local mod = (type(session_gGUID) == "table" and type(session_gGUID[1]) == "number") and session_gGUID[1] or 1
 					if tonumber(timeReduce) then
 						data.cd = data.cd + timeReduce * mod
 					else
@@ -4393,10 +4708,7 @@ do
 			end)
 		end
 
-		local _, hp_class = UnitClass(fullName)
-		if #_db.historyUsage < 5000 then
-			_db.historyUsage[#_db.historyUsage + 1] = {time(),data.db[uSpecID][1],fullName,GetEncounterTime(),targetName,hp_class or data.db[2]}
-		end
+		RecordHistoryUsage(data, targetName)
 	end
 	module.CLEUstartCD = CLEUstartCD
 end
@@ -4510,30 +4822,6 @@ function module:Enable()
 	module:CreateSpellDB()
 
 	module:ApplyHotfixes()
-
-	if VMRT.ExCD2.userDB and #VMRT.ExCD2.userDB > 0 and module.db.AllSpells then
-		local systemSpells = {}
-		local systemSpellNames = {}
-		for i=1,#module.db.AllSpells do
-			local sid = module.db.AllSpells[i][1]
-			systemSpells[sid] = true
-			local sname = GetSpellInfo(sid)
-			if sname then systemSpellNames[sname] = true end
-		end
-		for i=#VMRT.ExCD2.userDB,1,-1 do
-			local entry = VMRT.ExCD2.userDB[i]
-			if entry and entry[1] then
-				if systemSpells[entry[1]] then
-					tremove(VMRT.ExCD2.userDB, i)
-				else
-					local entryName = GetSpellInfo(entry[1])
-					if entryName and systemSpellNames[entryName] then
-						tremove(VMRT.ExCD2.userDB, i)
-					end
-				end
-			end
-		end
-	end
 
 	UpdateRoster()
 
@@ -4707,6 +4995,18 @@ function module.main:ADDON_LOADED()
 				VMRT.ExCD2.upd_raidcds_seen2[sid] = true
 			end
 		end
+		if not VMRT.ExCD2.upd_v509_passives then
+			VMRT.ExCD2.upd_v509_passives = true
+			VMRT.ExCD2.CDE[31230] = true
+			VMRT.ExCD2.CDE[14185] = true
+			VMRT.ExCD2.CDE[66233] = true
+		end
+		if not VMRT.ExCD2.upd_talentcds_v1 then
+			for sid in pairs(module.db.spell_isTalentCD) do
+				if VMRT.ExCD2.CDE[sid] == nil then VMRT.ExCD2.CDE[sid] = true end
+			end
+			VMRT.ExCD2.upd_talentcds_v1 = true
+		end
 	end
 
 	VMRT.ExCD2.userDB = VMRT.ExCD2.userDB or {}
@@ -4746,7 +5046,7 @@ function module.main:ADDON_LOADED()
 end
 
 function module.main:PLAYER_ENTERING_WORLD()
-	if ExRT.isClassic and ExRT.F.WarmUpSpell and module.db.AllSpells and not module._warmupTicker then
+	if (ExRT.isClassic or ExRT.isLK) and ExRT.F.WarmUpSpell and module.db.AllSpells and not module._warmupTicker then
 		local list = module.db.AllSpells
 		local total = #list
 		local idx = 0
@@ -4778,6 +5078,13 @@ function module.main:PLAYER_ENTERING_WORLD()
 		local cur = module.main.COMBAT_LOG_EVENT_UNFILTERED
 		if type(cur) == "function" then
 			MRT.CLEUFrame.CLEUModules[module] = cur
+		end
+	end
+	if ExRT.isLK and module.db.spell_target_byCast and ExRT.F.WarmUpSpell then
+		ExRT.F.WarmUpSpell(48477)
+		local rebirthName = GetSpellInfo(48477) or GetSpellInfo(20484) or GetSpellInfo(20748)
+		if rebirthName and not module.db.spell_target_byCast[rebirthName] then
+			module.db.spell_target_byCast[rebirthName] = 20748
 		end
 	end
 
@@ -4965,163 +5272,7 @@ do
 end
 
 local FD_GUIDs = {}
-local FD_TrackedLines = {}
 local ScheduledUnitAura
-local FDPolling = nil
-local FDDurationGuard = nil
-
-local function FDDurationGuardTick()
-	local nowT = GetTime()
-	local anyActive = false
-	for line, _ in pairs(FD_TrackedLines) do
-		if line.lastUse and line.cd and (nowT - line.lastUse) < line.cd then
-			if (line.duration or 0) > 0 then
-				line.duration = 0
-				if line.bar and line.bar.data == line then
-					line.bar:UpdateStatus()
-				end
-			end
-			anyActive = true
-		else
-			FD_TrackedLines[line] = nil
-		end
-	end
-	if not anyActive and FDDurationGuard then
-		FDDurationGuard:Cancel()
-		FDDurationGuard = nil
-	end
-end
-
-local function StartFDCooldown(unitID, destGUID)
-	if not _db or not _db.cdsNav then return end
-	local destName = UnitName(unitID)
-	if not destName then return end
-	local line = _db.cdsNav[destName] and _db.cdsNav[destName][5384]
-	if not line then return end
-	local cdTime = 30
-	if UnitIsUnit(unitID, "player") and GetGlyphSocketInfo then
-		for gi=1,(GetNumGlyphSockets and GetNumGlyphSockets() or 6) do
-			local enabled, _, glyphSpell = GetGlyphSocketInfo(gi)
-			if enabled and glyphSpell == 57903 then
-				cdTime = 25
-				break
-			end
-		end
-	end
-	line.lastUse = GetTime()
-	line.cd = cdTime
-	line.duration = 0
-	line.charge = nil
-	line.isCharge = nil
-	line.targetName = nil
-	line.targetSetTime = nil
-	line.targetClass = nil
-	line.disabled = nil
-	line.disable_oncd = nil
-	line.disable_ticker = nil
-	if line.bar and line.bar.data == line then
-		line.bar:UpdateStatus()
-	end
-	if UpdateAllData then UpdateAllData() end
-	FD_TrackedLines[line] = GetTime()
-	if not FDDurationGuard and C_Timer and C_Timer.NewTicker then
-		FDDurationGuard = C_Timer.NewTicker(0.1, FDDurationGuardTick)
-	end
-end
-
-local function FindUnitByGUID(guid)
-	if UnitGUID("player") == guid then return "player" end
-	for i=1,40 do
-		local u = "raid"..i
-		if UnitExists(u) and UnitGUID(u) == guid then return u end
-	end
-	for i=1,4 do
-		local u = "party"..i
-		if UnitExists(u) and UnitGUID(u) == guid then return u end
-	end
-	return nil
-end
-
-local function UnitHasFDAura(unitID)
-	if not unitID or not UnitExists(unitID) then return false end
-	for i=1,60 do
-		local _, _, _, _, _, _, _, _, _, sid = UnitAura(unitID, i)
-		if not sid then break end
-		if sid == 5384 then return true end
-	end
-	return false
-end
-
-local function FDPollTick()
-	for guid, startTime in pairs(FD_GUIDs) do
-		local unitID = FindUnitByGUID(guid)
-		if unitID then
-			local hasAura = UnitHasFDAura(unitID)
-			local isDead = UnitIsDead(unitID)
-			local isGhost = UnitIsGhost(unitID)
-			if isGhost then
-				FD_GUIDs[guid] = nil
-			elseif not hasAura and not isDead then
-				StartFDCooldown(unitID, guid)
-				FD_GUIDs[guid] = nil
-			elseif (GetTime() - startTime) > 360 then
-				StartFDCooldown(unitID, guid)
-				FD_GUIDs[guid] = nil
-			end
-		else
-			FD_GUIDs[guid] = nil
-		end
-	end
-	if not next(FD_GUIDs) and FDPolling then
-		FDPolling:Cancel()
-		FDPolling = nil
-	end
-end
-
-local function StartFDTracking(guid)
-	FD_GUIDs[guid] = GetTime()
-	if not IsInJailersTower() then
-		module:RegisterEvents('UNIT_AURA')
-		if ScheduledUnitAura then ScheduledUnitAura:Cancel() end
-		ScheduledUnitAura = ScheduleTimer(function() ScheduledUnitAura=nil; module:UnregisterEvents('UNIT_AURA') end,361)
-	end
-	if not FDPolling and C_Timer and C_Timer.NewTicker then
-		FDPolling = C_Timer.NewTicker(0.5, FDPollTick)
-	end
-end
-
-local function ConfirmFDAndTrack(destGUID, attempt)
-	attempt = attempt or 1
-	local unitID = FindUnitByGUID(destGUID)
-	if not unitID then return end
-	if UnitIsGhost(unitID) then return end
-	if UnitHasFDAura(unitID) then
-		StartFDTracking(destGUID)
-		return
-	end
-	if UnitIsDead(unitID) then
-		if attempt < 8 and ScheduleTimer then
-			ScheduleTimer(function() ConfirmFDAndTrack(destGUID, attempt + 1) end, 0.3)
-		end
-	end
-end
-
-if ExRT.isLK then
-	local FDCLEUFrame = CreateFrame("Frame")
-	FDCLEUFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-	FDCLEUFrame:SetScript("OnEvent", function(self, event, timestamp, subEvent, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags)
-		if subEvent ~= "UNIT_DIED" then return end
-		if not destName or not destGUID then return end
-		local _, class = UnitClass(destName)
-		if class ~= "HUNTER" then return end
-		if not _db or not _db.cdsNav then return end
-		local line = _db.cdsNav[destName] and _db.cdsNav[destName][5384]
-		if not line then return end
-		if not ScheduleTimer then return end
-		ScheduleTimer(function() ConfirmFDAndTrack(destGUID, 1) end, 0.1)
-	end)
-end
-
 function module.main:UNIT_AURA(unitID)
 	local isInTorghast = IsInJailersTower()
 	if isInTorghast then
@@ -5144,18 +5295,42 @@ function module.main:UNIT_AURA(unitID)
 	end
 	local guid = UnitGUID(unitID)
 	if guid and FD_GUIDs[guid] then
-		if not UnitHasFDAura(unitID) then
-			StartFDCooldown(unitID, guid)
+		local FD_Found
+		for i=1,60 do
+			local _, _, _, _, _, _, _, _, _, spellId = UnitAura(unitID, i)
+			if not spellId then
+				break
+			elseif spellId == 5384 then
+				FD_Found = true
+			end
+		end
+		if not FD_Found then
+			local line = _db.cdsNav[UnitName(unitID)][5384]
+			if ExRT.isClassic and not line then
+				line = _db.cdsNav[UnitName(unitID)][GetSpellInfo(5384)]
+			end
+			if line then
+				CLEUstartCD(line)
+			end
+
 			FD_GUIDs[guid] = nil
-			if not isInTorghast and not next(FD_GUIDs) then
-				if ScheduledUnitAura then
-					ScheduledUnitAura:Cancel()
-					ScheduledUnitAura = nil
+			if not isInTorghast then
+				local anyFound
+				for _ in pairs(FD_GUIDs) do
+					anyFound = true
+					break
 				end
-				module:UnregisterEvents("UNIT_AURA")
+				if not anyFound then
+					if ScheduledUnitAura then
+						ScheduledUnitAura:Cancel()
+						ScheduledUnitAura = nil
+					end
+					module:UnregisterEvents("UNIT_AURA")
+				end
 			end
 		end
 	end
+
 end
 
 
@@ -5440,17 +5615,42 @@ do
 
 	function module.main.COMBAT_LOG_EVENT_UNFILTERED(timestamp,event,hideCaster,sourceGUID,sourceName,sourceFlags,sourceFlags2,destGUID,destName,destFlags,destFlags2,spellID,spellName,spellSchool,...)
 
+
+		_G._MRT_CD_CALL_COUNT = (_G._MRT_CD_CALL_COUNT or 0) + 1
+		_G._MRT_CD_LAST_EVENT = event
+		_G._MRT_CD_LAST_SRC = sourceName
+		_G._MRT_CD_LAST_SPELL = spellID
+		if _G.MRT_REZ_DEBUG and (spellID == 20484 or spellID == 20739 or spellID == 20742 or spellID == 20747 or spellID == 20748 or spellID == 26994 or spellID == 48477 or spellName == "Rebirth" or spellName == "Возрождение") then
+			local CDList = _db.cdsNav
+			local bucket = sourceName and CDList[sourceName]
+			print(string.format("|cff33ff99[MRT/Rez]|r CLEU ev=%s src=%s dst=%s spell=%s(%s) bucket=%s line=%s handler=%s",
+				tostring(event),tostring(sourceName),tostring(destName),tostring(spellName),tostring(spellID),
+				bucket and "yes" or "NIL",
+				bucket and (bucket[spellID] or bucket[spellName]) and "HIT" or "miss",
+				eventsView[event] and "Y" or "n"))
+		end
+		if ExRT.isClassic and event == "SPELL_CAST_SUCCESS" and sourceName then
+			_G._MRT_CD_DEBUG_SEEN = (_G._MRT_CD_DEBUG_SEEN or 0) + 1
+		end
+		if false and ExRT.isClassic and event == "SPELL_CAST_SUCCESS" and sourceName
+		   and (_G._MRT_CD_DEBUG_SEEN or 0) <= 30 then
+			local CDList = _db.cdsNav
+			local bucket = CDList and CDList[sourceName]
+			local line = bucket and (bucket[spellID] or bucket[spellName])
+			local cNames = ""
+			if CDList and _db.cdsNavData then
+				local names = {}
+				for k in pairs(_db.cdsNavData) do names[#names+1]=tostring(k) end
+				cNames = table.concat(names,",")
+			end
+			local handled = eventsView[event] and "HANDLED" or "nohandler"
+			print(string.format("|cff33ff99[MRT/CD]|r %s src=%s spell=%s(%s) line=%s bucket=%s roster=[%s]",
+				handled, tostring(sourceName),tostring(spellName),tostring(spellID),
+				line and "HIT" or "miss", bucket and "yes" or "no", cNames))
+		end
 		local func = eventsView[event]
 		if not func then
 			return
-		end
-
-		if sourceName and not _db.cdsNav[sourceName] then
-			if not destName or not _db.cdsNav[destName] then
-				if event ~= "UNIT_DIED" and event ~= "SPELL_RESURRECT" then
-					return
-				end
-			end
 		end
 
 
@@ -5460,7 +5660,7 @@ do
 			if pg and sourceGUID == pg and spellID then
 				local scd = module.db.spellCDSync
 				local map = module.db.spellCDSyncToSpell
-				if map and not map[spellID] and #scd < 200 then
+				if map and not map[spellID] then
 					scd[#scd+1] = spellID
 					map[spellID] = spellID
 					needForceBroadcast = true
@@ -5499,6 +5699,7 @@ do
 		spell_reduceCdByAuraFade = _db.spell_reduceCdByAuraFade,
 		spell_reduceCdByAuraFadeBefore = _db.spell_reduceCdByAuraFadeBefore,
 		spell_aura_list = _db.spell_aura_list,
+		spell_aura_list_onTarget = _db.spell_aura_list_onTarget,
 		spell_dispellsList = _db.spell_dispellsList,
 		spell_threatBuff = _db.spell_threatBuff,
 		spell_threatBuff_consumed = _db.spell_threatBuff_consumed,
@@ -5546,6 +5747,7 @@ do
 		next = next,
 
 		CLEUstartCD = CLEUstartCD,
+		RecordHistoryUsage = RecordHistoryUsage,
 		UpdateAllData = UpdateAllData,
 		GetUnitInfoByUnitFlag = GetUnitInfoByUnitFlag,
 		GetTime = GetTime,
@@ -5611,12 +5813,9 @@ do
 					CLEUstartCD(line,who)
 				end
 
-				if spell_isTalent[spellID] and not isSpellDuplicateDisabled and not session_gGUIDs[sourceName][spellID] and sourceName == playerName then
-					local broadcastSource = _db.session_TalentBroadcastReceived and _db.session_TalentBroadcastReceived[sourceName]
-					if not broadcastSource then
-						forceUpdateAllData = true
-						session_gGUIDs[sourceName] = {spellID,"autotalent"}
-					end
+				if spell_isTalent[spellID] and not isSpellDuplicateDisabled and not session_gGUIDs[sourceName][spellID] and not session_TalentBroadcastReceived[sourceName] then
+					forceUpdateAllData = true
+					session_gGUIDs[sourceName] = {spellID,"autotalent"}
 				end
 
 				local modifData = spell_resetOtherSpells[spellID]
@@ -5644,7 +5843,7 @@ do
 					end
 				end
 
-				local modifData = spell_sharingCD[spellID]
+				local modifData = spell_sharingCD[spellID] or spell_sharingCD[spellName]
 				if modifData then
 					local nowTime = GetTime()
 					for sharingSpellID,timeCD in pairs(modifData) do
@@ -5768,18 +5967,42 @@ do
 						line.targetSetTime = nil
 						line.targetClass = nil
 					end
-					line.lastUse = GetTime()
+					local nowT = GetTime()
+					local activeAlive = line.lastUse and line.duration and line.duration > 0 and (nowT - line.lastUse) < line.duration
+					if not activeAlive then
+						line.lastUse = nowT
+						line.duration = 0
+					end
 					line.cd = 30
-					line.duration = 30
 					if line.bar and line.bar.data == line then
 						line.bar:UpdateStatus()
 					end
-					ScanSelfAuraAndApply(sourceName, sourceGUID, spellID, line, 5)
 					UpdateAllData()
 				end
 				return
 			end
-		]]},
+
+			local who = (destName ~= nil and destName ~= "" and not spell_aoe_no_target[spellID]) and destName or nil
+			local startsByAura = spell_startCDbyAuraFade[spellID] or spell_startCDbyAuraApplied_fix[spellID]
+			local line = CDList[sourceName][spellID] or CDList[sourceName][spellName]
+			if module.db.phaseDebug and (spell_aura_list[spellID] or spell_startCDbyAuraFade[spellID] or (spell_threatBuff and spell_threatBuff[spellID])) then
+				print("|cff88ccff[PH CAST]|r",spellID,sourceName,"line="..(line and "Y" or "N"),"fade="..(startsByAura and "Y" or "N"),"lastUse="..tostring(line and line.lastUse),"dur="..tostring(line and line.duration),"cd="..tostring(line and line.cd))
+			end
+			if line and not startsByAura then
+				CLEUstartCD(line,who)
+			end
+
+			if spell_isTalent[spellID] and not isSpellDuplicateDisabled and not session_gGUIDs[sourceName][spellID] and not session_TalentBroadcastReceived[sourceName] then
+				session_gGUIDs[sourceName] = {spellID,"autotalent"}
+				UpdateAllData()
+				if not line and not startsByAura then
+					local newLine = CDList[sourceName][spellID] or CDList[sourceName][spellName]
+					if newLine then
+						CLEUstartCD(newLine,who)
+					end
+				end
+			end
+		]],},
 		SPELL_AURA_APPLIED = {main=[[
 			blessingcdr = {}
 			symbolofhope = {}
@@ -5811,6 +6034,10 @@ do
 				$$$2
 				local CDspellID = spell_startCDbyAuraApplied[spellID]
 				if CDspellID then
+					if spell_isTalent[CDspellID] and not session_gGUIDs[sourceName][CDspellID] then
+						session_gGUIDs[sourceName] = {CDspellID,"autotalent"}
+						UpdateAllData()
+					end
 					local line = CDList[sourceName][CDspellID]
 					if line then
 						local who = (destName ~= nil and destName ~= "" and not spell_aoe_no_target[spellID] and not spell_aoe_no_target[CDspellID]) and destName or nil
@@ -6005,12 +6232,29 @@ do
 							end
 						end
 						local nowT = GetTime()
+						if fb <= 0 then
+							local unit = GetUnitForAura(destName, destGUID)
+							if unit then
+								for i = 1, 40 do
+									local _,_,_,_,_,d,e,_,_,_,auraSpellID = UnitAura(unit, i, "HELPFUL")
+									if not auraSpellID then break end
+									if auraSpellID == spellID and d and d > 0 and e and e > nowT then
+										fb = e - nowT
+										break
+									end
+								end
+							end
+						end
 						local prevDur = tonumber(line.duration) or 0
 						local prevLast = tonumber(line.lastUse) or 0
 						local activeAlive = prevDur > 0 and prevLast > 0 and (nowT - prevLast) < prevDur
+						if module.db.phaseDebug then
+							print("|cff66ff66[PH APPLIED]|r",spellID,"->",auraCDspellID,"fb="..tostring(fb),"activeAlive="..(activeAlive and "Y" or "N"),"prevDur="..tostring(prevDur))
+						end
 						if not activeAlive and fb > 0 then
 							line.lastUse = nowT
 							line.duration = fb
+							RecordHistoryUsage(line, nil)
 							if line.bar and line.bar.data == line then
 								line.bar:UpdateStatus()
 							end
@@ -6020,8 +6264,64 @@ do
 					end
 				end
 
+				if spell_aura_list_onTarget and spell_aura_list_onTarget[spellID] and sourceName then
+					local auraCDspellID = spell_aura_list_onTarget[spellID]
+					local line = CDList[sourceName][auraCDspellID]
+					if line then
+						local nowT = GetTime()
+						local foundDuration, foundExpiration
+						local unit = GetUnitForAura(destName, destGUID)
+						if unit then
+							for i = 1, 40 do
+								local _,_,_,_,_,d,e,_,_,_,auraSpellID = UnitAura(unit, i, "HELPFUL")
+								if not auraSpellID then break end
+								if auraSpellID == spellID then
+									foundDuration, foundExpiration = d, e
+									break
+								end
+							end
+						end
+						line.lastUse = nowT
+						local cdVal = 0
+						if line.db then
+							for sid = 4, 8 do
+								local seg = line.db[sid]
+								if type(seg) == "table" and tonumber(seg[2]) then
+									cdVal = seg[2]
+									break
+								end
+							end
+						end
+						if cdVal > 0 then
+							line.cd = cdVal
+						end
+						if foundDuration and foundDuration > 0 and foundExpiration and foundExpiration > nowT then
+							line.duration = foundExpiration - nowT
+						else
+							local fb = 0
+							if line.db then
+								for sid = 4, 8 do
+									local seg = line.db[sid]
+									if type(seg) == "table" and tonumber(seg[3]) and seg[3] > 0 then
+										fb = seg[3]
+										break
+									end
+								end
+							end
+							line.duration = fb > 0 and fb or 1800
+						end
+						line.targetName = destName
+						line.targetSetTime = nowT
+						RecordHistoryUsage(line, destName)
+						if line.bar and line.bar.data == line then
+							line.bar:UpdateStatus()
+						end
+						UpdateAllData()
+					end
+				end
+
 				if spell_threatBuff and spell_threatBuff[spellID] and sourceName and destName and sourceName == destName then
-					local line = CDList[sourceName][spellID]
+					local line = CDList[sourceName][ spell_threatBuff[spellID] ]
 					if line then
 						if not ScanSelfAuraAndApply(sourceName, sourceGUID, spellID, line, 5) then
 							if not line.lastUse or line.lastUse == 0 or (GetTime() - line.lastUse) > 30 then
@@ -6194,9 +6494,21 @@ do
 					end
 				end
 
+				if spell_aura_list_onTarget and spell_aura_list_onTarget[spellID] and sourceName then
+					local auraCDspellID = spell_aura_list_onTarget[spellID]
+					local line = CDList[sourceName][auraCDspellID]
+					if line and line.lastUse and line.lastUse > 0 then
+						line:SetDur(0,true)
+						forceUpdateAllData = true
+					end
+				end
+
 				local CDspellID = spell_startCDbyAuraFade[spellID]
 				if CDspellID then
 					local line = CDList[sourceName][CDspellID]
+					if module.db.phaseDebug then
+						print("|cffff8866[PH FADE->CD]|r",spellID,"->",CDspellID,"line="..(line and "Y" or "N"))
+					end
 					if line then
 						local who
 						if line.targetName and line.targetSetTime and (GetTime() - line.targetSetTime) < 30 then
@@ -6480,6 +6792,7 @@ do
 		env.spell_reduceCdByAuraFade = _db.spell_reduceCdByAuraFade
 		env.spell_reduceCdByAuraFadeBefore = _db.spell_reduceCdByAuraFadeBefore
 		env.spell_aura_list = _db.spell_aura_list
+		env.spell_aura_list_onTarget = _db.spell_aura_list_onTarget
 		env.spell_dispellsList = _db.spell_dispellsList
 		env.spell_threatBuff = _db.spell_threatBuff
 		env.spell_threatBuff_consumed = _db.spell_threatBuff_consumed
@@ -6488,6 +6801,7 @@ do
 		env.spell_ignoreUseWithAura = _db.spell_ignoreUseWithAura
 		env.talent_entries = _db.talent_entries
 		env.session_gGUIDs = _db.session_gGUIDs
+		env.session_TalentBroadcastReceived = _db.session_TalentBroadcastReceived
 		env.session_PetOwner = _db.session_PetOwner
 		env.findspecspells = _db.findspecspells
 		env.CDList = _db.cdsNav
@@ -6621,8 +6935,11 @@ do
 				line = _db.cdsNav[name][GetSpellInfo(5384)]
 			end
 			if line and not ExRT.isLK then line:SetCD(360) end
-			if line and ExRT.isLK and guid then
-				StartFDTracking(guid)
+			FD_GUIDs[guid] = true
+			if not IsInJailersTower() then
+				module:RegisterEvents('UNIT_AURA')
+				if ScheduledUnitAura then ScheduledUnitAura:Cancel() end
+				ScheduledUnitAura = ScheduleTimer(function() ScheduledUnitAura=nil; module:UnregisterEvents('UNIT_AURA') end,361)
 			end
 		end
 	end
@@ -6633,9 +6950,51 @@ do
 			if class == "SHAMAN" then
 				_db.spell_ReincarnationFix[destName] = true
 			end
+
+			-- Soulstone fix: when player dies with Soulstone buff, clear the duration
+			-- Check all warlocks who might have cast Soulstone on this player
+			for warlockName, spells in pairs(CDList) do
+				local soulstoneCD = spells[20765]
+				if soulstoneCD and soulstoneCD.duration and soulstoneCD.duration > 0 then
+					-- Check if the Soulstone target matches the dead player
+					if soulstoneCD.targetName == destName then
+						soulstoneCD:SetDur(0, true)
+					end
+				end
+			end
 		end
 	end
-	function module.main:SPELL_RESURRECT(_,_,_,destGUID,destName,destFlags)
+	local function StartResurrectCD(srcName, spellID, spellName, targetName)
+		if not srcName then return end
+		local nav = _db.cdsNav[srcName]
+		if not nav then if _G.MRT_REZ_DEBUG then print("|cff33ff99[MRT/Rez]|r SRC: no nav "..tostring(srcName)) end return end
+		local line = nav[spellID] or (spellName and nav[spellName])
+		if not line then if _G.MRT_REZ_DEBUG then print("|cff33ff99[MRT/Rez]|r SRC: no line "..tostring(srcName).." sid="..tostring(spellID)) end return end
+		local now = GetTime()
+		if line._lastRezStart and (now - line._lastRezStart) < 2 then
+			if targetName and line.targetName ~= targetName then
+				line.targetName = targetName
+				line.targetSetTime = now
+				local _,tc = UnitClass(targetName)
+				line.targetClass = tc
+				if line.bar and line.bar.data == line then line.bar:UpdateStatus() end
+				if _G.MRT_REZ_DEBUG then print("|cff33ff99[MRT/Rez]|r SRC: DEDUP+target "..tostring(srcName).." -> "..tostring(targetName)) end
+			elseif _G.MRT_REZ_DEBUG then
+				print("|cff33ff99[MRT/Rez]|r SRC: DEDUP "..tostring(srcName).." dt="..string.format("%.1f",now-line._lastRezStart))
+			end
+			return
+		end
+		line._lastRezStart = now
+		if _G.MRT_REZ_DEBUG then print("|cff33ff99[MRT/Rez]|r SRC: ->CLEUstartCD "..tostring(srcName).." vis_before="..tostring(line.vis)) end
+		module.CLEUstartCD(line, targetName)
+		if _G.MRT_REZ_DEBUG then print("|cff33ff99[MRT/Rez]|r SRC: after lastUse="..tostring(line.lastUse).." cd="..tostring(line.cd).." vis="..tostring(line.vis)) end
+	end
+	module.main.StartResurrectCD = StartResurrectCD
+	function module.main.SPELL_RESURRECT(timestamp,event,hideCaster,sourceGUID,sourceName,sourceFlags,sourceFlags2,destGUID,destName,destFlags,destFlags2,spellID,spellName)
+		if sourceName and spellName and _db.spell_target_byCast and _db.spell_target_byCast[spellName] then
+			local who = (destName and destName ~= "" and destName ~= sourceName) and destName or nil
+			StartResurrectCD(sourceName, spellID, spellName, who)
+		end
 		if destName and _db.spell_ReincarnationFix[destName] then
 			_db.spell_ReincarnationFix[destName] = nil
 		end
@@ -6657,6 +7016,7 @@ do
 	local isACUAdded = nil
 	local isSCSAdded = nil
 	local isAnkhAdded
+	local isTargetByCastAdded
 	function module:AddCLEUSpellDamage(spellID)
 		if spellID == 31935 and not isACUAdded then
 			module:RegisterEvents('ARENA_COOLDOWNS_UPDATE')
@@ -6671,6 +7031,82 @@ do
 			eventsView.UNIT_DIED = module.main.UNIT_DIED
 			eventsView.SPELL_RESURRECT = module.main.SPELL_RESURRECT
 			isAnkhAdded = true
+		end
+
+		if ExRT.isLK and not isTargetByCastAdded and _db.spell_target_byCast and spellID then
+			local sname = GetSpellInfo(spellID)
+			if sname and _db.spell_target_byCast[sname] then
+				module:RegisterEvents('UNIT_SPELLCAST_SENT','UNIT_SPELLCAST_FAILED','UNIT_SPELLCAST_SUCCEEDED')
+				if not eventsView.SPELL_RESURRECT then
+					eventsView.SPELL_RESURRECT = module.main.SPELL_RESURRECT
+				end
+				isTargetByCastAdded = true
+			end
+		end
+	end
+
+	if ExRT.isLK then
+		local pendingTargets = {}
+		_db._pendingCastTargets = pendingTargets
+
+		local function applyCastTarget(unitID, spellName)
+			if not unitID or not spellName then return end
+			local mapped = _db.spell_target_byCast and _db.spell_target_byCast[spellName]
+			if not mapped then return end
+			local name = UnitCombatlogname(unitID)
+			if not name then return end
+			local target = pendingTargets[name] and pendingTargets[name][spellName]
+			if not target then return end
+			pendingTargets[name][spellName] = nil
+			local nav = _db.cdsNav[name]
+			if not nav then return end
+			local line = nav[mapped] or nav[spellName]
+			if not line then return end
+			line.targetName = target
+			line.targetSetTime = GetTime()
+			local _, tc = UnitClass(target)
+			line.targetClass = tc
+			if line.bar and line.bar.data == line then
+				line.bar:UpdateStatus()
+			end
+		end
+
+		function module.main:UNIT_SPELLCAST_SENT(unitID, spellName, _, targetName)
+			if not unitID or not spellName then return end
+			if not _db.spell_target_byCast or not _db.spell_target_byCast[spellName] then return end
+			if not targetName or targetName == "" then return end
+			local name = UnitCombatlogname(unitID)
+			if not name then return end
+			local row = pendingTargets[name]
+			if not row then
+				row = {}
+				pendingTargets[name] = row
+			end
+			row[spellName] = targetName
+		end
+
+		function module.main:UNIT_SPELLCAST_FAILED(unitID, spellName)
+			if not unitID or not spellName then return end
+			if not _db.spell_target_byCast or not _db.spell_target_byCast[spellName] then return end
+			local name = UnitCombatlogname(unitID)
+			if not name then return end
+			if pendingTargets[name] then
+				pendingTargets[name][spellName] = nil
+			end
+		end
+
+		local origSCS = module.main.UNIT_SPELLCAST_SUCCEEDED
+		function module.main:UNIT_SPELLCAST_SUCCEEDED(unitID, spellName, spellRank, lineID, spellID)
+			if spellName and _db.spell_target_byCast and _db.spell_target_byCast[spellName] then
+				applyCastTarget(unitID, spellName)
+				local name = UnitCombatlogname(unitID)
+				if name and module.main.StartResurrectCD then
+					module.main.StartResurrectCD(name, _db.spell_target_byCast[spellName], spellName)
+				end
+			end
+			if origSCS then
+				return origSCS(self, unitID, spellName, spellRank, lineID, spellID)
+			end
 		end
 	end
 end
@@ -6831,11 +7267,9 @@ function module.options:Load()
 
 	function self:GetAllSpells(addPvP)
 		local new = {}
-		local seenSpells = {}
 		for i=1,#module.db.AllSpells do
 			if addPvP then
 				new[i] = module.db.AllSpells[i]
-				seenSpells[module.db.AllSpells[i][1]] = true
 			else
 				local findPvP = false
 				for cat in string.gmatch(module.db.AllSpells[i][2], "[^,]+") do
@@ -6846,15 +7280,13 @@ function module.options:Load()
 				end
 				if (findPvP and addPvP) or (not findPvP and not addPvP) then
 					new[#new+1] = module.db.AllSpells[i]
-					seenSpells[module.db.AllSpells[i][1]] = true
 				end
 			end
 		end
 		for i=1,#VMRT.ExCD2.userDB do
 			local line = VMRT.ExCD2.userDB[i]
-			if type(line[2]) == "string" and type(line[3]) == "number" and not seenSpells[line[1]] then
+			if type(line[2]) == "string" and type(line[3]) == "number" then
 				new[#new+1] = line
-				seenSpells[line[1]] = true
 
 				local findUserCat = false
 				for cat in string.gmatch(line[2], "[^,]+") do
@@ -7070,15 +7502,16 @@ function module.options:Load()
 		module.options.list.colByRoleFrame:Open(self:GetParent(),self)
 	end
 	local function SpellsListChkOnClick(self)
+		local _sid = self:GetParent().data[1]
 		if self.disabled then
-			VMRT.ExCD2.CDE[ self:GetParent().data[1] ] = nil
+			VMRT.ExCD2.CDE[ _sid ] = nil
 			if self:GetChecked() then
 				self:SetChecked(false)
 			end
 		elseif self:GetChecked() then
-			VMRT.ExCD2.CDE[ self:GetParent().data[1] ] = true
+			VMRT.ExCD2.CDE[ _sid ] = true
 		else
-			VMRT.ExCD2.CDE[ self:GetParent().data[1] ] = nil
+			VMRT.ExCD2.CDE[ _sid ] = nil
 		end
  		self:UpdateColors()
 
@@ -7708,32 +8141,25 @@ function module.options:Load()
 		self.current = categoryNow
 		local list,cats = {},{}
 		local extraData = {}
-		local seenInList = {}
 		local AllSpells = module.options:GetAllSpells(categoryNow == "PVP")
 		for _,data in pairs(AllSpells) do
 			if not categoryNow then
-				if not seenInList[data] then
-					list[#list+1] = data
-					seenInList[data] = true
-					for cat in string.gmatch(data[2], "[^,]+") do
-						cats[cat] = true
-					end
+				list[#list+1] = data
+				for cat in string.gmatch(data[2], "[^,]+") do
+					cats[cat] = true
 				end
 			else
 				for cat in string.gmatch(data[2], "[^,]+") do
-					if cat == categoryNow and not seenInList[data] then
+					if cat == categoryNow then
 						list[#list+1] = data
-						seenInList[data] = true
 					end
 					cats[cat] = true
 				end
-				if (categoryNow == "ENABLED" and data[1] and GetSpellInfo(data[1]) and VMRT.ExCD2.CDE[ data[1] ]) and not seenInList[data] then
+				if (categoryNow == "ENABLED" and data[1] and GetSpellInfo(data[1]) and VMRT.ExCD2.CDE[ data[1] ]) then
 					list[#list+1] = data
-					seenInList[data] = true
 				end
-				if (categoryNow == "FAV" and data[1] and VMRT.ExCD2.OptFav[ data[1] ]) and not seenInList[data] then
+				if (categoryNow == "FAV" and data[1] and VMRT.ExCD2.OptFav[ data[1] ]) then
 					list[#list+1] = data
-					seenInList[data] = true
 				end
 			end
 		end
@@ -7816,7 +8242,15 @@ function module.options:Load()
 		elseif not categoryNow then
 			local newList = {}
 			for i=1,#cats do
-				newList[#newList+1] = {cat = module.options.CATEGORIES_VIS[ cats[i] ] and module.options.CATEGORIES_VIS[ cats[i] ].name or cats[i]}
+				local catData = module.options.CATEGORIES_VIS[ cats[i] ]
+				local catName = catData and catData.name or cats[i]
+				if catData and catData.isClassCategory then
+					local catIcon = ExRT.F.classIconInText(cats[i],20)
+					if catIcon then
+						catName = catIcon.." "..catName
+					end
+				end
+				newList[#newList+1] = {cat = catName}
 				local count = 0
 				for j=1,#list do
 					for cat in string.gmatch(list[j][2], "[^,]+") do
@@ -8145,7 +8579,7 @@ function module.options:Load()
 				else
 					line.chk.disabled = true
 				end
-				line.chk:SetChecked(VMRT.ExCD2.CDE[ data[1] ])
+				line.chk:SetChecked(VMRT.ExCD2.CDE[ data[1] ] or false)
 				line.chk:UpdateColors()
 
 				if spellName and VMRT.ExCD2.OptFav[ data[1] ] then
@@ -12032,54 +12466,48 @@ function module.options:Load()
 		end
 		if successful and res then
 			profilesTab:LockedFilter(res)
-			StaticPopupDialogs["EXRT_EXCD_IMPORT"] = {
-				text = L.cd2ProfileRewriteAlert,
-				button1 = APPLY,
-				button2 = L.cd2ImportOnlyVisual,
-				button3 = L.ProfilesSaveAsNew,
-				button4 = CANCEL,
-				selectCallbackByIndex = true,
-				OnButton1 = function()
-					local saved = profilesTab:SaveDataFilter(VMRT.ExCD2)
-					ExRT.F.table_rewrite(VMRT.ExCD2,res)
-					saved:Restore(VMRT.ExCD2)
-					module:ReloadProfile()
-					res = nil
-				end,
-				OnButton2 = function()
-					profilesTab:OnlyVisualFilter(res)
-					local saved = profilesTab:SaveDataFilter(VMRT.ExCD2)
-					ExRT.F.table_rewrite(VMRT.ExCD2,res)
-					saved:Restore(VMRT.ExCD2)
-					module:ReloadProfile()
-					res = nil
-				end,
-				OnButton3 = function()
-					ExRT.F.ShowInput(L.ProfilesNewProfile,function(_,name)
-						if name == "" or VMRT.ExCD2.Profiles.List[name] or name == "default" or name == VMRT.ExCD2.Profiles.Now then
-							res = nil
-							return
-						end
-						VMRT.ExCD2.Profiles.List[name] = res
-						module:SelectProfile(name)
+			ExRT.F.ImportChoicePopup(
+				L.cd2ProfileRewriteAlert,
+				{
+					{text = APPLY, func = function()
+						local saved = profilesTab:SaveDataFilter(VMRT.ExCD2)
+						ExRT.F.table_rewrite(VMRT.ExCD2,res)
+						saved:Restore(VMRT.ExCD2)
+						module:ReloadProfile()
 						res = nil
-					end,nil,nil,nil,function(self)
-						local name = self:GetText()
-						if name == "" or VMRT.ExCD2.Profiles.List[name] or name == "default" or name == VMRT.ExCD2.Profiles.Now then
-							self:GetParent().OK:Disable()
-						else
-							self:GetParent().OK:Enable()
-						end
-					end)
-				end,
-				OnButton4 = function()
-					res = nil
-				end,
-				timeout = 0,
-				whileDead = true,
-				hideOnEscape = true,
-				preferredIndex = 3,
-			}
+					end},
+					{text = L.cd2ImportOnlyVisual, func = function()
+						profilesTab:OnlyVisualFilter(res)
+						local saved = profilesTab:SaveDataFilter(VMRT.ExCD2)
+						ExRT.F.table_rewrite(VMRT.ExCD2,res)
+						saved:Restore(VMRT.ExCD2)
+						module:ReloadProfile()
+						res = nil
+					end},
+					{text = L.ProfilesSaveAsNew, func = function()
+						ExRT.F.ShowInput(L.ProfilesNewProfile,function(_,name)
+							if name == "" or VMRT.ExCD2.Profiles.List[name] or name == "default" or name == VMRT.ExCD2.Profiles.Now then
+								res = nil
+								return
+							end
+							VMRT.ExCD2.Profiles.List[name] = res
+							module:SelectProfile(name)
+							res = nil
+						end,nil,nil,nil,function(self)
+							local name = self:GetText()
+							if name == "" or VMRT.ExCD2.Profiles.List[name] or name == "default" or name == VMRT.ExCD2.Profiles.Now then
+								self:GetParent().OK:Disable()
+							else
+								self:GetParent().OK:Enable()
+							end
+						end)
+					end},
+					{text = CANCEL, func = function()
+						res = nil
+					end},
+				}
+			)
+			return
 		else
 			StaticPopupDialogs["EXRT_EXCD_IMPORT"] = {
 				text = L.ProfilesFail1..(res and "\nError code: "..res or ""),
@@ -12992,6 +13420,11 @@ function module:UpdateLockState()
 end
 
 function module:slash(arg1,arg2)
+	if string.find(arg1,"cddump") then
+		local id = arg1:match("cddump%s+(%d+)")
+		if module.CDDump then module:CDDump(id) end
+		return
+	end
 	if string.find(arg1,"runcd ") then
 		local sid,name = arg2:match("%a+ (%d+) (.+)")
 		if sid and name then
@@ -13021,6 +13454,15 @@ function module:slash(arg1,arg2)
 		if module.options.chkEnable then
 			module.options.chkEnable:SetChecked(VMRT.ExCD2.enabled)
 		end
+	elseif arg1 == "cddebug" then
+		VMRT.ExCD2.CDDebug = not VMRT.ExCD2.CDDebug
+		print("|cff33ff99[MRT/CD]|r cddebug = "..tostring(VMRT.ExCD2.CDDebug))
+		if module.RebuildPlayerTalentSet then
+			module:RebuildPlayerTalentSet()
+		end
+		if module.DumpTalentDebug then
+			module:DumpTalentDebug()
+		end
 	end
 end
 
@@ -13031,38 +13473,38 @@ if ExRT.isLK then
 	module.db.AllSpells = {
 
 		{29166,	"DRUID",	1,	{29166,	180,	20}},
-		{48477,	"DRUID",	1,	{48477,	600,	0}},
+		{20748,	"DRUID",	3,	{20748,	600,	0}},
 		{6795,	"DRUID",	1,	{6795,	8,	0}},
 		{740,	"DRUID",	3,	{740,	480,	8}},
 		{5209,	"DRUID",	1,	{5209,	180,	6}},
-		{17116,	"DRUID",	1,	nil,	nil,	nil,	{17116,	180,	0}},
+		{17116,	"DRUID",	1,	nil, nil, nil, {17116,	180,	0}},
 		{22812,	"DRUID",	1,	{22812,	60,	12}},
 		{5229,	"DRUID",	1,	{5229,	60,	10}},
-		{50334,	"DRUID",	3,	nil,	nil,	{50334,	180,	15},	nil},
-		{61336,	"DRUID",	3,	nil,	nil,	{61336,	180,	12},	nil},
-		{53201,	"DRUID",	3,	nil,	{53201,	90,	10},	nil,	nil},
-		{33831,	"DRUID",	1,	nil,	{33831,	180,	30},	nil,	nil},
+		{50334,	"DRUID",	3, nil,	nil, {50334,	180,	15}},
+		{61336,	"DRUID",	3, nil,	nil, {61336,	180,	12}},
+		{53201,	"DRUID",	3,	nil,	{53201,	90,	10},	nil,	nil,	nil},
+		{33831,	"DRUID",	1, nil,	{33831,	180,	30}},
 		{22842,	"DRUID",	1,	{22842,	180,	10}},
-		{18562,	"DRUID",	1,	nil,	nil,	nil,	{18562,	15,	0}},
+		{18562,	"DRUID",	1,	nil, nil, nil, {18562,	15,	0}},
 		{1850,	"DRUID",	1,	{1850,	180,	15}},
-		{16689,	"DRUID",	1,	nil,	{16689,	60,	45},	nil,	nil},
+		{16689,	"DRUID",	1,	nil,	nil,	nil,	nil,	{16689,	60,	45}},
 		{16979,	"DRUID",	1,	nil,	nil,	{16979,	15,	0},	nil},
 		{49376,	"DRUID",	1,	nil,	nil,	{49376,	30,	0},	nil},
 		{22570,	"DRUID",	1,	{22570,	10,	5}},
 		{5217,	"DRUID",	1,	{5217,	30,	6}},
-		{50516,	"DRUID",	1,	nil,	{50516,	20,	6},	nil,	nil},
+		{50516,	"DRUID",	1, nil,	{50516,	20,	6}},
 		{5211,	"DRUID",	1,	{5211,	60,	5}},
 
 
 		{355,	"WARRIOR",	1,	{355,	8,	0}},
-		{12975,	"WARRIOR",	1,	nil,	nil,	nil,	{12975,	180,	20}},
+		{12975,	"WARRIOR",	1, nil,	nil, nil, {12975,	180,	20}},
 		{871,	"WARRIOR",	3,	{871,	300,	12}},
 		{1161,	"WARRIOR",	1,	{1161,	180,	6}},
-		{12809,	"WARRIOR",	1,	nil,	nil,	nil,	{12809,	30,	5}},
+		{12809,	"WARRIOR",	1, nil,	nil, nil, {12809,	30,	5}},
 		{676,	"WARRIOR",	1,	{676,	60,	10}},
 		{55694,	"WARRIOR",	1,	{55694,	180,	10}},
 		{1719,	"WARRIOR",	3,	{1719,	300,	12}},
-		{46924,	"WARRIOR",	3,	nil,	{46924,	90,	6},	nil,	nil},
+		{46924,	"WARRIOR",	3, nil,	{46924,	90,	6}},
 		{20252,	"WARRIOR",	1,	{20252,	30,	0}},
 		{3411,	"WARRIOR",	1,	{3411,	30,	0}},
 		{23920,	"WARRIOR",	1,	{23920,	10,	5}},
@@ -13072,30 +13514,30 @@ if ExRT.isLK then
 		{6552,	"WARRIOR",	1,	{6552,	10,	0}},
 		{72,	"WARRIOR",	1,	{72,	12,	0}},
 		{64382,	"WARRIOR",	1,	{64382,	300,	0}},
-		{12292,	"WARRIOR",	3,	nil,	nil,	{12292,	180,	30},	nil},
-		{12328,	"WARRIOR",	1,	nil,	{12328,	30,	10},	nil,	nil},
+		{12292,	"WARRIOR",	3, nil,	nil, {12292,	180,	30}},
+		{12328,	"WARRIOR",	1, nil,	{12328,	30,	10}},
 		{2687,	"WARRIOR",	1,	{2687,	60,	10}},
 		{20230,	"WARRIOR",	3,	{20230,	1800,	12}},
-		{60970,	"WARRIOR",	1,	nil,	nil,	{60970,	90,	0},	nil},
-		{46968,	"WARRIOR",	3,	nil,	nil,	nil,	{46968,	20,	4}},
+		{60970,	"WARRIOR",	1, nil,	nil, {60970,	90,	0}},
+		{46968,	"WARRIOR",	3, nil,	nil, nil, {46968,	20,	4}},
 
 
-		{11958,	"MAGE",	1,	{11958,	480,	0}},
-		{12472,	"MAGE",	3,	nil,	nil,	nil,	{12472,	180,	20}},
+		{11958,	"MAGE",	1, nil,	nil, nil, {11958,	480,	0}},
+		{12472,	"MAGE",	3, nil,	nil, nil, {12472,	180,	20}},
 		{45438,	"MAGE",	3,	{45438,	300,	10}},
 		{55342,	"MAGE",	1,	{55342,	180,	30}},
 		{12051,	"MAGE",	1,	{12051,	240,	8}},
 		{2139,	"MAGE",	1,	{2139,	24,	8}},
 		{1953,	"MAGE",	1,	{1953,	15,	0}},
 		{66,	"MAGE",	1,	{66,	180,	18}},
-		{31687,	"MAGE",	1,	nil,	nil,	nil,	{31687,	180,	45}},
-		{12042,	"MAGE",	3,	nil,	{12042,	120,	15},	nil,	nil},
-		{12043,	"MAGE",	1,	nil,	{12043,	120,	10},	nil,	nil},
+		{31687,	"MAGE",	1, nil,	nil, nil, {31687,	180,	45}},
+		{12042,	"MAGE",	3, nil,	{12042,	120,	15}},
+		{12043,	"MAGE",	1, nil,	{12043,	120,	10}},
 		{122,	"MAGE",	1,	{122,	25,	8}},
-		{11129,	"MAGE",	3,	nil,	nil,	{11129,	180,	0},	nil},
-		{31661,	"MAGE",	1,	nil,	nil,	{31661,	20,	5},	nil},
-		{11426,	"MAGE",	1,	nil,	nil,	nil,	{11426,	30,	60}},
-		{44572,	"MAGE",	1,	nil,	nil,	nil,	{44572,	30,	5}},
+		{11129,	"MAGE",	3, nil,	nil, {11129,	180,	0}},
+		{31661,	"MAGE",	1, nil,	nil, {31661,	20,	5}},
+		{11426,	"MAGE",	1, nil,	nil, nil, {11426,	30,	60}},
+		{44572,	"MAGE",	1, nil,	nil, nil, {44572,	30,	5}},
 
 
 		{642,	"PALADIN",	3,	{642,	300,	12}},
@@ -13107,96 +13549,96 @@ if ExRT.isLK then
 		{1038,	"PALADIN",	1,	{1038,	120,	10}},
 		{6940,	"PALADIN",	1,	{6940,	120,	12}},
 		{62124,	"PALADIN",	1,	{62124,	8,	0}},
-		{64205,	"PALADIN",	3,	nil,	nil,	{64205,	120,	10}},
-		{31821,	"PALADIN",	1,	nil,	{31821,	120,	6}},
-		{20066,	"PALADIN",	1,	nil,	nil,	nil,	{20066,	60,	60}},
+		{64205,	"PALADIN",	3, nil,	nil, {64205,	120,	10}},
+		{31821,	"PALADIN",	1, nil,	{31821,	120,	6}},
+		{20066,	"PALADIN",	1, nil,	nil, nil, {20066,	60,	60}},
 		{10308,	"PALADIN",	1,	{10308,	60,	6}},
 		{498,	"PALADIN",	1,	{498,	60,	12}},
-		{31842,	"PALADIN",	1,	nil,	{31842,	180,	15},	nil,	nil},
+		{31842,	"PALADIN",	1, nil,	{31842,	180,	15}},
 		{54428,	"PALADIN",	1,	{54428,	60,	15}},
-		{20216,	"PALADIN",	1,	nil,	{20216,	120,	10},	nil,	nil},
+		{20216,	"PALADIN",	1, nil,	{20216,	120,	10}},
 		{66233,	"PALADIN",	3,	nil,	nil,	{66233,	120,	10},	nil},
 		{31789,	"PALADIN",	1,	{31789,	8,	0}},
-		{31935,	"PALADIN",	1,	nil,	nil,	{31935,	30,	0},	nil},
+		{31935,	"PALADIN",	1, nil,	nil, {31935,	30,	0}},
 		{2812,	"PALADIN",	1,	{2812,	30,	0}},
 		{24275,	"PALADIN",	1,	{24275,	6,	0}},
 
 
-		{16190,	"SHAMAN",	3,	nil,	nil,	nil,	{16190,	300,	12}},
+		{16190,	"SHAMAN",	3, nil,	nil, nil, {16190,	300,	12}},
 		{32182,	"SHAMAN",	3,	{32182,	300,	40},	specialCheck=function() if UnitFactionGroup('player')=="Alliance" then return true end end},
 		{2825,	"SHAMAN",	3,	{2825,	300,	40},	specialCheck=function() if UnitFactionGroup('player')=="Horde" then return true end end},
 		{20608,	"SHAMAN",	1,	{21169,	1800,	0}},
 		{2894,	"SHAMAN",	1,	{2894,	600,	120}},
 		{2062,	"SHAMAN",	1,	{2062,	600,	120}},
 		{8177,	"SHAMAN",	1,	{8177,	25,	15}},
-		{51490,	"SHAMAN",	1,	nil,	{51490,	45,	0},	nil,	nil},
-		{16166,	"SHAMAN",	3,	nil,	{16166,	180,	15},	nil,	nil},
-		{30823,	"SHAMAN",	1,	nil,	nil,	{30823,	60,	15},	nil},
-		{55198,	"SHAMAN",	1,	nil,	nil,	nil,	{55198,	180,	15}},
+		{51490,	"SHAMAN",	1, nil,	{51490,	45,	0}},
+		{16166,	"SHAMAN",	3, nil,	{16166,	180,	15}},
+		{30823,	"SHAMAN",	1, nil,	nil, {30823,	60,	15}},
+		{55198,	"SHAMAN",	1, nil,	nil, nil, {55198,	180,	20}},
 		{51514,	"SHAMAN",	1,	{51514,	45,	30}},
-		{16188,	"SHAMAN",	1,	nil,	nil,	nil,	{16188,	180,	0}},
+		{16188,	"SHAMAN",	1, nil,	nil, nil, {16188,	180,	0}},
 		{57994,	"SHAMAN",	1,	{57994,	6,	0}},
 		{8983,	"SHAMAN",	1,	{8983,	30,	15}},
-		{51533,	"SHAMAN",	1,	nil,	nil,	{51533,	180,	30},	nil},
+		{51533,	"SHAMAN",	1, nil,	nil, {51533,	180,	30}},
 
 
 		{20765,	"WARLOCK",	3,	{20765,	900,	0}},
 		{17928,	"WARLOCK",	1,	{17928,	120,	8}},
-		{30283,	"WARLOCK",	1,	nil,	nil,	nil,	{30283,	20,	2}},
+		{30283,	"WARLOCK",	1, nil,	nil, nil, {30283,	20,	2}},
 		{6229,	"WARLOCK",	1,	{6229,	30,	30}},
 		{29858,	"WARLOCK",	1,	{29858,	180,	0}},
-		{18708,	"WARLOCK",	1,	nil,	nil,	{18708,	180,	15}},
+		{18708,	"WARLOCK",	1, nil,	nil, {18708,	180,	15}},
 		{47241,	"WARLOCK",	3,	nil,	nil,	{47241,	180,	30},	nil},
-		{47193,	"WARLOCK",	1,	nil,	nil,	{47193,	60,	0},	nil},
+		{47193,	"WARLOCK",	1, nil,	nil, {47193,	60,	0}},
 		{18540,	"WARLOCK",	3,	{18540,	600,	45}},
 		{19647,	"WARLOCK",	1,	{19647,	24,	0},	nil,	nil,	nil},
 		{6789,	"WARLOCK",	1,	{6789,	120,	3}},
 		{1122,	"WARLOCK",	3,	{1122,	600,	60}},
-		{17877,	"WARLOCK",	1,	nil,	nil,	nil,	{17877,	15,	0}},
+		{17877,	"WARLOCK",	1, nil,	nil, nil, {17877,	15,	0}},
 		{6358,	"WARLOCK",	1,	{6358,	0,	15},	nil,	nil,	nil},
 
 
 		{19801,	"HUNTER",	1,	{19801,	8,	0}},
 		{34477,	"HUNTER",	1,	{34477,	30,	0}},
-		{19577,	"HUNTER",	1,	nil,	{19577,	60,	3},	nil,	nil},
+		{19577,	"HUNTER",	1, nil,	{19577,	60,	3}},
 		{5384,	"HUNTER",	1,	{5384,	30,	0}},
-		{19263,	"HUNTER",	3,	{19263,	120,	5}},
+		{19263,	"HUNTER",	3,	{19263,	90,	5}},
 		{781,	"HUNTER",	1,	{781,	25,	0}},
 		{3045,	"HUNTER",	3,	{3045,	300,	15}},
 		{34026,	"HUNTER",	1,	{34026,	60,	0}},
-		{60192,	"HUNTER",	1,	nil,	nil,	nil,	{60192,	30,	10}},
-		{19574,	"HUNTER",	3,	nil,	{19574,	120,	18},	nil,	nil},
-		{13809,	"HUNTER",	1,	{13809,	30,	30}},
-		{34600,	"HUNTER",	1,	{34600,	30,	30}},
-		{1499,	"HUNTER",	1,	{1499,	30,	10}},
-		{53271,	"HUNTER",	1,	nil,	{53271,	60,	4}},
-		{23989,	"HUNTER",	3,	nil,	nil,	{23989,	180,	0},	nil},
-		{13813,	"HUNTER",	1,	{13813,	30,	30}},
-		{13795,	"HUNTER",	1,	{13795,	30,	30}},
+		{60192,	"HUNTER",	1,	{60192,	30,	10}},
+		{19574,	"HUNTER",	3, nil,	{19574,	120,	18}},
+		{13809,	"HUNTER",	1,	{13809,	30,	0}},
+		{34600,	"HUNTER",	1,	{34600,	30,	0}},
+		{1499,	"HUNTER",	1,	{1499,	30,	0}},
+		{53271,	"HUNTER",	1,	{53271,	60,	4}},
+		{23989,	"HUNTER",	3, nil,	nil, {23989,	180,	0}},
+		{13813,	"HUNTER",	1,	{13813,	30,	0}},
+		{13795,	"HUNTER",	1,	{13795,	30,	0}},
 		{1543,	"HUNTER",	1,	{1543,	20,	0}},
-		{34490,	"HUNTER",	1,	nil,	nil,	{34490,	20,	3},	nil},
-		{19386,	"HUNTER",	1,	nil,	nil,	nil,	{19386,	60,	30}},
+		{34490,	"HUNTER",	1, nil,	nil, {34490,	20,	3}},
+		{19386,	"HUNTER",	1, nil,	nil, nil, {19386,	60,	30}},
 		{53351,	"HUNTER",	1,	{53351,	15,	0}},
 		{14327,	"HUNTER",	1,	{14327,	30,	20}},
 
 
 		{64843,	"PRIEST",	3,	{64843,	480,	8}},
-		{724,	"PRIEST",	1,	nil,	nil,	{724,	180,	0}},
+		{724,	"PRIEST",	1, nil,	nil,	{724,	180,	0},	nil,	nil},
 		{6346,	"PRIEST",	1,	{6346,	180,	0}},
-		{10060,	"PRIEST",	3,	nil,	{10060,	120,	15}},
+		{10060,	"PRIEST",	3, nil,	{10060,	120,	15}},
 		{64901,	"PRIEST",	1,	{64901,	360,	0}},
-		{47788,	"PRIEST",	3,	nil,	nil,	{47788,	180,	10}},
-		{33206,	"PRIEST",	3,	nil,	{33206,	180,	8}},
+		{47788,	"PRIEST",	3, nil,	nil, {47788,	180,	10}},
+		{33206,	"PRIEST",	3, nil,	{33206,	180,	8}},
 		{10890,	"PRIEST",	1,	{10890,	27,	8}},
 		{586,	"PRIEST",	1,	{586,	30,	10}},
-		{47585,	"PRIEST",	3,	nil,	nil,	nil,	{47585,	180,	6}},
-		{64044,	"PRIEST",	1,	nil,	nil,	nil,	{64044,	120,	3}},
-		{15487,	"PRIEST",	1,	nil,	nil,	nil,	{15487,	45,	5}},
-		{14751,	"PRIEST",	1,	nil,	{14751,	45,	0},	nil,	nil},
+		{47585,	"PRIEST",	3, nil,	nil, nil, {47585,	180,	6}},
+		{64044,	"PRIEST",	1, nil,	nil, nil, {64044,	120,	3}},
+		{15487,	"PRIEST",	1, nil,	nil, nil, {15487,	45,	5}},
+		{14751,	"PRIEST",	1, nil,	{14751,	180,	0}},
 		{34433,	"PRIEST",	1,	{34433,	300,	15}},
-		{47540,	"PRIEST",	1,	nil,	{47540,	8,	2},	nil,	nil},
+		{47540,	"PRIEST",	1, nil,	{47540,	8,	2}},
 		{33076,	"PRIEST",	1,	{33076,	10,	30}},
-		{34861,	"PRIEST",	1,	nil,	nil,	{34861,	6,	0},	nil},
+		{34861,	"PRIEST",	1, nil,	nil, {34861,	6,	0}},
 		{32379,	"PRIEST",	1,	{32379,	12,	0}},
 		{605,	"PRIEST",	1,	{605,	0,	60}},
 
@@ -13205,20 +13647,20 @@ if ExRT.isLK then
 		{57934,	"ROGUE",	1,	{57934,	30,	6}},
 		{1966,	"ROGUE",	1,	{1966,	10,	5}},
 		{2983,	"ROGUE",	1,	{2983,	180,	8}},
-		{13750,	"ROGUE",	3,	nil,	nil,	{13750,	180,	15},	nil},
-		{31224,	"ROGUE",	3,	{31224,	90,	5}},
+		{13750,	"ROGUE",	3, nil,	nil, {13750,	180,	15}},		-- Adrenaline Rush (Combat)
+		{31224,	"ROGUE",	3,	{31224,	90,	5}},				-- Cloak of Shadows (all specs)
 		{26889,	"ROGUE",	1,	{26889,	180,	10}},
-		{51690,	"ROGUE",	3,	nil,	nil,	{51690,	120,	3},	nil},
-		{14185,	"ROGUE",	3,	nil,	nil,	nil,	{14185,	480,	0}},
+		{51690,	"ROGUE",	3, nil,	nil, {51690,	120,	3}},		-- Killing Spree (Combat)
+		{14185,	"ROGUE",	3, nil,	nil, nil, {14185,	480,	0}},		-- Preparation (Subtlety)
 		{51722,	"ROGUE",	1,	{51722,	60,	10}},
 		{408,	"ROGUE",	1,	{408,	20,	6}},
 		{2094,	"ROGUE",	1,	{2094,	180,	10}},
 		{1776,	"ROGUE",	1,	{1776,	10,	4}},
 		{1725,	"ROGUE",	1,	{1725,	30,	10}},
-		{31230,	"ROGUE",	3,	nil,	nil,	nil,	{31230,	60,	3}},
-		{13877,	"ROGUE",	3,	nil,	nil,	{13877,	120,	15},	nil},
-		{36554,	"ROGUE",	1,	nil,	nil,	nil,	{36554,	30,	10}},
-		{14177,	"ROGUE",	3,	nil,	{14177,	180,	0},	nil,	nil},
+		{31230,	"ROGUE",	3,	nil,	nil,	nil,	{31230,	60,	3}},		-- Cheat Death (Subtlety)
+		{13877,	"ROGUE",	3, nil,	nil, {13877,	120,	15}},		-- Blade Flurry (Combat)
+		{36554,	"ROGUE",	1, nil,	nil, nil, {36554,	30,	10}},
+		{14177,	"ROGUE",	3, nil,	{14177,	180,	0}},		-- Cold Blood (Assassination)
 
 
 		{49576,	"DEATHKNIGHT",	1,	{49576,	35,	0}},
@@ -13226,25 +13668,30 @@ if ExRT.isLK then
 		{42650,	"DEATHKNIGHT",	3,	{42650,	600,	0}},
 		{61999,	"DEATHKNIGHT",	3,	{61999,	600,	0}},
 		{56222,	"DEATHKNIGHT",	1,	{56222,	8,	0}},
-		{51052,	"DEATHKNIGHT",	3,	nil,	nil,	nil,	{51052,	120,	10}},
-		{49028,	"DEATHKNIGHT",	3,	nil,	{49028,	90,	12}},
-		{49016,	"DEATHKNIGHT",	1,	nil,	{49016,	180,	30}},
+		{51052,	"DEATHKNIGHT",	3, nil,	nil, nil, {51052,	120,	10}},
+		{49028,	"DEATHKNIGHT",	3, nil,	{49028,	90,	12}},
+		{49016,	"DEATHKNIGHT",	1, nil,	{49016,	180,	30}},
 		{48792,	"DEATHKNIGHT",	3,	{48792,	180,	12}},
-		{55233,	"DEATHKNIGHT",	3,	nil,	{55233,	60,	10},	nil,	nil},
-		{49222,	"DEATHKNIGHT",	1,	nil,	nil,	nil,	{49222,	120,	300}},
-		{49206,	"DEATHKNIGHT",	3,	nil,	nil,	nil,	{49206,	180,	30}},
+		{55233,	"DEATHKNIGHT",	3, nil,	{55233,	60,	10}},
+		{49222,	"DEATHKNIGHT",	1, nil,	nil, nil, {49222,	120,	300}},
+		{49206,	"DEATHKNIGHT",	3, nil,	nil, nil, {49206,	180,	30}},
 		{47568,	"DEATHKNIGHT",	3,	{47568,	300,	0}},
-		{49203,	"DEATHKNIGHT",	1,	nil,	nil,	{49203,	60,	10},	nil},
+		{49203,	"DEATHKNIGHT",	1, nil,	nil, {49203,	60,	10}},
 		{47476,	"DEATHKNIGHT",	1,	{47476,	120,	5}},
 		{47528,	"DEATHKNIGHT",	1,	{47528,	10,	0}},
-		{49039,	"DEATHKNIGHT",	1,	nil,	nil,	{49039,	120,	10}},
-		{51271,	"DEATHKNIGHT",	3,	nil,	nil,	{51271,	60,	20},	nil},
-		{48982,	"DEATHKNIGHT",	1,	nil,	{48982,	30,	0},	nil,	nil},
+		{49039,	"DEATHKNIGHT",	1, nil,	nil, {49039,	120,	10}},
+		{51271,	"DEATHKNIGHT",	3, nil,	nil, {51271,	60,	20}},
+		{48982,	"DEATHKNIGHT",	1, nil,	{48982,	30,	0}},
 		{45529,	"DEATHKNIGHT",	1,	{45529,	60,	0}},
 		{46584,	"DEATHKNIGHT",	1,	{46584,	180,	60}},
-		{49005,	"DEATHKNIGHT",	1,	nil,	{49005,	180,	20},	nil,	nil},
+		{49005,	"DEATHKNIGHT",	1, nil,	{49005,	180,	20}},
 	
 	}
+	for _,_tid in ipairs({17116, 50334, 61336, 33831, 18562, 50516, 12975, 12809, 46924, 12292, 12328, 60970, 46968, 11958, 12472, 31687, 12042, 12043, 11129, 31661, 11426, 44572, 64205, 31821, 20066, 31842, 20216, 31935, 16190, 51490, 16166, 30823, 55198, 16188, 51533, 30283, 18708, 47193, 17877, 19577, 19574, 23989, 34490, 19386, 724, 10060, 47788, 33206, 47585, 64044, 15487, 14751, 47540, 34861, 13750, 51690, 14185, 13877, 36554, 14177, 51052, 49028, 49016, 55233, 49222, 49206, 49203, 49039, 51271, 48982, 49005}) do
+		module.db.spell_isTalent[_tid] = true
+		local _tn = GetSpellInfo(_tid)
+		if _tn then module.db.spell_isTalent[_tn] = true end
+	end
 	module.db.spell_isTalent[GetSpellInfo(16190) or "spell:16190"] = true	module.db.spell_isTalent[16190] = true
 	module.db.spell_isTalent[GetSpellInfo(10060) or "spell:10060"] = true	module.db.spell_isTalent[10060] = true
 	module.db.spell_isTalent[GetSpellInfo(11958) or "spell:11958"] = true	module.db.spell_isTalent[11958] = true
@@ -13258,47 +13705,18 @@ if ExRT.isLK then
 	module.db.spell_isTalent[GetSpellInfo(31821) or "spell:31821"] = true	module.db.spell_isTalent[31821] = true
 	module.db.spell_isTalent[GetSpellInfo(66233) or "spell:66233"] = true	module.db.spell_isTalent[66233] = true
 
-	wipe(module.db.spell_autoTalent)
-
-	wipe(module.db.spell_wotlkTalentMap)
-	local _tm = module.db.spell_wotlkTalentMap
-	_tm[33206] = {1, 25}
-	_tm[64205] = {2, 6}
-	_tm[47788] = {2, 27}
-	_tm[53201] = {1, 28}
-	_tm[10278] = {2, 4}
-	_tm[48788] = {1, 8}
-	_tm[49016] = {1, 19}
-	_tm[31821] = {1, 6}
-	_tm[16190] = {3, 17}
-	_tm[55233] = {1, 23}
-	_tm[49005] = {1, 15}
-	_tm[66233] = {2, 18}
-	_tm[12975] = {3, 6}
-	_tm[61336] = {2, 7}
-	_tm[61384] = {1, 24}
-	_tm[47585] = {3, 27}
-	_tm[10060] = {1, 19}
-	_tm[23989] = {2, 14}
-	_tm[12292] = {2, 14}
-	_tm[20608] = {3, 3}
-	_tm[48447] = {3, 14}
-	_tm[45438] = {3, 3}
-	_tm[16166] = {1, 17}
-	_tm[16188] = {2, 9}
-	_tm[30823] = {2, 20}
-	_tm[49222] = {3, 19}
-	_tm[49203] = {2, 21}
-	_tm[51052] = {3, 19}
-	_tm[49028] = {1, 29}
-	_tm[14177] = {1, 9}
-	_tm[14185] = {3, 14}
-	_tm[1856] = {3, 4}
-	_tm[11958] = {3, 11}
-	_tm[12042] = {1, 18}
-	_tm[12472] = {3, 11}
-	_tm[31224] = {1, 17}
-	_tm[724] = {2, 24}
+	module.db.spell_autoTalent[64205] = 66
+	module.db.spell_autoTalent[31821] = 65
+	module.db.spell_autoTalent[16190] = 264
+	module.db.spell_autoTalent[51052] = 252
+	module.db.spell_autoTalent[33206] = 256
+	module.db.spell_autoTalent[10060] = 256
+	module.db.spell_autoTalent[47788] = 257
+	module.db.spell_autoTalent[11958] = 64
+	module.db.spell_autoTalent[49028] = 250
+	module.db.spell_autoTalent[49016] = 250
+	module.db.spell_autoTalent[724]   = 257
+	module.db.spell_autoTalent[66233] = 66
 
 	for _,sid in ipairs({
 		740,
@@ -13319,7 +13737,6 @@ if ExRT.isLK then
 		51052,
 		49028,
 		49016,
-		48477,
 
 		29166,
 		22812,
@@ -13376,6 +13793,7 @@ if ExRT.isLK then
 		14177,
 		14185,
 		31224,
+		31230,
 
 		48707,
 		48792,
@@ -13386,7 +13804,45 @@ if ExRT.isLK then
 		module.db.spell_isRaidCD[sid] = true
 	end
 
-	module.db.spell_resetOtherSpells[GetSpellInfo(11958) or "spell:11958"] = {GetSpellInfo(45438)}
+	do
+		local passiveTalentProcs = {
+			[45182] = 31230,
+			[45181] = 31230,
+			[45180] = 31230,
+			[66235] = 66233,
+			[66233] = 66233,
+		}
+		for procSpellID, trackedSpellID in pairs(passiveTalentProcs) do
+			module.db.spell_startCDbyAuraApplied[procSpellID] = trackedSpellID
+		end
+		for _, spellID in pairs(module.db.spell_startCDbyAuraApplied) do
+			module.db.spell_startCDbyAuraApplied_fix[spellID] = true
+		end
+	end
+
+	do
+		local rankToTracked = {
+			[31228] = {31230, 31229},
+			[31229] = {31230},
+			[31850] = {66233, 31851, 31852},
+			[31851] = {66233, 31852},
+			[31852] = {66233},
+		}
+		for rankSpellID, others in pairs(rankToTracked) do
+			local existing = module.db.spell_talentProvideAnotherTalents[rankSpellID]
+			if existing then
+				for _, v in ipairs(others) do
+					if not ExRT.F.table_find(existing, v) then
+						existing[#existing+1] = v
+					end
+				end
+			else
+				module.db.spell_talentProvideAnotherTalents[rankSpellID] = others
+			end
+		end
+	end
+
+	module.db.spell_resetOtherSpells[11958] = {45438}
 
 	for _,sid in ipairs({
 		45438,
@@ -13424,7 +13880,6 @@ if ExRT.isLK then
 		12042,
 		11426,
 		66,
-		19263,
 		3045,
 		19574,
 		642,
@@ -13436,7 +13891,6 @@ if ExRT.isLK then
 		31224,
 		13750,
 		30823,
-		55198,
 		871,
 		55694,
 		1719,
@@ -13447,6 +13901,7 @@ if ExRT.isLK then
 		16689,
 		33831,
 		47241,
+		5384,
 	}) do
 		local n = GetSpellInfo(sid) or "spell:"..sid
 		module.db.spell_aura_list[n] = sid
@@ -13484,10 +13939,15 @@ if ExRT.isLK then
 	module.db.spell_startCDbyAuraFade[GetSpellInfo(16166) or "spell:16166"] = 16166		module.db.spell_startCDbyAuraFade[16166] = 16166
 	module.db.spell_startCDbyAuraFade[GetSpellInfo(11129) or "spell:11129"] = 11129		module.db.spell_startCDbyAuraFade[11129] = 11129
 	module.db.spell_startCDbyAuraFade[GetSpellInfo(12043) or "spell:12043"] = 12043		module.db.spell_startCDbyAuraFade[12043] = 12043
+	module.db.spell_startCDbyAuraFade[GetSpellInfo(14751) or "spell:14751"] = 14751		module.db.spell_startCDbyAuraFade[14751] = 14751
+	module.db.spell_startCDbyAuraFade[GetSpellInfo(28682) or "spell:28682"] = 11129		module.db.spell_startCDbyAuraFade[28682] = 11129
+	module.db.spell_aura_list[GetSpellInfo(28682) or "spell:28682"] = 11129		module.db.spell_aura_list[28682] = 11129
+	module.db.spell_aura_list[GetSpellInfo(55166) or "spell:55166"] = 55198		module.db.spell_aura_list[55166] = 55198
 
 	module.db.spell_threatBuff = module.db.spell_threatBuff or {}
 	module.db.spell_threatBuff[GetSpellInfo(57934) or "spell:57934"] = 57934		module.db.spell_threatBuff[57934] = 57934
 	module.db.spell_threatBuff[GetSpellInfo(34477) or "spell:34477"] = 34477		module.db.spell_threatBuff[34477] = 34477
+	module.db.spell_threatBuff[35079] = 34477
 
 	module.db.spell_threatBuff_consumed = module.db.spell_threatBuff_consumed or {}
 	module.db.spell_threatBuff_consumed[GetSpellInfo(59628) or "spell:59628"] = 57934		module.db.spell_threatBuff_consumed[59628] = 57934
@@ -13495,8 +13955,8 @@ if ExRT.isLK then
 	module.db.spell_threatBuff_consumed_lookup = module.db.spell_threatBuff_consumed_lookup or {}
 	module.db.spell_threatBuff_consumed_lookup[57934] = 59628
 
-	module.db.spell_resetOtherSpells[GetSpellInfo(11958) or "spell:11958"] = {GetSpellInfo(45438), GetSpellInfo(12472), GetSpellInfo(43039), GetSpellInfo(44572), GetSpellInfo(31687)}
-	module.db.spell_resetOtherSpells[GetSpellInfo(23989) or "spell:23989"] = {GetSpellInfo(34477)}
+	module.db.spell_resetOtherSpells[11958] = {45438, 12472, 43039, 44572, 31687}
+	module.db.spell_resetOtherSpells[23989] = {19577, 5384, 19263, 781, 3045, 34026, 60192, 19574, 13809, 34600, 1499, 53271, 13813, 13795, 1543, 34490, 19386, 53351, 14327}
 
 	module.db.spell_sharingCD[GetSpellInfo(31884) or "spell:31884"] = {[GetSpellInfo(642) or "spell:642"]=30}
 	module.db.spell_sharingCD[GetSpellInfo(13809) or "spell:13809"] = {[GetSpellInfo(60192) or "spell:60192"]=30, [GetSpellInfo(14311) or "spell:14311"]=30}
@@ -13504,6 +13964,15 @@ if ExRT.isLK then
 	module.db.spell_sharingCD[GetSpellInfo(14311) or "spell:14311"] = {[GetSpellInfo(13809) or "spell:13809"]=30, [GetSpellInfo(60192) or "spell:60192"]=30}
 	module.db.spell_sharingCD[GetSpellInfo(49056) or "spell:49056"] = {[GetSpellInfo(49067) or "spell:49067"]=30}
 	module.db.spell_sharingCD[GetSpellInfo(49067) or "spell:49067"] = {[GetSpellInfo(49056) or "spell:49056"]=30}
+
+	module.db.spell_target_byCast = module.db.spell_target_byCast or {}
+	do
+		if ExRT.F.WarmUpSpell then ExRT.F.WarmUpSpell(48477) end
+		local rebirthName = GetSpellInfo(48477) or GetSpellInfo(20484) or GetSpellInfo(20748)
+		if rebirthName then
+			module.db.spell_target_byCast[rebirthName] = 20748
+		end
+	end
 
 elseif ExRT.isBC then
 	module.db.AllSpells = {
@@ -13539,7 +14008,7 @@ elseif ExRT.isBC then
 		{20765,	"WARLOCK",	1,	{20765,	1800,	0}},
 
 		{19801, "HUNTER",	1,	{19801,	20,	0}},
-		{34477, "HUNTER",	1,	{34477,	120,	30}},
+		{34477, "HUNTER",	1,	{34477,	30,	0}},
 		{19577, "HUNTER",	1,	{19577,	60,	3}},
 		{5384, 	"HUNTER",	1,	{5384,	30,	0}},
 

@@ -22,7 +22,7 @@ local GetSpecialization = GetSpecialization or C_SpecializationInfo and C_Specia
 local IsEncounterInProgress = C_InstanceEncounter and C_InstanceEncounter.IsEncounterInProgress or IsEncounterInProgress
 
 local senderVersion = 4
-local addonVersion = 70
+local addonVersion = 71
 
 local options = module.options
 
@@ -733,6 +733,60 @@ local damageImmuneCDList = {
 	ROGUE = 31224,
 }
 
+local defSpecName = {
+	[62] = "arcane",
+	[63] = "fire",
+	[64] = "frost",
+	[65] = "holy",
+	[66] = "protection",
+	[70] = "retribution",
+	[71] = "arms",
+	[72] = "fury",
+	[73] = "protection",
+	[102] = "balance",
+	[103] = "feral",
+	[105] = "restoration",
+	[250] = "blood",
+	[251] = "frost",
+	[252] = "unholy",
+	[253] = "beast mastery",
+	[254] = "marksmanship",
+	[255] = "survival",
+	[256] = "discipline",
+	[257] = "holy",
+	[258] = "shadow",
+	[259] = "assassination",
+	[260] = "combat",
+	[261] = "subtlety",
+	[262] = "elemental",
+	[263] = "enhancement",
+	[264] = "restoration",
+	[265] = "affliction",
+	[266] = "demonology",
+	[267] = "destruction",
+}
+
+local sprintCDList = {
+	DRUID = 1850,
+}
+
+local healCDList = {
+	[257] = 64843,
+	[105] = 740,
+}
+
+local raidCDList = {
+	[65] = 31821,
+	[252] = 51052,
+}
+
+local function GetSelfSpecID()
+	local inspect = ExRT.A and ExRT.A.Inspect
+	local db = inspect and inspect.db and inspect.db.inspectDB
+	local data = db and db[UnitName("player")]
+	return data and data.spec
+end
+
 local gsub_trigger_params_now
 local gsub_trigger_update_req
 
@@ -1382,11 +1436,23 @@ do
 			return UnitName'player'..rest
 		elseif word == "playerClass" then
 			return (select(2,UnitClass'player'):lower())..rest
+		elseif word == "playerSpec" then
+			local specid = GetSelfSpecID()
+			return (defSpecName[specid or 0] or "")..rest
 		elseif word == "defCDIcon" then
 			local icon = defCDList[select(2,UnitClass'player') or ""]
 			return (icon and "{spell:"..icon.."}" or "")..rest
 		elseif word == "damageImmuneCDIcon" then
 			local icon = damageImmuneCDList[select(2,UnitClass'player') or ""]
+			return (icon and "{spell:"..icon.."}" or "")..rest
+		elseif word == "sprintCDIcon" then
+			local icon = sprintCDList[select(2,UnitClass'player') or ""]
+			return (icon and "{spell:"..icon.."}" or "")..rest
+		elseif word == "healCDIcon" then
+			local icon = healCDList[GetSelfSpecID() or 0]
+			return (icon and "{spell:"..icon.."}" or "")..rest
+		elseif word == "raidCDIcon" then
+			local icon = raidCDList[GetSelfSpecID() or 0]
 			return (icon and "{spell:"..icon.."}" or "")..rest
 		elseif word == "notePlayer" or word == "notePlayerRight" then
 			if gsub_trigger_params_now and gsub_trigger_params_now._data then
@@ -3823,6 +3889,11 @@ function options:Load()
 				options.timeLine._tlhZoneEntryCache = _zoneEntryCache
 			end
 
+			local _nameToZoneEntry = {}
+			for i=1,#tlSubMenu do
+				local e = tlSubMenu[i]
+				if e and e.text then _nameToZoneEntry[e.text] = e end
+			end
 			for diffID,diffData in pairs(VMRT.Reminder2.TLHistory) do
 				for bossID,bossData in pairs(diffData) do
 					if type(bossID) == "number" then
@@ -3860,8 +3931,13 @@ function options:Load()
 									_zoneEntryCache[zoneKey] = zEntry
 								end
 
-								toadd = {text = zEntry.text, arg3 = zoneKey, subMenu = {}, zonemd = zone, prio = zEntry.prio, icon = zEntry.zoneImg}
-								tlSubMenu[#tlSubMenu+1] = toadd
+								if zEntry.text and _nameToZoneEntry[zEntry.text] then
+									toadd = _nameToZoneEntry[zEntry.text]
+								else
+									toadd = {text = zEntry.text, arg3 = zoneKey, subMenu = {}, zonemd = zone, prio = zEntry.prio, icon = zEntry.zoneImg}
+									tlSubMenu[#tlSubMenu+1] = toadd
+									if zEntry.text then _nameToZoneEntry[zEntry.text] = toadd end
+								end
 							end
 							toadd = toadd.subMenu
 						end
@@ -4396,25 +4472,43 @@ function options:Load()
 				f:Show()
 				module._iconPrewarmFrame = f
 				module._iconPrewarmCache = {}
+				module._iconPrewarmQueue = {}
+				module._iconPrewarmQueued = {}
+				local cache = module._iconPrewarmCache
+				local queue = module._iconPrewarmQueue
+				local queued = module._iconPrewarmQueued
+				f:SetScript("OnUpdate", function(self)
+					local n = #queue
+					if n == 0 then return end
+					local budget = 8
+					while budget > 0 and n > 0 do
+						local path = queue[n]
+						queue[n] = nil
+						queued[path] = nil
+						n = n - 1
+						if not cache[path] then
+							local tex = self:CreateTexture(nil, "BACKGROUND")
+							tex:SetAllPoints(self)
+							tex:SetTexture(path)
+							cache[path] = tex
+						end
+						budget = budget - 1
+					end
+				end)
 			end
-			local prewarmFrame = module._iconPrewarmFrame
 			local prewarmCache = module._iconPrewarmCache
+			local prewarmQueue = module._iconPrewarmQueue
+			local prewarmQueued = module._iconPrewarmQueued
 			local _wp0 = _profile and debugprofilestop()
-			local warmed, skipped = 0, 0
+			local enqueued = 0
 			local function walkList(list)
 				for i=1,#list do
 					local entry = list[i]
 					local path = entry.icon
-					if type(path) == "string" and path ~= "" then
-						if prewarmCache[path] then
-							skipped = skipped + 1
-						else
-							local tex = prewarmFrame:CreateTexture(nil, "BACKGROUND")
-							tex:SetAllPoints(prewarmFrame)
-							tex:SetTexture(path)
-							prewarmCache[path] = tex
-							warmed = warmed + 1
-						end
+					if type(path) == "string" and path ~= "" and not prewarmCache[path] and not prewarmQueued[path] then
+						prewarmQueued[path] = true
+						prewarmQueue[#prewarmQueue+1] = path
+						enqueued = enqueued + 1
 					end
 					local sub = entry.subMenu
 					if type(sub) == "table" then
@@ -4425,10 +4519,10 @@ function options:Load()
 			walkList(self.List)
 			if _profile then
 				local _wp1 = debugprofilestop()
-				if (_wp1 - _wp0) > 5 or warmed > 0 then
+				if (_wp1 - _wp0) > 5 or enqueued > 0 then
 					print(string.format(
-						"|cff33ff99[icon-prewarm]|r warmed=%d skipped=%d time=%.1fms",
-						warmed, skipped, _wp1 - _wp0
+						"|cff33ff99[icon-prewarm]|r enqueued=%d queue=%d walk=%.1fms",
+						enqueued, #prewarmQueue, _wp1 - _wp0
 					))
 				end
 			end
@@ -13364,8 +13458,12 @@ function options:Load()
 		GameTooltip:AddLine("|cff00ff00%playerClass|r - "..L.ReminderFormatTipClass..select(2,UnitClass'player'):lower())
 		GameTooltip:AddLine("|cff00ff00%notePlayer|r - "..L.ReminderFormatTipNotePlayerLeft)
 		GameTooltip:AddLine("|cff00ff00%notePlayerRight|r - "..L.ReminderFormatTipNotePlayerRight)
+		GameTooltip:AddLine("|cff00ff00%playerSpec|r - "..L.ReminderFormatTipSpec..(defSpecName[GetSelfSpecID() or 0] or ""))
 		GameTooltip:AddLine("|cff00ff00%defCDIcon|r - "..L.ReminderFormatTipDefCDIcon..self:CreateIconsFromList(defCDList))
 		GameTooltip:AddLine("|cff00ff00%damageImmuneCDIcon|r - "..L.ReminderFormatTipDefCDIcon2..self:CreateIconsFromList(damageImmuneCDList))
+		GameTooltip:AddLine("|cff00ff00%sprintCDIcon|r - "..L.ReminderFormatTipDefCDIcon2..self:CreateIconsFromList(sprintCDList))
+		GameTooltip:AddLine("|cff00ff00%healCDIcon|r - "..L.ReminderFormatTipDefCDIcon2..self:CreateIconsFromList(healCDList))
+		GameTooltip:AddLine("|cff00ff00%raidCDIcon|r - "..L.ReminderFormatTipDefCDIcon2..self:CreateIconsFromList(raidCDList))
 		GameTooltip:AddLine("|cff00ff00%classColor|r - "..L.ReminderFormatTipClassColor.." |cff00ff00%classColor%playerName|r => |c"..ExRT.F.classColor(select(2,UnitClass"player"),nil)..UnitName'player'.."|r")
 		GameTooltip:AddLine("|cff00ff00%specIcon|r - "..L.ReminderFormatTipSpecIcon1.." |cff00ff00%specIcon%playerName|r => |A:groupfinder-icon-role-large-"..(math.random(1,2) == 1 and "dps" or "heal")..":0:0|a"..UnitName'player'..". "..L.ReminderFormatTipSpecIcon2:format("|cff00ff00%specIconAndClassColor|r"))
 		GameTooltip:AddLine(" ")
@@ -16135,8 +16233,22 @@ function options:Load()
 						}
 					end
 					local fightLen = fight[#fight][1] - fight[1][1]
+					local fightName = fight[1][2] == 3 and fight[1][4] or nil
+					if not fightName then
+						local lookahead = min(#fight, 50)
+						for k=1,lookahead do
+							local e = fight[k]
+							if e and e[2] == 3 and e[4] then
+								fightName = e[4]
+								break
+							elseif e and e[2] == 3 and type(e[3]) == "number" and ExRT.L and ExRT.L.bossName and ExRT.L.bossName[e[3]] and ExRT.L.bossName[e[3]] ~= "" then
+								fightName = ExRT.L.bossName[e[3]]
+								break
+							end
+						end
+					end
 					subMenu[#subMenu+1] = {
-						text = (fight[1][4] or (L.ReminderFight.." "..i))..format(" %d:%02d",fightLen/60,fightLen%60),
+						text = (fightName or (L.ReminderFight.." "..i))..format(" %d:%02d",fightLen/60,fightLen%60),
 						arg1 = fight,
 						func = function(_,arg1)
 							ELib:DropDownClose()
@@ -19720,7 +19832,10 @@ function module:TriggerBossPull(encounterID, encounterName)
 	end
 
 	if IsHistoryEnabled then
-		module:AddHistoryRecord(3, encounterID, encounterName)
+		local last = module.db.historyNow[#module.db.historyNow]
+		if not (last and last[2] == 3 and last[3] == encounterID) then
+			module:AddHistoryRecord(3, encounterID, encounterName)
+		end
 	end
 end
 
@@ -22276,6 +22391,37 @@ function module.main:ADDON_LOADED()
 	end
 	VMRT.Reminder2.TLHistory = VMRT.Reminder2.TLHistory or {}
 
+	do
+		local knownBoss = {}
+		if ExRT and ExRT.GDB and ExRT.GDB.EncountersList then
+			for i = 1, #ExRT.GDB.EncountersList do
+				local z = ExRT.GDB.EncountersList[i]
+				for j = 2, #z do knownBoss[ z[j] ] = true end
+			end
+		end
+		for diffID, diffData in pairs(VMRT.Reminder2.TLHistory) do
+			if type(diffData) ~= "table" then
+				VMRT.Reminder2.TLHistory[diffID] = nil
+			else
+				for bossID in pairs(diffData) do
+					local keep = type(bossID) == "number" and knownBoss[bossID]
+					if not keep then
+						local name = ExRT.L and ExRT.L.bossName and type(bossID) == "number" and ExRT.L.bossName[bossID]
+						if type(name) ~= "string" or name == "" or name == tostring(bossID) then
+							diffData[bossID] = nil
+						end
+					end
+				end
+				if next(diffData) == nil then
+					VMRT.Reminder2.TLHistory[diffID] = nil
+				end
+			end
+		end
+		if not VMRT.Reminder2.HistorySession then
+			wipe(VMRT.Reminder2.TLHistory)
+		end
+	end
+
 	if not VMRT.Reminder2.v21 then
 		local new = {}
 		for uid,options in pairs(VMRT.Reminder2.options) do
@@ -22438,6 +22584,10 @@ function module.main:ENCOUNTER_START(encounterID, encounterName, difficultyID, g
 
 	module:StartHistoryRecord()
 
+	if IsHistoryEnabled then
+		module:AddHistoryRecord(3, encounterID, encounterName)
+	end
+
 	if (module.db.eventsToTriggers.BOSS_START or module.db.eventsToTriggers.NOTE_TIMERS or module.db.eventsToTriggers.NOTE_TIMERS_ALL) and not module.db.nextPullIsDelayed then
 		module:TriggerBossPull(encounterID, encounterName)
 	end
@@ -22587,6 +22737,26 @@ function module:SaveLastHistory(history, difficultyID, isKill)
 
 	if type(bossID) ~= "number" then
 		return
+	end
+
+	do
+		local known
+		if ExRT and ExRT.GDB and ExRT.GDB.EncountersList then
+			for i = 1, #ExRT.GDB.EncountersList do
+				local z = ExRT.GDB.EncountersList[i]
+				for j = 2, #z do
+					if z[j] == bossID then known = true break end
+				end
+				if known then break end
+			end
+		end
+		if not known then
+			local name = ExRT.L and ExRT.L.bossName and ExRT.L.bossName[bossID]
+			if type(name) == "string" and name ~= "" and name ~= tostring(bossID) then
+				known = true
+			end
+		end
+		if not known then return end
 	end
 
 	local diffData = VMRT.Reminder2.TLHistory[ difficultyID ]
