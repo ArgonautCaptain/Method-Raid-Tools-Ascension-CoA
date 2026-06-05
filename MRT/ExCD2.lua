@@ -7216,7 +7216,7 @@ function module.options:Load()
 	}
 
 	self.CATEGORIES_VIS = {
-		["ALL"]       = {name = L.cd2CatAll,                            icon = "Interface\\Icons\\INV_Misc_Book_09",       sort = 0},
+		["ALL"]       = {name = L.cd2CatAll,                            icon = "Interface\\Icons\\INV_Misc_Book_01",       sort = 0},
 		["ENABLED"]   = {name = L.cd2CatEnabled,                        icon = "Interface\\Buttons\\UI-CheckBox-Check",     sort = 5, ignoreSubcats = true},
 		["FAV"]       = {name = L.cd2Favorite,                          icon = "Interface\\AddOns\\"..GlobalAddonName.."\\media\\star2", iconTcoord = {0,.5,0,.5}, sort = 200, ignoreSubcats = true},
 

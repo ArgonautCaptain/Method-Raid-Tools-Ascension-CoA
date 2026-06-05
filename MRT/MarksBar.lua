@@ -515,7 +515,8 @@ mainFrame.pull:SetScript("OnLeave", function(self)
 	self:SetBackdropBorderColor(0.4,0.4,0.4,1)
 end)
 mainFrame.pull:SetScript("OnMouseDown", function(self,button)
-	ExRT.F:DoPull(button == "RightButton" and VMRT.MarksBar.pulltimer_right or VMRT.MarksBar.pulltimer)
+	local isRight = button == "RightButton"
+	ExRT.F:DoPull(isRight and VMRT.MarksBar.pulltimer_right or VMRT.MarksBar.pulltimer, isRight)
 end)
 
 mainFrame.pull.html = mainFrame.pull:CreateFontString(nil,"ARTWORK","GameFontWhite")
@@ -543,7 +544,7 @@ do
 	frame.but:SetSize(20,20)
 	frame.but:SetPoint("TOPLEFT",  3, -3)
 	frame.but.t = frame.but:CreateTexture(nil, "BACKGROUND")
-	frame.but.t:SetTexture(ExRT.isClassic and "Interface\\RaidFrame\\ReadyCheck-Ready" or 609902)
+	frame.but.t:SetTexture("Interface\\Icons\\Inv_alchemy_endlessflask_05")
 	frame.but.t:SetPoint("TOPLEFT",-1,1)
 	frame.but.t:SetPoint("BOTTOMRIGHT",1,-1)
 	frame.but.t:SetTexCoord(.1,.9,.1,.9)
@@ -1067,6 +1068,23 @@ function module.options:Load()
 	self.editBoxTimer_right = ELib:Edit(self,6,true):Size(120,20):Point("LEFT",self.editBoxTimer,"RIGHT",80,0):Text(VMRT.MarksBar.pulltimer_right or "10"):LeftText(L.MarksBarTimerRightClick):OnChange(function(self)
 		VMRT.MarksBar.pulltimer_right = tonumber(self:GetText()) or 10
 	end)
+
+	function module.options:UpdatePullEditBoxDPTState()
+		if not self.editBoxTimer then return end
+		if VMRT.Timers.useDPT then
+			self.editBoxTimer:Disable()
+			self.editBoxTimer:SetAlpha(0.4)
+			self.editBoxTimer:Tooltip(L.MarksBarTimerDPTDisabled)
+		else
+			self.editBoxTimer:Enable()
+			self.editBoxTimer:SetAlpha(1.0)
+			self.editBoxTimer:SetScript("OnEnter", nil)
+			self.editBoxTimer:SetScript("OnLeave", nil)
+		end
+	end
+	if VMRT.Timers.useDPT then
+		module.options:UpdatePullEditBoxDPTState()
+	end
 
 
 	self.SliderScale = ELib:Slider(self,L.marksbarscale):Size(660):Point("TOP",0,-390):Range(5,200):SetTo(VMRT.MarksBar.Scale or 100):OnChange(function(self,event)

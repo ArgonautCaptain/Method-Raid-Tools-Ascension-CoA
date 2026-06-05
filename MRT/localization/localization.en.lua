@@ -325,6 +325,7 @@ L.MarksBarVertical = "Vertical"
 L.MarksBarReverse = "Reverse Order"
 L.MarksBarTimerLeftClick = "Left click"
 L.MarksBarTimerRightClick = "Right click"
+L.MarksBarTimerDPTDisabled = "Dynamic pull timer is active"
 L.MarksBarShowOnHover = "Show only on hover"
 L.MarksBarDisableWOAssist = "Disable without RL or assist"
 

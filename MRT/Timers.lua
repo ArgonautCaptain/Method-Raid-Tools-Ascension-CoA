@@ -180,11 +180,50 @@ function module:timer(elapsed)
 	end
 end
 
+local ownSpecCache = nil
+local ownSpecCacheTime = 0
+
+local function GetOwnSpecFromTalents()
+	local now = GetTime()
+	if ownSpecCache and (now - ownSpecCacheTime) < 5 then
+		return ownSpecCache
+	end
+	if not GetTalentInfoClassic then
+		return nil
+	end
+	local class = select(2, UnitClass("player"))
+	if not class then
+		return nil
+	end
+	local specList = ExRT.GDB.ClassSpecializationList and ExRT.GDB.ClassSpecializationList[class]
+	if not specList then
+		return nil
+	end
+	local maxSpec, maxPoints = 1, -1
+	for tab = 1, 3 do
+		local tabPoints = 0
+		for idx = 1, 31 do
+			local _, _, _, _, rank = GetTalentInfoClassic(tab, idx)
+			tabPoints = tabPoints + (rank or 0)
+		end
+		if tabPoints > maxPoints then
+			maxSpec, maxPoints = tab, tabPoints
+		end
+	end
+	local spec = specList[maxSpec]
+	ownSpecCache = spec
+	ownSpecCacheTime = now
+	return spec
+end
+
 local function GetSpecForName(name)
 	local spec = VMRT.ExCD2 and VMRT.ExCD2.gnGUIDs and VMRT.ExCD2.gnGUIDs[name]
-	if not spec then
+	if not spec or spec == 0 then
 		local data = ExRT.A.Inspect and ExRT.A.Inspect.db.inspectDB[name]
 		spec = data and data.spec
+	end
+	if (not spec or spec == 0) and name == ExRT.SDB.charName then
+		spec = GetOwnSpecFromTalents()
 	end
 	return spec
 end
@@ -545,6 +584,9 @@ function module.options:Load()
 			VMRT.Timers.useDPT = true
 		else
 			VMRT.Timers.useDPT = nil
+		end
+		if ExRT.A.MarksBar and ExRT.A.MarksBar.options and ExRT.A.MarksBar.options.UpdatePullEditBoxDPTState then
+			ExRT.A.MarksBar.options:UpdatePullEditBoxDPTState()
 		end
 	end):Shown(ExRT.isLK)
 

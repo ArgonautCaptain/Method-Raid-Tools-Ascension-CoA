@@ -328,6 +328,7 @@ L.MarksBarVertical = "Вертикально"
 L.MarksBarReverse = "Обратный порядок"
 L.MarksBarTimerLeftClick = "ЛКМ"
 L.MarksBarTimerRightClick = "ПКМ"
+L.MarksBarTimerDPTDisabled = "Динамический таймер атаки активен"
 L.MarksBarShowOnHover = "Показывать только при наведении"
 L.MarksBarDisableWOAssist = "Отключить без роли лидера рейда или помощника"
 
