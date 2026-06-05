@@ -7000,7 +7000,7 @@ do
 	function module.main.UNIT_DIED(_,_,_,destGUID,destName,destFlags)
 		if destName then
 			local _,class = UnitClass(destName)
-			if class == "SHAMAN" then
+			if class == "SHAMAN" and _db.spell_ReincarnationFix then
 				_db.spell_ReincarnationFix[destName] = true
 			end
 
@@ -7048,14 +7048,14 @@ do
 			local who = (destName and destName ~= "" and destName ~= sourceName) and destName or nil
 			StartResurrectCD(sourceName, spellID, spellName, who)
 		end
-		if destName and _db.spell_ReincarnationFix[destName] then
+		if destName and _db.spell_ReincarnationFix and _db.spell_ReincarnationFix[destName] then
 			_db.spell_ReincarnationFix[destName] = nil
 		end
 	end
 
 	function module.main:UNIT_FLAGS(unitID)
 		local name = UnitCombatlogname(unitID)
-		if _db.spell_ReincarnationFix[name] and not UnitIsDead(unitID) then
+		if name and _db.spell_ReincarnationFix and _db.spell_ReincarnationFix[name] and not UnitIsDead(unitID) then
 			if not UnitIsGhost(unitID) then
 				local hp = UnitHealth(unitID) / max(UnitHealthMax(unitID),1)
 				if hp < 0.45 then

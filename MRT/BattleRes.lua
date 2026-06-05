@@ -258,6 +258,8 @@ function module:Enable()
 		module:ResetStates()
 		module.frame:Show()
 		module.frame:SetMovable(true)
+	else
+		module.frame:SetMovable(false)
 	end
 end
 function module:Disable()
@@ -269,7 +271,7 @@ function module:Disable()
 end
 if ExRT.isWotLKOnly then
 	function module.main.COMBAT_LOG_EVENT_UNFILTERED(_, eventType, _, sourceGUID, sourceName, _, _, _, _, _, _, spellID)
-		if eventType ~= "SPELL_CAST_SUCCESS" then return end
+		if eventType ~= "SPELL_CAST_SUCCESS" and eventType ~= "SPELL_RESURRECT" then return end
 		if not REBIRTH_RANKS[spellID] then return end
 		NoteRebirthCast(sourceGUID, sourceName)
 	end

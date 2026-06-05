@@ -6,6 +6,25 @@ local GetItemInfo, GetItemInfoInstant  = C_Item and C_Item.GetItemInfo or GetIte
 local module = ExRT:New("LootHistory",ExRT.L.LootHistory)
 local ELib,L = ExRT.lib,ExRT.L
 
+local ITEM_QUALITY_COLOR_RARITY = {
+	["9d9d9d"] = 0,
+	["ffffff"] = 1,
+	["1eff00"] = 2,
+	["0070dd"] = 3,
+	["a335ee"] = 4,
+	["ff8000"] = 5,
+	["e6cc80"] = 6,
+}
+local function GetLootRarity(itemLink, itemLinkShort)
+	local _, _, rarity = GetItemInfo(itemLinkShort or itemLink)
+	if rarity then return rarity end
+	if type(itemLink) == "string" then
+		local hex = itemLink:match("|c%x%x(%x%x%x%x%x%x)")
+		if hex then return ITEM_QUALITY_COLOR_RARITY[hex:lower()] end
+	end
+	return nil
+end
+
 module.db.allowedDiff = {
 	[14] = true,
 	[15] = true,
@@ -261,8 +280,56 @@ local function CanonicalEncounterName(encounterID, fallback)
 	return fallback
 end
 
+local bossNameToID
+local subzoneMap
+local function BuildSubzoneLookups()
+	local D = ExRT.Data
+	if not D or not D.SubzoneTextToBossID then return false end
+	bossNameToID = {}
+	if ExRT.L and ExRT.L.bossName then
+		for id, name in pairs(ExRT.L.bossName) do
+			if type(name) == "string" then
+				bossNameToID[name] = id
+			end
+		end
+	end
+	subzoneMap = {}
+	for _, localeTable in pairs(D.SubzoneTextToBossID) do
+		if type(localeTable) == "table" then
+			for roomText, boss in pairs(localeTable) do
+				if subzoneMap[roomText] == nil then
+					subzoneMap[roomText] = boss
+				end
+			end
+		end
+	end
+	return true
+end
+
+local function EncounterIDFromSubzone(zoneText)
+	if not subzoneMap and not BuildSubzoneLookups() then return nil end
+	if not zoneText or zoneText == "" then return nil end
+	local boss = subzoneMap[zoneText]
+	if not boss then return nil end
+	return type(boss) == "number" and boss or bossNameToID[boss]
+end
+
+local function CorrectEncounterIDBySubzone(prevID)
+	local zoneText = GetSubZoneText and GetSubZoneText()
+	local curID = EncounterIDFromSubzone(zoneText)
+	if not curID or curID == prevID then return prevID end
+	if not prevID or prevID == 0 then
+		return curID
+	end
+	if module.db.prevEncounterSubzone and module.db.prevEncounterSubzone ~= zoneText then
+		return curID
+	end
+	return prevID
+end
+
 function module.main:ENCOUNTER_END(encounterID, encounterName)
 	module.db.prevEncounterID = encounterID
+	module.db.prevEncounterSubzone = GetSubZoneText and GetSubZoneText()
 	if ExRT.isClassic and encounterID and encounterID ~= 0 then
 		local canonical = CanonicalEncounterName(encounterID, encounterName)
 		if canonical and canonical ~= "" then
@@ -274,6 +341,7 @@ end
 
 function module.main:ENCOUNTER_START(encounterID, encounterName)
 	module.db.prevEncounterID = encounterID
+	module.db.prevEncounterSubzone = GetSubZoneText and GetSubZoneText()
 	if encounterID and encounterID ~= 0 then
 		local canonical = CanonicalEncounterName(encounterID, encounterName)
 		if canonical and canonical ~= "" then
@@ -332,7 +400,7 @@ local function ShouldDedupe(playerName, itemId)
 	local key = playerName .. ":" .. itemId
 	local now = GetTime()
 	local prev = lastLoot[key]
-	if prev and (now - prev) < 5 then return true end
+	if prev and (now - prev) < 0.5 then return true end
 	lastLoot[key] = now
 	if (lastLoot.__n or 0) > 50 then
 		for k, v in pairs(lastLoot) do
@@ -375,7 +443,8 @@ function module.main:CHAT_MSG_LOOT(msg)
 	end
 
 	local _, _, itemRarity = GetItemInfo(itemLinkShort)
-	if not itemRarity or itemRarity < 4 then
+	itemRarity = itemRarity or GetLootRarity(itemLink, itemLinkShort)
+	if itemRarity and itemRarity < 4 then
 		return
 	end
 
@@ -420,6 +489,11 @@ function module.main:CHAT_MSG_LOOT(msg)
 				VMRT.LootHistory.bossNames[encounterID] = fight.encounterName
 			end
 		end
+	end
+
+	local subzoneID = CorrectEncounterIDBySubzone(encounterID)
+	if subzoneID and subzoneID ~= encounterID then
+		encounterID = subzoneID
 	end
 
 	VMRT.LootHistory.instanceNames[instanceID or 0] = instanceName
