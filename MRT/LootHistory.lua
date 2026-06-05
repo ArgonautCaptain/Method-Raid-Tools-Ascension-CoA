@@ -314,6 +314,44 @@ local function EncounterIDFromSubzone(zoneText)
 	return type(boss) == "number" and boss or bossNameToID[boss]
 end
 
+local FUNCTIONAL_BOSS_NAMES
+local function BuildFunctionalBossNames()
+	if FUNCTIONAL_BOSS_NAMES then return FUNCTIONAL_BOSS_NAMES end
+	FUNCTIONAL_BOSS_NAMES = {}
+	if ExRT.L and ExRT.L.bossName then
+		for id, name in pairs(ExRT.L.bossName) do
+			if type(id) == "number" and type(name) == "string" and name ~= "" and name ~= tostring(id) then
+				FUNCTIONAL_BOSS_NAMES[name] = id
+			end
+		end
+	end
+	return FUNCTIONAL_BOSS_NAMES
+end
+
+local function FindEncounterIDByName(name)
+	if not name or type(name) ~= "string" then return nil end
+	BuildFunctionalBossNames()
+	return FUNCTIONAL_BOSS_NAMES[name]
+end
+
+local SHARED_SUBZONE_INSTANCES = {
+	[649] = true,
+	[631] = true,
+	[533] = true,
+	[548] = true,
+	[550] = true,
+	[534] = true,
+	[564] = true,
+	[568] = true,
+	[580] = true,
+	[532] = true,
+	[409] = true,
+	[469] = true,
+	[531] = true,
+	[509] = true,
+	[309] = true,
+}
+
 local function CorrectEncounterIDBySubzone(prevID)
 	local zoneText = GetSubZoneText and GetSubZoneText()
 	local curID = EncounterIDFromSubzone(zoneText)
@@ -324,10 +362,28 @@ local function CorrectEncounterIDBySubzone(prevID)
 	if module.db.prevEncounterSubzone and module.db.prevEncounterSubzone ~= zoneText then
 		return curID
 	end
-	return prevID
+	local _, _, _, _, _, _, _, instanceID = GetInstanceInfo()
+	if SHARED_SUBZONE_INSTANCES[instanceID] then
+		return prevID
+	end
+	return curID
+end
+
+local function CorrectEncounterIDByName(encounterID, encounterName)
+	if not encounterID or encounterID == 0 then return encounterID end
+	if not encounterName or type(encounterName) ~= "string" then return encounterID end
+	local nameFromID = ExRT.L.bossName[encounterID]
+	if type(nameFromID) ~= "string" or nameFromID == tostring(encounterID) then return encounterID end
+	if nameFromID == encounterName then return encounterID end
+	local idFromName = FindEncounterIDByName(encounterName)
+	if idFromName and idFromName ~= encounterID then
+		return idFromName
+	end
+	return encounterID
 end
 
 function module.main:ENCOUNTER_END(encounterID, encounterName)
+	encounterID = CorrectEncounterIDByName(encounterID, encounterName)
 	module.db.prevEncounterID = encounterID
 	module.db.prevEncounterSubzone = GetSubZoneText and GetSubZoneText()
 	if ExRT.isClassic and encounterID and encounterID ~= 0 then
@@ -340,6 +396,7 @@ function module.main:ENCOUNTER_END(encounterID, encounterName)
 end
 
 function module.main:ENCOUNTER_START(encounterID, encounterName)
+	encounterID = CorrectEncounterIDByName(encounterID, encounterName)
 	module.db.prevEncounterID = encounterID
 	module.db.prevEncounterSubzone = GetSubZoneText and GetSubZoneText()
 	if encounterID and encounterID ~= 0 then
@@ -481,6 +538,12 @@ function module.main:CHAT_MSG_LOOT(msg)
 	local classID = ExRT.GDB.ClassID[className or ""] or 0
 
 	local encounterID = module.db.prevEncounterID or 0
+
+	local subzoneID = CorrectEncounterIDBySubzone(encounterID)
+	if subzoneID and subzoneID ~= encounterID then
+		encounterID = subzoneID
+	end
+
 	if encounterID == 0 and _G.VMRT and VMRT.BossWatcher and VMRT.BossWatcher.currentFight then
 		local fight = VMRT.BossWatcher.currentFight
 		if type(fight) == "table" and fight.encounterID then
@@ -489,11 +552,6 @@ function module.main:CHAT_MSG_LOOT(msg)
 				VMRT.LootHistory.bossNames[encounterID] = fight.encounterName
 			end
 		end
-	end
-
-	local subzoneID = CorrectEncounterIDBySubzone(encounterID)
-	if subzoneID and subzoneID ~= encounterID then
-		encounterID = subzoneID
 	end
 
 	VMRT.LootHistory.instanceNames[instanceID or 0] = instanceName
