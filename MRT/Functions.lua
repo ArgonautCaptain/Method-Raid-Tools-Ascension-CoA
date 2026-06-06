@@ -1114,7 +1114,7 @@ function ExRT.F.IterateRoster(maxGroup,index)
 		subgroup = 1
 		name, _ = UnitName(unit)
 		name = name or ""
-		if _ then
+		if _ and _ ~= "" then
 			name = name .. "-" .. _
 		end
 		class, fileName = UnitClass(unit)
@@ -1580,6 +1580,20 @@ do
 		alertWindow.EditBox:SetFocus()
 		alertFunc = ExRT.NULLfunc
 	end
+end
+
+function ExRT.F.LinkText(parent,displayText,url,size)
+	local f = CreateFrame("Button",nil,parent)
+	local fs = ExRT.lib:Text(f,displayText,size or 12):Point("LEFT",0,0):Shadow()
+	fs:SetTextColor(0.40,0.70,1)
+	f:SetSize(math.max(fs:GetStringWidth()+4,10),(size or 12)+10)
+	f:SetScript("OnClick",function() ExRT.F.ShowText(url) end)
+	f:SetScript("OnEnter",function() fs:SetTextColor(0.65,0.85,1) end)
+	f:SetScript("OnLeave",function() fs:SetTextColor(0.40,0.70,1) end)
+	f.text = fs
+	f.SetLinkURL = function(self,u) url = u end
+	f.SetLinkText = function(self,t) self.text:SetText(t) self:SetWidth(math.max(self.text:GetStringWidth()+4,10)) end
+	return f
 end
 
 do

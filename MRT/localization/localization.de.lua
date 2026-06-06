@@ -897,7 +897,7 @@ L.MarksClear = "Zurücksetzen"
 PH.MarksTooltip = "Setztej auf Spieler in der Liste \"permanente\" marks\nVerfügbar nur für Mitglieder im Raid oder Gruppe"
 
 PH.LoggingEnable = "Aktiviere das Mitschneiden eines Kampflogs in den Zonen:"
-PH.LoggingHelp1 = "Log wird gespeichert in 'Logs\\WoWCombatLog.txt' im Spielverzeichnis. Du kannst die Logdatei hochladen zu einer speziellen Analyse Seite z.B.(ex www.warcraftlogs.com). Vergiss nicht, diese Datei nach jedem Raid / Hochladen zu löschen."
+PH.LoggingHelp1 = "Log wird gespeichert in 'Logs\\WoWCombatLog.txt' im Spielverzeichnis. Du kannst die Logdatei hochladen zu einer speziellen Analyse Seite z.B.(ex WoW-Logs.co.in). Vergiss nicht, diese Datei nach jedem Raid / Hochladen zu löschen."
 PH.LoggingStart = "MRT: Logaufzeichnung gestartet"
 PH.LoggingEnd = "MRT: Logaufzeichnung beendet"
 

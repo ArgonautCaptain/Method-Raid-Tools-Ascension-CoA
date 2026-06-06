@@ -1,19 +1,15 @@
 # Method Raid Tools (MRT) — WotLK 3.3.5a Backport
 
 A full backport of the **Method Raid Tools** addon from retail to **WoW 3.3.5a**
-(Wrath of the Lich King, build `12340`, interface `30300`). It also runs on
-TBC and Vanilla 3.3.5a-based private servers.
+(Wrath of the Lich King, build `12340`, interface `30300`).
 
 The codebase is a merge of two upstream sources:
 
 - **MRT 4840** — the last WotLK-era release of MRT.
 - **MRT 5240** — the current retail (modern) release of MRT.
 
-Retail features are layered on top of the WotLK base. Everything that still
-needs retail APIs is shimmed through `Compat335.lua`, so the same source tree
-loads cleanly on a 3.3.5a client without `LoadOutOfDate`.
+Retail features are layered on top of the WotLK base.
 
-> **Tested target:** WotLK 3.3.5a (12340) clients, including the
 > **Awesome WotLK** patched client (where extra retail APIs and events such
 > as `NAME_PLATE_UNIT_ADDED`, `C_NamePlate.*`, `C_VoiceChat.*` work natively).
 > The addon detects native APIs and skips its shims when they are present.
@@ -81,9 +77,9 @@ Every major retail MRT module has been ported and is enabled by default
   Anti-Magic Zone, etc.), Innervate, brez CDs, and any custom spell
   per-class. Includes Reminder-style highlighting on the player's
   nameplate when a watched CD is up.
-- **Battle Rezz (BattleRes)** — combat-rez tracker. WotLK has no
-  shared brez pool, but the panel still tracks per-class cooldown
-  state across the raid (Rebirth, Soulstone, Raise Ally) so the
+- **BattleRes** — combat-res tracker. WotLK has no
+  shared bres pool, but the panel still tracks per-class cooldown
+  state across the raid (Rebirth) so the
   raid leader knows who is up.
 - **Marks (Skull/Cross/etc. assignments)**, **MarksSimple**,
   **MarksBar** — marker assignment lists, the floating mark bar
@@ -136,14 +132,8 @@ Every major retail MRT module has been ported and is enabled by default
 
 - **WA Checker (WAChecker)** — version-check WeakAuras across the
   raid, see who has outdated / missing auras.
-- **Bindings** — keybind support for the modules above
-  (`/rt mark N`, world markers, mark bar toggle, etc.).
 - **Profiles** — export / import addon profiles between characters.
-- **Changelog** — in-game changelog window.
-- **BlizzFix / BossIconsPack / DiagonalGlyphAtlas / Options** —
-  shared infrastructure (Blizzard UI fixes, the boss-icon spritesheet
-  used by Note / VisNote / Reminder, the diagonal glyph atlas, the
-  options framework).
+
 
 ---
 
@@ -194,133 +184,136 @@ review.
 
 ---
 
-## Slash commands
+# Slash Commands
 
-The addon registers six aliases — they all do the same thing.
-Examples below use `/rt` for brevity.
+All commands accept any of these prefixes: `/rt`, `/exrt`, `/ert`, `/mrt`, `/raidtools`, `/methodraidtools`
 
-```
-/mrt   /rt   /exrt   /ert   /raidtools   /methodraidtools
-```
+## Core
 
-### Core
+| Command | Description |
+|---|---|
+| `/rt` | Open MRT options window |
+| `/rt set` | Open options window (alias) |
+| `/rt icon` | Toggle minimap icon |
+| `/rt getver` | Ask raid for MRT version |
+| `/rt getverg` | Ask guild for MRT version |
+| `/rt quit` | Disable MRT for session (until reload) |
+| `/rt profiler` | Open CPU profiling window |
+| `/rl` | Reload UI (registered by MRT) |
 
-| Command         | Effect                                              |
-| --------------- | --------------------------------------------------- |
-| `/rt`           | Open the MRT options window.                        |
-| `/rt set`       | Open the options window (alias).                    |
-| `/rt icon`      | Toggle the minimap icon.                            |
-| `/rt getver`    | Ask the raid for everyone's MRT version.            |
-| `/rt getverg`   | Same, but query the guild instead of the raid.      |
-| `/rt quit`      | Disable MRT for this session (until reload).        |
-| `/rt profiler`  | Open the CPU profiling window.                      |
-| `/rl`           | Reload UI (registered by MRT for convenience).      |
+## Note
 
-### Note
+| Command | Description |
+|---|---|
+| `/rt note` (`/rt n`) | Toggle on-screen note window |
+| `/rt editnote` | Open Notes tab in options |
+| `/rt note set <name>` | Switch to and broadcast saved note `<name>` |
+| `/rt note show <name>` | Add extra window for note `<name>` |
+| `/rt note timer` | Fire ENCOUNTER_START/ENCOUNTER_END for testing timers |
+| `/rt note starttimer <name>` | Start custom note timer |
+| `/rt note synctimer <name>` | Sync custom note timer with raid |
+| `/rt note phase <N>` | Advance note phase counter to N |
 
-| Command                          | Effect                                              |
-| -------------------------------- | --------------------------------------------------- |
-| `/rt note` *(or `/rt n`)*        | Toggle the on-screen note window.                   |
-| `/rt editnote`                   | Open the Notes tab in options.                      |
-| `/rt note set <name>`            | Switch to & broadcast the note saved as `<name>`.   |
-| `/rt note show <name>`           | Add an extra window for note `<name>`.              |
-| `/rt note timer`                 | Manually fire `ENCOUNTER_START` / `ENCOUNTER_END`   |
-|                                  | (useful for testing dynamic timer markup).          |
-| `/rt note starttimer <name>`     | Start a custom note timer.                          |
-| `/rt note synctimer <name>`      | Sync a custom note timer with the raid.             |
-| `/rt note phase <N>`             | Manually advance the note phase counter to N.       |
+## Timers
 
-### Timers
+| Command | Description |
+|---|---|
+| `/rt pull` | 10-second pull timer |
+| `/rt pull <X>` | X-second pull timer |
+| `/rt afk <X>` | X-minute break timer (0 = cancel) |
+| `/rt timer <NAME> <X>` | Custom raid timer |
+| `/rt mytimer <X>` | Local countdown to X seconds |
+| `/rt dpt` | Dynamic Pull Timer (spec-optimal time) |
+| `/rt cleutimer <event> <id> <t>` | CLEU-driven timer (advanced) |
 
-| Command                          | Effect                                              |
-| -------------------------------- | --------------------------------------------------- |
-| `/rt pull` *(no arg)*            | 10-second pull timer.                               |
-| `/rt pull <X>`                   | X-second pull timer.                                |
-| `/rt afk <X>`                    | X-minute AFK / break timer (0 = cancel).            |
-| `/rt timer <NAME> <X>`           | Custom raid timer.                                  |
-| `/rt mytimer <X>`                | Set the local countdown frame to X seconds.         |
-| `/rt dpt`                        | Dynamic Pull Timer (uses your spec's optimal time). |
-| `/rt cleutimer <event> <id> <t>` | CLEU-driven timer (advanced).                       |
+## Marks / World Markers
 
-### Marks / world markers
+| Command | Description |
+|---|---|
+| `/rt mark 1..4` | Apply marks group 1-4 (configured in MarksSimple) |
+| `/rt mark 5` | Clear all marks |
+| `/rt mb` / `/rt mm` | Toggle floating Marks Bar |
 
-| Command          | Effect                                                       |
-| ---------------- | ------------------------------------------------------------ |
-| `/rt mark 1..4`  | Apply marks group 1..4 (configured in MarksSimple).          |
-| `/rt mark 5`     | Clear all marks.                                             |
-| `/rt mb` / `/rt mm` | Toggle the floating Marks Bar.                            |
+## Raid Groups
 
-### Raid groups / invite tool
+| Command | Description |
+|---|---|
+| `/rt raidgroup <name>` | Apply saved raid layout `<name>` |
+| `/rt inv` | Run autoinvite |
+| `/rt dis` | Disband raid |
+| `/rt reinv` | Disband + reinvite raid |
+| `/rt invlist <N>` | Invite from predefined list N |
 
-| Command                       | Effect                                          |
-| ----------------------------- | ----------------------------------------------- |
-| `/rt raidgroup <name>`        | Apply saved raid layout `<name>`.               |
-| `/rt inv`                     | Run autoinvite.                                 |
-| `/rt dis`                     | Disband the raid.                               |
-| `/rt reinv`                   | Disband + reinvite raid.                        |
-| `/rt invlist <N>`             | Invite from predefined list N.                  |
+## Raid Check / Consumables
 
-### Raid check / consumables
+| Command | Description |
+|---|---|
+| `/rt check` | Open raid buffs/consumables window |
+| `/rt food` | Print missing food locally |
+| `/rt foodchat` | Announce missing food to chat |
+| `/rt flask` | Print missing flasks locally |
+| `/rt flaskchat` | Announce missing flasks to chat |
+| `/rt potion` | Print missing potion users |
+| `/rt potionchat` | Announce missing potion users |
+| `/rt check r` / `rc` | Check runes (DK runeforges/runescrolls) |
+| `/rt check v` / `vc` | Check Vantus runes |
+| `/rt check b` / `bc` | Check raid buffs |
 
-| Command                | Effect                                               |
-| ---------------------- | ---------------------------------------------------- |
-| `/rt check`            | Open the raid buffs / consumables window.            |
-| `/rt food`             | Print missing food locally.                          |
-| `/rt foodchat`         | Announce missing food to chat.                       |
-| `/rt flask`            | Print missing flasks locally.                        |
-| `/rt flaskchat`        | Announce missing flasks to chat.                     |
-| `/rt potion`           | Print missing potion users (if PotionCheck is on).   |
-| `/rt potionchat`       | Announce missing potion users.                       |
-| `/rt check r` / `rc`   | Runes (DK runeforges / runescrolls).                 |
-| `/rt check v` / `vc`   | Vantus runes.                                        |
-| `/rt check b` / `bc`   | Raid buffs.                                          |
+## Raid Attendance
 
-### Raid attendance
+| Command | Description |
+|---|---|
+| `/rt roster` | Save current raid roster snapshot |
 
-| Command         | Effect                                            |
-| --------------- | ------------------------------------------------- |
-| `/rt roster`    | Save the current raid roster snapshot.            |
+## Raid Cooldowns (ExCD2)
 
-### Raid Cooldowns (ExCD2)
+| Command | Description |
+|---|---|
+| `/rt cd` | Toggle Raid CD bars on/off |
+| `/rt runcd <id> <name>` | Force-trigger a CD (debug) |
+| `/rt resetcd <id> <name>` | Reset a CD to ready (debug) |
+| `/cddebug` | Toggle CD debug logging |
 
-| Command                    | Effect                                        |
-| -------------------------- | --------------------------------------------- |
-| `/rt cd`                   | Toggle the Raid CD bars on/off.               |
-| `/rt runcd <id> <name>`    | Force-trigger a CD line (debug).              |
-| `/rt resetcd <id> <name>`  | Reset a CD line to ready (debug).             |
+## Inspect Viewer
 
-### Inspect Viewer
+| Command | Description |
+|---|---|
+| `/rt raid` | Open Inspect Viewer (gear/talents) |
 
-| Command         | Effect                                            |
-| --------------- | ------------------------------------------------- |
-| `/rt raid`      | Open the Inspect Viewer (gear / talents).         |
+## Loot Link
 
-### Loot Link
+| Command | Description |
+|---|---|
+| `/rt loot` | Link loot window contents to chat |
 
-| Command         | Effect                                            |
-| --------------- | ------------------------------------------------- |
-| `/rt loot`      | Link the contents of the loot window to chat.     |
+## Fight Log (BossWatcher)
 
-### Fight Log (BossWatcher)
+| Command | Description |
+|---|---|
+| `/rt fl` (`/rt bw`) | Open Fight Log window |
+| `/rt fl s` / `start` | Manually start logging current fight |
+| `/rt fl e` / `end` | Manually stop logging |
+| `/rt fl c` / `clear` | Clear in-memory fight buffer |
+| `/rt fl reset` | Wipe saved-fights buffer |
+| `/rt fl save` | Save current fights to SavedVariables |
+| `/rt fl phase` | Advance active phase counter |
+| `/rt fl allenergy` | Toggle "log all energy" debug mode |
 
-| Command                                     | Effect                                  |
-| ------------------------------------------- | --------------------------------------- |
-| `/rt fl` *(or `/rt bw`)*                    | Open the Fight Log window.              |
-| `/rt fl s` / `/rt fl start`                 | Manually start logging the current fight. |
-| `/rt fl e` / `/rt fl end`                   | Manually stop logging.                  |
-| `/rt fl c` / `/rt fl clear`                 | Clear the in-memory fight buffer.       |
-| `/rt fl reset`                              | Wipe the saved-fights buffer (`SAVED_DATA`). |
-| `/rt fl save`                               | Save current fights into SavedVariables. |
-| `/rt fl phase`                              | Manually advance the active phase counter. |
-| `/rt fl allenergy`                          | Toggle "log all energy" mode (debug).    |
+## Reminder
 
-### Reminder
+| Command | Description |
+|---|---|
+| `/rt rem ver` | Query raid for Reminder DB version |
 
-| Command         | Effect                                              |
-| --------------- | --------------------------------------------------- |
-| `/rt rem ver`   | Query the raid for everyone's Reminder DB version.  |
+## Debug
 
----
+| Command | Description |
+|---|---|
+| `/mrtcleu on` | Print every SPELL_CAST_SUCCESS, SPELL_AURA_APPLIED, SPELL_CAST_START |
+| `/mrtcleu off` | Disable sniffer, print summary |
+| `/mrtcleu status` | Show CLEU dispatcher wiring status |
+| `/rt profiler` | CPU profiler — sortable by module/function |
+| `/cdtalread` | Talent broadcast debug |
 
 ## Debug commands
 

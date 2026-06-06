@@ -1,6 +1,9 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+v5.1.1-WotLK335a
+* Fixes
+
 v5.1.0-WotLK335a
 * Fixes
 * Timers: Dynamic timers enabled for only left click on Marks Bar (right click will show static timers as before)

@@ -569,7 +569,8 @@ OptionsFrame.versionLeft = ELib:Text(OptionsFrame,L.setver,12):Size(150,25):Poin
 OptionsFrame.versionRight = ELib:Text(OptionsFrame,(MRT.VString or ("v"..tostring(MRT.V)))..(MRT.T == "R" and "" or " "..MRT.T),12):Size(520,25):Point(135,-215):Color():Shadow():Top()
 
 OptionsFrame.contactLeft = ELib:Text(OptionsFrame,L.setcontact,12):Size(150,25):Point(15,-235):Shadow():Top()
-OptionsFrame.contactRight = ELib:Text(OptionsFrame,"Author: Jdi",12):Size(520,25):Point(135,-235):Color():Shadow():Top()
+OptionsFrame.contactRight = ExRT.F.LinkText(OptionsFrame,"Discord - Exo Jdi","https://discord.gg/KdXVaEZPH9",12)
+OptionsFrame.contactRight:SetPoint("TOPLEFT",OptionsFrame,"TOPLEFT",135,-231)
 
 OptionsFrame.thanksLeft = ELib:Text(OptionsFrame,L.SetThanks,12):Size(150,25):Point(15,-255):Shadow():Top()
 OptionsFrame.thanksRight = ELib:Text(OptionsFrame,"Phanx, funkydude, Shurshik, Kemayo, Guillotine, Rabbit, fookah, diesal2010, Felix, yuk6196, martinkerth, Gyffes, Cubetrace, tigerlolol, Morana, SafeteeWoW, Dejablue, Wollie, eXochron, Firehead94, Mitalie, m33shoq",12):Size(540,0):Point(135,-255):Color():Shadow():Top()
@@ -640,6 +641,8 @@ local function UpdateVersionCheck()
 	local list = OptionsFrame.VersionCheck.L
 	wipe(list)
 
+	MRT.RaidVersions[UnitName("player")] = MRT.V
+
 	for _, name, _, class in MRT.F.IterateRoster do
 		list[#list + 1] = {
 			"|c"..MRT.F.classColor(class or "?")..name,
@@ -658,6 +661,12 @@ local function UpdateVersionCheck()
 					ver = v
 					break
 				end
+			end
+		end
+		if not ver then
+			local shortName = name:match("^(.-)%-")
+			if shortName then
+				ver = MRT.RaidVersions[shortName]
 			end
 		end
 		if not ver then

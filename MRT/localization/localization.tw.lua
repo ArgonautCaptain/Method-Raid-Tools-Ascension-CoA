@@ -958,7 +958,7 @@ L.MarksClear = "清空"
 L.MarksTooltip = "為對應名單鎖定標記。\n只作用於隊伍或團隊成員。"
 
 L.LoggingEnable = "在以下區域中啟用內建戰鬥記錄:"
-L.LoggingHelp1 = "戰鬥記錄保存於Logs\\WoWCombatLog.txt中。你可以上傳記錄至專門的分析網站(如 www.warcraftlogs.com)。別忘記在每次出團後上傳和刪除此檔案，避免檔案過大。"
+L.LoggingHelp1 = "戰鬥記錄保存於Logs\\WoWCombatLog.txt中。你可以上傳記錄至專門的分析網站(如 WoW-Logs.co.in)。別忘記在每次出團後上傳和刪除此檔案，避免檔案過大。"
 L.LoggingStart = "MRT: 開始內建戰鬥記錄"
 L.LoggingEnd = "MRT: 停止內建戰鬥記錄"
 

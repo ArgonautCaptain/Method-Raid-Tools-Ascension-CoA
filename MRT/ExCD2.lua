@@ -3,8 +3,7 @@ if _G.MRT_CD_DEBUG == nil then _G.MRT_CD_DEBUG = false end
 local function dprint(...) if _G.MRT_CD_DEBUG then print(...) end end
 SLASH_MRTCDDEBUG1 = "/cddebug"
 SlashCmdList["MRTCDDEBUG"] = function() _G.MRT_CD_DEBUG = not _G.MRT_CD_DEBUG; print("|cff33ff99[MRT]|r CD debug:", _G.MRT_CD_DEBUG and "ON" or "OFF") end
-SLASH_MRTREZDEBUG1 = "/rezdebug"
-SlashCmdList["MRTREZDEBUG"] = function() _G.MRT_REZ_DEBUG = not _G.MRT_REZ_DEBUG; print("|cff33ff99[MRT]|r Rez debug:", _G.MRT_REZ_DEBUG and "ON" or "OFF") end
+
 local GetTime, IsEncounterInProgress, RAID_CLASS_COLORS, GetInstanceInfo, GetSpellCharges, SecondsToTime, IsInJailersTower = GetTime, IsEncounterInProgress, RAID_CLASS_COLORS, GetInstanceInfo, GetSpellCharges, SecondsToTime, IsInJailersTower
 local string_gsub, wipe, tonumber, pairs, ipairs, string_trim, format, floor, ceil, abs, type, sort, select, Enum = string.gsub, table.wipe, tonumber, pairs, ipairs, string.trim, format, floor, ceil, abs, type, sort, select, Enum
 if not string_trim then
@@ -49,7 +48,7 @@ end
 local LibDeflate = LibStub:GetLibrary("LibDeflate")
 module._C = {}
 module.db.spellDB = {}
-module.db.spell_isTalentCD = {[17116]=true,[50334]=true,[61336]=true,[33831]=true,[18562]=true,[50516]=true,[12975]=true,[12809]=true,[46924]=true,[12292]=true,[12328]=true,[60970]=true,[46968]=true,[11958]=true,[12472]=true,[31687]=true,[12042]=true,[12043]=true,[11129]=true,[31661]=true,[11426]=true,[44572]=true,[64205]=true,[31821]=true,[20066]=true,[31842]=true,[20216]=true,[31935]=true,[16190]=true,[51490]=true,[16166]=true,[30823]=true,[55198]=true,[16188]=true,[51533]=true,[30283]=true,[18708]=true,[47193]=true,[17877]=true,[19577]=true,[19574]=true,[23989]=true,[34490]=true,[19386]=true,[724]=true,[10060]=true,[47788]=true,[33206]=true,[47585]=true,[64044]=true,[15487]=true,[14751]=true,[47540]=true,[34861]=true,[13750]=true,[51690]=true,[14185]=true,[13877]=true,[36554]=true,[14177]=true,[51052]=true,[49028]=true,[49016]=true,[55233]=true,[49222]=true,[49206]=true,[49203]=true,[49039]=true,[51271]=true,[48982]=true,[49005]=true,[66233]=true,[31230]=true,}
+module.db.spell_isTalentCD = {[17116]=true,[50334]=true,[61336]=true,[33831]=true,[18562]=true,[50516]=true,[12975]=true,[12809]=true,[46924]=true,[12292]=true,[12328]=true,[60970]=true,[46968]=true,[11958]=true,[12472]=true,[31687]=true,[12042]=true,[12043]=true,[11129]=true,[31661]=true,[11426]=true,[44572]=true,[64205]=true,[31821]=true,[20066]=true,[31842]=true,[20216]=true,[31935]=true,[16190]=true,[51490]=true,[16166]=true,[30823]=true,[55198]=true,[16188]=true,[51533]=true,[30283]=true,[18708]=true,[47193]=true,[17877]=true,[19577]=true,[19574]=true,[23989]=true,[34490]=true,[19386]=true,[724]=true,[10060]=true,[47788]=true,[33206]=true,[47585]=true,[64044]=true,[15487]=true,[14751]=true,[47540]=true,[34861]=true,[13750]=true,[51690]=true,[14185]=true,[13877]=true,[36554]=true,[14177]=true,[51052]=true,[49028]=true,[49016]=true,[55233]=true,[49222]=true,[49206]=true,[49203]=true,[49039]=true,[51271]=true,[48982]=true,[49005]=true,[66233]=true,[31230]=true,[54428]=true,[48707]=true,[45529]=true,}
 module.db.Cmirror = module._C
 module.db.dbCountDef = #module.db.spellDB
 module.db.findspecspells = {
@@ -3347,7 +3346,7 @@ do
 				data.vis = true
 
 				local unitRole = data.checkRole and ExRT.F.GetUnitRaidRole and ExRT.F.GetUnitRaidRole(name)
-				local col = (data.checkRole and unitRole and CDECol[spellID..";"..unitRole]) or CDECol[spellID..";"..(unitSpecID-3)] or CDECol[spellID..";1"] or (unitSpecID == 4 and FindAnyUserColumn(CDECol, spellID)) or def_col[spellID..";"..(unitSpecID-3)] or def_col[spellID..";1"] or db[3] or 1
+				local col = (data.checkRole and unitRole and CDECol[spellID..";"..unitRole]) or CDECol[spellID..";"..(unitSpecID-3)] or CDECol[spellID..";1"] or FindAnyUserColumn(CDECol, spellID) or def_col[spellID..";"..(unitSpecID-3)] or def_col[spellID..";1"] or db[3] or 1
 				if type(col) ~= "number" or col < 1 or col > module.db.maxColumns then col = 1 end
 				data.column = col
 
@@ -4252,7 +4251,7 @@ local function UpdateRoster()
 						local uSpecID = _db.specInDBase[_specID] or 4
 						local checkRaidRole = (VMRT.ExCD2.CDECol[SpellID..";HEALER"] or VMRT.ExCD2.CDECol[SpellID..";TANK"] or VMRT.ExCD2.CDECol[SpellID..";DAMAGER"]) and true or false
 						local unitRaidRole = checkRaidRole and ExRT.F.GetUnitRaidRole and ExRT.F.GetUnitRaidRole(name)
-						local spellColumn = (checkRaidRole and unitRaidRole and VMRT.ExCD2.CDECol[SpellID..";"..unitRaidRole]) or VMRT.ExCD2.CDECol[SpellID..";"..(uSpecID-3)] or VMRT.ExCD2.CDECol[SpellID..";1"] or (uSpecID == 4 and FindAnyUserColumn(VMRT.ExCD2.CDECol, SpellID)) or _db.def_col[SpellID..";"..(uSpecID-3)] or _db.def_col[SpellID..";1"] or spellData[3] or 1
+						local spellColumn = (checkRaidRole and unitRaidRole and VMRT.ExCD2.CDECol[SpellID..";"..unitRaidRole]) or VMRT.ExCD2.CDECol[SpellID..";"..(uSpecID-3)] or VMRT.ExCD2.CDECol[SpellID..";1"] or FindAnyUserColumn(VMRT.ExCD2.CDECol, SpellID) or _db.def_col[SpellID..";"..(uSpecID-3)] or _db.def_col[SpellID..";1"] or spellData[3] or 1
 
 						local getSpellColumn = module.frame.colFrame[spellColumn]
 						local prior = nil
@@ -5673,15 +5672,6 @@ do
 		_G._MRT_CD_LAST_EVENT = event
 		_G._MRT_CD_LAST_SRC = sourceName
 		_G._MRT_CD_LAST_SPELL = spellID
-		if _G.MRT_REZ_DEBUG and (spellID == 20484 or spellID == 20739 or spellID == 20742 or spellID == 20747 or spellID == 20748 or spellID == 26994 or spellID == 48477 or spellName == "Rebirth" or spellName == "Возрождение") then
-			local CDList = _db.cdsNav
-			local bucket = sourceName and CDList[sourceName]
-			print(string.format("|cff33ff99[MRT/Rez]|r CLEU ev=%s src=%s dst=%s spell=%s(%s) bucket=%s line=%s handler=%s",
-				tostring(event),tostring(sourceName),tostring(destName),tostring(spellName),tostring(spellID),
-				bucket and "yes" or "NIL",
-				bucket and (bucket[spellID] or bucket[spellName]) and "HIT" or "miss",
-				eventsView[event] and "Y" or "n"))
-		end
 		if ExRT.isClassic and event == "SPELL_CAST_SUCCESS" and sourceName then
 			_G._MRT_CD_DEBUG_SEEN = (_G._MRT_CD_DEBUG_SEEN or 0) + 1
 		end
@@ -7020,9 +7010,9 @@ do
 	local function StartResurrectCD(srcName, spellID, spellName, targetName)
 		if not srcName then return end
 		local nav = _db.cdsNav[srcName]
-		if not nav then if _G.MRT_REZ_DEBUG then print("|cff33ff99[MRT/Rez]|r SRC: no nav "..tostring(srcName)) end return end
+		if not nav then return end
 		local line = nav[spellID] or (spellName and nav[spellName])
-		if not line then if _G.MRT_REZ_DEBUG then print("|cff33ff99[MRT/Rez]|r SRC: no line "..tostring(srcName).." sid="..tostring(spellID)) end return end
+		if not line then return end
 		local now = GetTime()
 		if line._lastRezStart and (now - line._lastRezStart) < 2 then
 			if targetName and line.targetName ~= targetName then
@@ -7031,16 +7021,11 @@ do
 				local _,tc = UnitClass(targetName)
 				line.targetClass = tc
 				if line.bar and line.bar.data == line then line.bar:UpdateStatus() end
-				if _G.MRT_REZ_DEBUG then print("|cff33ff99[MRT/Rez]|r SRC: DEDUP+target "..tostring(srcName).." -> "..tostring(targetName)) end
-			elseif _G.MRT_REZ_DEBUG then
-				print("|cff33ff99[MRT/Rez]|r SRC: DEDUP "..tostring(srcName).." dt="..string.format("%.1f",now-line._lastRezStart))
 			end
 			return
 		end
 		line._lastRezStart = now
-		if _G.MRT_REZ_DEBUG then print("|cff33ff99[MRT/Rez]|r SRC: ->CLEUstartCD "..tostring(srcName).." vis_before="..tostring(line.vis)) end
 		module.CLEUstartCD(line, targetName)
-		if _G.MRT_REZ_DEBUG then print("|cff33ff99[MRT/Rez]|r SRC: after lastUse="..tostring(line.lastUse).." cd="..tostring(line.cd).." vis="..tostring(line.vis)) end
 	end
 	module.main.StartResurrectCD = StartResurrectCD
 	function module.main.SPELL_RESURRECT(timestamp,event,hideCaster,sourceGUID,sourceName,sourceFlags,sourceFlags2,destGUID,destName,destFlags,destFlags2,spellID,spellName)

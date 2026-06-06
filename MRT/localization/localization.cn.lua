@@ -1044,7 +1044,7 @@ PH.MarksTooltip = "为下列玩家设置\"常驻\"标记\n只能作用于团队�
 PH.MarksMultiplyNames = "允许输入多个名称，以空格或逗号分隔"
 
 PH.LoggingEnable = "在下列区域中启用战斗日志："
-PH.LoggingHelp1 = "战斗日志将保存到游戏安装目录'Logs\\WoWCombatLog.txt'。你可以将战斗日志文件上传到数据分析网站（ex www.warcraftlogs.com）. 建议每次团队活动后上传并及时删除战斗日志文件以避免占用过多磁盘空间。"
+PH.LoggingHelp1 = "战斗日志将保存到游戏安装目录'Logs\\WoWCombatLog.txt'。你可以将战斗日志文件上传到数据分析网站（ex WoW-Logs.co.in）. 建议每次团队活动后上传并及时删除战斗日志文件以避免占用过多磁盘空间。"
 PH.LoggingStart = "MRT： 战斗日志记录开始"
 PH.LoggingEnd = "MRT： 战斗日志记录结束"
 

@@ -19574,6 +19574,12 @@ local CLEUIsHistoryEvent = {
 	["SPELL_AURA_APPLIED"] = true,
 	["SPELL_AURA_REMOVED"] = true,
 }
+local UnitTokenFromGUID = UnitTokenFromGUID
+local function CLEUMarkByGUID(guid)
+	if not guid then return nil end
+	local unit = (UnitTokenFromGUID and UnitTokenFromGUID(guid)) or module.db.nameplateGUIDToUnit[guid]
+	return unit and GetRaidTargetIndex(unit) or nil
+end
 function module.main.COMBAT_LOG_EVENT_UNFILTERED(timestamp,event,hideCaster,sourceGUID,sourceName,sourceFlags,sourceFlags2,destGUID,destName,destFlags,destFlags2,spellID,spellName,school,arg1,arg2)
 	local triggers = tCOMBAT_LOG_EVENT_UNFILTERED[event]
 	if triggers then
@@ -19589,11 +19595,11 @@ function module.main.COMBAT_LOG_EVENT_UNFILTERED(timestamp,event,hideCaster,sour
 				(not triggerData.spellName or triggerData.spellName == spellName) and
 				(not trigger.DsourceName or sourceName and trigger.DsourceName[sourceName]) and
 				(not trigger.DsourceID or trigger.DsourceID(sourceGUID)) and
-				(not triggerData.sourceMark or module.datas.markToIndex[bit_band(sourceFlags2, COMBATLOG_OBJECT_RAIDTARGET_MASK)] == triggerData.sourceMark) and
+				(not triggerData.sourceMark or CLEUMarkByGUID(sourceGUID) == triggerData.sourceMark) and
 				(not triggerData.sourceUnit or module:CheckUnit(triggerData.sourceUnit,sourceGUID,trigger)) and
 				(not trigger.DtargetName or destName and trigger.DtargetName[destName]) and
 				(not trigger.DtargetID or trigger.DtargetID(destGUID)) and
-				(not triggerData.targetMark or module.datas.markToIndex[bit_band(destFlags2, COMBATLOG_OBJECT_RAIDTARGET_MASK)] == triggerData.targetMark) and
+				(not triggerData.targetMark or CLEUMarkByGUID(destGUID) == triggerData.targetMark) and
 				(not triggerData.targetUnit or module:CheckUnit(triggerData.targetUnit,destGUID,trigger)) and
 				(not triggerData.extraSpellID or triggerData.extraSpellID == arg1) and
 				(not trigger.Dstacks or module:CheckNumber(trigger.Dstacks,(event == "SPELL_AURA_APPLIED_DOSE" or event == "SPELL_AURA_REMOVED_DOSE") and arg2 or 1)) and
@@ -19609,9 +19615,9 @@ function module.main.COMBAT_LOG_EVENT_UNFILTERED(timestamp,event,hideCaster,sour
 				then
 					local vars = {
 						sourceName = sourceName,
-						sourceMark = module.datas.markToIndex[bit_band(sourceFlags2, COMBATLOG_OBJECT_RAIDTARGET_MASK)],
+						sourceMark = CLEUMarkByGUID(sourceGUID),
 						targetName = destName,
-						targetMark = module.datas.markToIndex[bit_band(destFlags2, COMBATLOG_OBJECT_RAIDTARGET_MASK)],
+						targetMark = CLEUMarkByGUID(destGUID),
 						spellName = spellName,
 						spellID = spellID,
 						extraSpellID = arg1,

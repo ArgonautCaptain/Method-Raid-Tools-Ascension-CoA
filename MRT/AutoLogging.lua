@@ -35,9 +35,12 @@ function module.options:Load()
 
 	self.shtml1 = ELib:Text(self," -Icecrown Citadel\n -The Ruby Sanctum\n -Trial of the Crusader\n -Ulduar\n -Naxxramas\n -The Eye of Eternity\n -The Obsidian Sanctum\n -Onyxia's Lair\n -Vault of Archavon",12):Size(620,0):Point("TOP",0,-65):Top()
 
-	self.shtml2 = ELib:Text(self,L.LoggingHelp1,12):Size(650,0):Point("TOP",self.shtml1,"BOTTOM",0,-15):Top()
+	self.shtml2 = ELib:Text(self,L.LoggingHelp1:gsub("(WoW%-Logs%.co%.in)","|cff40b3ff%1|r"),12):Size(650,0):Point("TOP",self.shtml1,"BOTTOM",0,-15):Top()
+	self.shtml2.linkOverlay = CreateFrame("Button",nil,self)
+	self.shtml2.linkOverlay:SetAllPoints(self.shtml2)
+	self.shtml2.linkOverlay:SetScript("OnClick",function() ExRT.F.ShowText("https://wow-logs.co.in") end)
 
-	self.enable3ppScenario = ELib:Check(self,SCENARIOS,VMRT.Logging.enable3ppBFA):Point("TOP",self.shtml2,"BOTTOM",0,-15):Point("LEFT",self,15,0):OnClick(function(self)
+	self.enable3ppScenario = ELib:Check(self,SCENARIOS,VMRT.Logging.enable3ppBFA):Point("TOP",self.shtml2,"BOTTOM",0,-12):Point("LEFT",self,15,0):OnClick(function(self)
 		if self:GetChecked() then
 			VMRT.Logging.enable3ppBFA = true
 		else

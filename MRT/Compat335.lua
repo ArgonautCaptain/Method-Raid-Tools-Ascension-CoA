@@ -2263,8 +2263,8 @@ local function setupCompatEncounter()
 			[752]  = {32865},
 			[753]  = {32906,32913,32914,32915,32916,33203,33202},
 			[754]  = {33350,33432,33651,33670,34071},
-			[755]  = {33271,33288,33890},
-			[756]  = {33136,33135,33433},
+			[755]  = {33271},
+			[756]  = {33288},
 			[757]  = {32871},
 			[629]  = {34796,35144,34799,34797},
 			[633]  = {34780},
@@ -2315,6 +2315,12 @@ local function setupCompatEncounter()
 	end
 
 	function E.GetCurrentEncounterID() return currentEncounterID end
+
+	function E.GetEncounterIDByCreature(creatureID)
+		creatureID = tonumber(creatureID)
+		if not creatureID then return nil end
+		return bossTable[0] and bossTable[0][creatureID] or nil
+	end
 
 	local function cidFromGUID(guid)
 		if type(guid) ~= "string" or guid == "" then return nil end

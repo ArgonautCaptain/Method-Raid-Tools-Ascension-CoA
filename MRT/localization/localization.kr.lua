@@ -869,7 +869,7 @@ L.MarksClear = "초기화"
 PH.MarksTooltip = "\"영구적인\" 징표 목록에 있는 플레이어에게 설정합니다\n파티 또는 공격대에 속해 있는 대상 플레이어에게만 사용 할 수 있습니다"
 
 PH.LoggingEnable = "전투 기록을 활성화할 지역:"
-PH.LoggingHelp1 = "기록은 게임 폴더의 'Logs\\WoWCombatLog.txt' 에 저장됩니다. 또한 특별한 분석 사이트에 업로드 할 수 있습니다 (예 www.warcraftlogs.com). 레이드 이후 파일의 업로드/삭제를 잊지마세요."
+PH.LoggingHelp1 = "기록은 게임 폴더의 'Logs\\WoWCombatLog.txt' 에 저장됩니다. 또한 특별한 분석 사이트에 업로드 할 수 있습니다 (예 WoW-Logs.co.in). 레이드 이후 파일의 업로드/삭제를 잊지마세요."
 PH.LoggingStart = "MRT: 기록 시작"
 PH.LoggingEnd = "MRT: 기록 종료"
 

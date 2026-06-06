@@ -51,6 +51,31 @@ function module.main:ADDON_LOADED()
 		end
 	end
 
+	if not VMRT.LootHistory.encMigrCreature then
+		local resolve = ExRT.Compat and ExRT.Compat.Encounter and ExRT.Compat.Encounter.GetEncounterIDByCreature
+		if resolve and ExRT.L and ExRT.L.bossName then
+			for i = 1, #VMRT.LootHistory.list do
+				local rec = VMRT.LootHistory.list[i]
+				local pre, encStr, rest = rec:match("^([^#]*)#([^#]*)#(.*)$")
+				local encID = tonumber(encStr)
+				if pre and encID and encID ~= 0 then
+					local newEnc = resolve(encID)
+					if not newEnc then
+						if ExRT.L.bossName[encID] then
+							newEnc = encID
+						else
+							newEnc = 0
+						end
+					end
+					if newEnc ~= encID then
+						VMRT.LootHistory.list[i] = pre .. "#" .. newEnc .. "#" .. rest
+					end
+				end
+			end
+			VMRT.LootHistory.encMigrCreature = true
+		end
+	end
+
 	if not VMRT.LootHistory.disable then
 		module:Enable()
 	end
