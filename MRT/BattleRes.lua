@@ -41,7 +41,7 @@ local function IsUnitEligibleDruid(unit, name)
 end
 
 local function CollectCurrentDruids()
-	local out = {}
+	local out = {} -- key: shortName, value: name
 	local raidNum = GetNumRaidMembers and GetNumRaidMembers() or 0
 	local partyNum = GetNumPartyMembers and GetNumPartyMembers() or 0
 	if raidNum > 0 then
@@ -78,7 +78,9 @@ local function CollectCurrentDruids()
 		local _, classFile = UnitClass("player")
 		if classFile == "DRUID" then
 			local name = UnitName("player")
-			if name then out[ShortName(name)] = name end
+			if name then
+				out[ShortName(name)] = name
+			end
 		end
 	end
 	return out
@@ -92,6 +94,7 @@ local function NoteRebirthCast(sourceGUID, sourceName)
 		cdEnd = GetTime() + REBIRTH_CD,
 	}
 end
+
 local function NoteRemoteCD(sender, remaining)
 	local key = ShortName(sender)
 	if not key then return end

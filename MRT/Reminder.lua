@@ -7126,21 +7126,29 @@ function options:Load()
 			local budget = 3
 			while budget > 0 and i < LINES do
 				i = i + 1
-				local line = self:Util_GetLine(i)
-				for c=1,TEX_PER_LINE do
-					if not line.textures[c] then
-						self:Util_SetLineTexture(line,c,{pos=0,len=0},nil)
+				if self.frame.lines[i] then
+					budget = budget - 1
+				else
+					local line = self:Util_GetLine(i)
+					for c=1,TEX_PER_LINE do
+						if not line.textures[c] then
+							self:Util_SetLineTexture(line,c,{pos=0,len=0},nil)
+						end
 					end
+					line:Hide()
+					line.header:Hide()
+					budget = budget - 1
 				end
-				line:Hide()
-				line.header:Hide()
-				budget = budget - 1
 			end
 			while budget > 0 and b < BUTTONS do
 				b = b + 1
-				local button = self:Util_GetButton(b)
-				button:Hide()
-				budget = budget - 1
+				if self.frame.buttons[b] then
+					budget = budget - 1
+				else
+					local button = self:Util_GetButton(b)
+					button:Hide()
+					budget = budget - 1
+				end
 			end
 			if i >= LINES and b >= BUTTONS then
 				ticker:Cancel()

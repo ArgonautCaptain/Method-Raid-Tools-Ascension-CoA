@@ -1787,7 +1787,6 @@ module.frame:Hide()
 do
 	local tmr = 0
 	module.frame:SetScript("OnUpdate",function(self,elapsed)
-		if self.RunFadeOut then self:RunFadeOut() end
 		tmr = tmr + elapsed
 		if tmr > 0.1 then
 			tmr = 0
@@ -1810,29 +1809,21 @@ module.frame.anim_frame = CreateFrame("Frame",nil,module.frame)
 module.frame.anim_frame:SetPoint("TOPLEFT")
 module.frame.anim_frame:SetSize(1,1)
 
-do
-	local FADE_DURATION = 2
-	local fadeStart
-	module.frame.anim = {
-		Play = function() fadeStart = GetTime() end,
-		Stop = function() fadeStart = nil end,
-		IsPlaying = function() return fadeStart ~= nil end,
-	}
-	function module.frame:RunFadeOut()
-		if not fadeStart then return end
-		local p = (GetTime() - fadeStart) / FADE_DURATION
-		if p >= 1 then
-			fadeStart = nil
-			self:SetAlpha(1)
-			self:Hide()
-		else
-			self:SetAlpha(1 - p)
-		end
-	end
-end
+module.frame.anim = module.frame.anim_frame:CreateAnimationGroup()
+module.frame.timer = module.frame.anim:CreateAnimation()
+module.frame.timer:SetScript("OnFinished", function()
+	module.frame.anim:Stop()
+	module.frame:Hide()
+end)
+module.frame.timer:SetDuration(2)
+module.frame.timer:SetScript("OnUpdate", function(self,elapsed)
+	module.frame:SetAlpha(1-self:GetProgress())
+end)
 module.frame:SetScript("OnHide", function(self)
 	self:UnregisterAllEvents()
-	module.frame.anim:Stop()
+	if module.frame.anim:IsPlaying() then
+		module.frame.anim:Stop()
+	end
 	self:SetAlpha(1)
 	if module.frame.hideTimer then
 		ExRT.F.CancelTimer(module.frame.hideTimer)
