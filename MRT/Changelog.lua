@@ -1,6 +1,9 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+ v5.1.2-WotLK335a
+ * Fixes
+
 v5.1.1-WotLK335a
 * Fixes
 

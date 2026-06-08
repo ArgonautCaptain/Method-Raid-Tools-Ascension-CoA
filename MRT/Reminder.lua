@@ -2850,6 +2850,7 @@ function options:Load()
 			else
 				options.timeLine:Update()
 			end
+			options.timeLine:PreWarmPool()
 		elseif self.selected == 5 then
 			if not options.assign._initialPreUpdate then
 				options.assign._initialPreUpdate = true
@@ -7043,6 +7044,113 @@ function options:Load()
 	end
 
 
+	function options.timeLine:Util_GetLine(line_c)
+		local line = self.frame.lines[line_c]
+		if not line then
+			line = CreateFrame("Frame",nil,self.frame.C)
+			self.frame.lines[line_c] = line
+			line:SetPoint("TOPLEFT",0,-self.TL_LINESIZE*(line_c-1))
+			line:SetSize(1000,self.TL_LINESIZE)
+			if line.SetPropagateMouseClicks then
+				line:SetScript("OnEnter",self.Util_LineOnEnter)
+				line:SetScript("OnLeave",self.Util_LineOnLeave)
+				line:SetPropagateMouseClicks(true)
+			end
+
+			line.textures = {}
+
+			line.header = CreateFrame("Button",nil,self.frame.headers.C)
+			line.header:SetPoint("TOPLEFT",0,-self.TL_LINESIZE*(line_c-1))
+			line.header:SetSize(220,self.TL_LINESIZE)
+			line.header:RegisterForClicks("LeftButtonUp","RightButtonUp")
+			line.header:SetScript("OnClick",self.Util_HeaderOnClick)
+			line.header:SetScript("OnEnter",self.Util_HeaderOnEnter)
+			line.header:SetScript("OnLeave",self.Util_HeaderOnLeave)
+
+			line.header.icon = line.header:CreateTexture()
+			line.header.icon:SetPoint("RIGHT",0,0)
+			line.header.icon:SetSize(self.TL_LINESIZE,self.TL_LINESIZE)
+
+			line.header.name = ELib:Text(line.header,"Spell Name",12):Point("RIGHT",-22,0):Right()
+
+			if line_c%2 == 1 then
+				line.bg = line:CreateTexture(nil,"BACKGROUND")
+				line.bg:SetAllPoints()
+				line.bg:SetColorTexture(1,1,1,.005)
+
+				line.header.bg = line.header:CreateTexture(nil,"BACKGROUND")
+				line.header.bg:SetAllPoints()
+				line.header.bg:SetColorTexture(1,1,1,.03)
+			end
+		end
+		return line
+	end
+
+	function options.timeLine:Util_GetButton(b_c)
+		local button = self.frame.buttons[b_c]
+		if not button then
+			button = CreateFrame("Button",nil,self.frame.C)
+			self.frame.buttons[b_c] = button
+			button:SetSize(self.TL_REMSIZE,self.TL_REMSIZE)
+
+			button.cursor = button:CreateTexture(nil,"ARTWORK",nil,3)
+			button.cursor:SetWidth(1)
+			button.cursor:SetPoint("TOP",self.frame.cursorHT2,"BOTTOM",0,0)
+			button.cursor:SetPoint("BOTTOMLEFT",button,"TOPLEFT",0,0)
+			button.cursor:SetColorTexture(1,1,1,.5)
+
+			button.cursorToSpell = button:CreateTexture(nil,"ARTWORK",nil,3)
+			button.cursorToSpell:SetHeight(1)
+			button.cursorToSpell:SetPoint("RIGHT",button.cursor,"TOP",0,0)
+			button.cursorToSpell:SetColorTexture(1,1,1,.5)
+			button.cursorToSpell:Hide()
+
+			button.icon = button:CreateTexture()
+			button.icon:SetAllPoints()
+			button:RegisterForClicks("LeftButtonUp","RightButtonUp")
+			button:SetScript("OnClick",self.Util_ButtonOnClick)
+			button:SetScript("OnEnter",self.Util_ButtonOnEnter)
+			button:SetScript("OnLeave",self.Util_ButtonOnLeave)
+		end
+		return button
+	end
+
+	function options.timeLine:PreWarmPool()
+		if self._poolWarmed or self._poolWarming then return end
+		if not (self.frame and self.frame.lines and self.frame.buttons) then return end
+		self._poolWarming = true
+		local LINES, TEX_PER_LINE, BUTTONS = 45, 12, 70
+		local i, b = 0, 0
+		local ticker
+		local function step()
+			local budget = 3
+			while budget > 0 and i < LINES do
+				i = i + 1
+				local line = self:Util_GetLine(i)
+				for c=1,TEX_PER_LINE do
+					if not line.textures[c] then
+						self:Util_SetLineTexture(line,c,{pos=0,len=0},nil)
+					end
+				end
+				line:Hide()
+				line.header:Hide()
+				budget = budget - 1
+			end
+			while budget > 0 and b < BUTTONS do
+				b = b + 1
+				local button = self:Util_GetButton(b)
+				button:Hide()
+				budget = budget - 1
+			end
+			if i >= LINES and b >= BUTTONS then
+				ticker:Cancel()
+				self._poolWarming = nil
+				self._poolWarmed = true
+			end
+		end
+		ticker = C_Timer.NewTicker(0,step)
+	end
+
 	function options.timeLine:Update()
 		local timeLineData = self:GetTimeLineData()
 		self.timeLineData = timeLineData
@@ -7115,44 +7223,7 @@ function options:Load()
 				local spell_times = spell_data.times
 				local isOff = spell_data.isOff
 				line_c = line_c + 1
-				local line = self.frame.lines[line_c]
-				if not line then
-					line = CreateFrame("Frame",nil,self.frame.C)
-					self.frame.lines[line_c] = line
-					line:SetPoint("TOPLEFT",0,-self.TL_LINESIZE*(line_c-1))
-					line:SetSize(1000,self.TL_LINESIZE)
-					if line.SetPropagateMouseClicks then
-						line:SetScript("OnEnter",self.Util_LineOnEnter)
-						line:SetScript("OnLeave",self.Util_LineOnLeave)
-						line:SetPropagateMouseClicks(true)
-					end
-
-					line.textures = {}
-
-					line.header = CreateFrame("Button",nil,self.frame.headers.C)
-					line.header:SetPoint("TOPLEFT",0,-self.TL_LINESIZE*(line_c-1))
-					line.header:SetSize(220,self.TL_LINESIZE)
-					line.header:RegisterForClicks("LeftButtonUp","RightButtonUp")
-					line.header:SetScript("OnClick",self.Util_HeaderOnClick)
-					line.header:SetScript("OnEnter",self.Util_HeaderOnEnter)
-					line.header:SetScript("OnLeave",self.Util_HeaderOnLeave)
-
-					line.header.icon = line.header:CreateTexture()
-					line.header.icon:SetPoint("RIGHT",0,0)
-					line.header.icon:SetSize(self.TL_LINESIZE,self.TL_LINESIZE)
-
-					line.header.name = ELib:Text(line.header,"Spell Name",12):Point("RIGHT",-22,0):Right()
-
-					if line_c%2 == 1 then
-						line.bg = line:CreateTexture(nil,"BACKGROUND")
-						line.bg:SetAllPoints()
-						line.bg:SetColorTexture(1,1,1,.005)
-
-						line.header.bg = line.header:CreateTexture(nil,"BACKGROUND")
-						line.header.bg:SetAllPoints()
-						line.header.bg:SetColorTexture(1,1,1,.03)
-					end
-				end
+				local line = self:Util_GetLine(line_c)
 
 				if spell_data.isCompare then
 					if not line.cmpbg then
@@ -7308,31 +7379,7 @@ function options:Load()
 		for i=(data_uncategorized and 0 or 1),#data_list do
 			b_c = b_c + 1
 
-			local button = self.frame.buttons[b_c]
-			if not button then
-				button = CreateFrame("Button",nil,self.frame.C)
-				self.frame.buttons[b_c] = button
-				button:SetSize(self.TL_REMSIZE,self.TL_REMSIZE)
-
-				button.cursor = button:CreateTexture(nil,"ARTWORK",nil,3)
-				button.cursor:SetWidth(1)
-				button.cursor:SetPoint("TOP",self.frame.cursorHT2,"BOTTOM",0,0)
-				button.cursor:SetPoint("BOTTOMLEFT",button,"TOPLEFT",0,0)
-				button.cursor:SetColorTexture(1,1,1,.5)
-
-				button.cursorToSpell = button:CreateTexture(nil,"ARTWORK",nil,3)
-				button.cursorToSpell:SetHeight(1)
-				button.cursorToSpell:SetPoint("RIGHT",button.cursor,"TOP",0,0)
-				button.cursorToSpell:SetColorTexture(1,1,1,.5)
-				button.cursorToSpell:Hide()
-
-				button.icon = button:CreateTexture()
-				button.icon:SetAllPoints()
-				button:RegisterForClicks("LeftButtonUp","RightButtonUp")
-				button:SetScript("OnClick",self.Util_ButtonOnClick)
-				button:SetScript("OnEnter",self.Util_ButtonOnEnter)
-				button:SetScript("OnLeave",self.Util_ButtonOnLeave)
-			end
+			local button = self:Util_GetButton(b_c)
 
 			local data_line = data_list[i]
 			local data = data_line and data_line[1]

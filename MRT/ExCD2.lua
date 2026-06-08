@@ -5638,7 +5638,17 @@ do
 			local nowT = GetTime()
 			if foundDuration and foundDuration > 0 and foundExpiration and foundExpiration > nowT then
 				line.lastUse = foundExpiration - foundDuration
-				line.duration = foundDuration
+				local dbDur = 0
+				if line.db then
+					for sid = 4, 8 do
+						local seg = line.db[sid]
+						if type(seg) == "table" and tonumber(seg[3]) then
+							dbDur = seg[3]
+							break
+						end
+					end
+				end
+				line.duration = (dbDur > 0 and foundDuration > dbDur) and dbDur or foundDuration
 				if line.bar and line.bar.data == line then
 					line.bar:UpdateStatus()
 				end
@@ -6312,18 +6322,6 @@ do
 					local line = CDList[sourceName][auraCDspellID]
 					if line then
 						local nowT = GetTime()
-						local foundDuration, foundExpiration
-						local unit = GetUnitForAura(destName, destGUID)
-						if unit then
-							for i = 1, 40 do
-								local _,_,_,_,_,d,e,_,_,_,auraSpellID = UnitAura(unit, i, "HELPFUL")
-								if not auraSpellID then break end
-								if auraSpellID == spellID then
-									foundDuration, foundExpiration = d, e
-									break
-								end
-							end
-						end
 						line.lastUse = nowT
 						local cdVal = 0
 						if line.db then
@@ -6338,21 +6336,28 @@ do
 						if cdVal > 0 then
 							line.cd = cdVal
 						end
-						if foundDuration and foundDuration > 0 and foundExpiration and foundExpiration > nowT then
-							line.duration = foundExpiration - nowT
-						else
-							local fb = 0
-							if line.db then
-								for sid = 4, 8 do
-									local seg = line.db[sid]
-									if type(seg) == "table" and tonumber(seg[3]) and seg[3] > 0 then
-										fb = seg[3]
-										break
-									end
+						local foundExpiration
+						local unit = GetUnitForAura(destName, destGUID)
+						if unit then
+							for i = 1, 40 do
+								local _,_,_,_,_,_,e,_,_,_,auraSpellID = UnitAura(unit, i, "HELPFUL")
+								if not auraSpellID then break end
+								if auraSpellID == spellID then
+									foundExpiration = e
+									break
 								end
 							end
-							line.duration = fb > 0 and fb or 1800
 						end
+						local durVal
+						if foundExpiration and foundExpiration > nowT then
+							durVal = foundExpiration - nowT
+						else
+							durVal = cdVal > 0 and cdVal or 900
+						end
+						if cdVal > 0 and durVal > cdVal then
+							durVal = cdVal
+						end
+						line.duration = durVal
 						line.targetName = destName
 						line.targetSetTime = nowT
 						RecordHistoryUsage(line, destName)

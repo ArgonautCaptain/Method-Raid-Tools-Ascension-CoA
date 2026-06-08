@@ -531,7 +531,7 @@ end
 
 local function resizeAutoIcons(text, fontSize)
 	if not text or text == "" or not fontSize or fontSize <= 0 then return text end
-	local size = fontSize + 4
+	local size = fontSize + 6
 	if size < 18 then size = 18 end
 	local yOff = math.floor(0.4 * fontSize - size / 2)
 	return (text:gsub("|T([^|]-)|t", function(args)
@@ -589,6 +589,7 @@ local txtWithIcons
 do
 	txtWithIcons = function(self, t, onlyTimerUpdate)
 		if not onlyTimerUpdate or not self.preTimerText then
+			GSUB_AutoColorCreate()
 			t = t or ""
 
 			if t:find("{self}") then
@@ -4066,10 +4067,7 @@ function module:Enable()
 	if module.options.chkEnable then
 		module.options.chkEnable:SetChecked(true)
 	end
-	module:RegisterEvents("PLAYER_LOGIN","ENCOUNTER_END","ENCOUNTER_START")
-	if VMRT.Note.HideOutsideRaid then
-		module:RegisterEvents("GROUP_ROSTER_UPDATE")
-	end
+	module:RegisterEvents("PLAYER_LOGIN","ENCOUNTER_END","ENCOUNTER_START","GROUP_ROSTER_UPDATE")
 	if VMRT.Note.HideInCombat then
 		module:RegisterEvents('PLAYER_REGEN_DISABLED','PLAYER_REGEN_ENABLED')
 	end
@@ -4135,6 +4133,9 @@ local party_uids = {'player','party1','party2','party3','party4'}
 function module.main:GROUP_ROSTER_UPDATE()
 	C_Timer.After(1, module.Visibility)
 	GSUB_AutoColorCreate()
+	if VMRT.Note.enabled and module.frame:IsShown() then
+		module.allframes:UpdateText()
+	end
 	if not module.options.raidnames or not module.options:IsVisible() then
 		return
 	end
