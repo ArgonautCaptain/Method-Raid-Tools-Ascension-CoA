@@ -832,6 +832,63 @@ local function GetFlask(checkType)
 	end
 end
 
+-- [WotLK 3.3.5] Role-aware buff relevance filter.
+-- Skips counting a player for buffs that are irrelevant to their role/spec, so the chat report
+-- no longer flags healers/casters for Attack Power (Battle Shout / Blessing of Might) nor pure
+-- physical classes for caster buffs (Intellect / Spirit / Blessing of Wisdom). WotLK-only.
+local function LK_GetSpecIndex(name)
+	local insp = ExRT.A and ExRT.A.Inspect and ExRT.A.Inspect.db and ExRT.A.Inspect.db.inspectDB
+	if not insp then return nil end
+	local d = insp[name]
+	if not d then
+		local short = strsplit("-", name)
+		d = insp[short]
+		if not d then
+			for n,v in pairs(insp) do
+				if strsplit("-", n) == short then d = v break end
+			end
+		end
+	end
+	return d and d.specIndex
+end
+
+-- returns needsPhys, needsMana for a class (+ talent spec index 1/2/3 if known) on WotLK.
+-- Hybrids fall back to "count both" when spec is unknown (safe default), and resolve precisely
+-- once inspect/spec data is available (MRT syncs it automatically between addon users).
+local function LK_PlayerNeeds(class, spec)
+	if class == "WARRIOR" or class == "ROGUE" or class == "DEATHKNIGHT" then
+		return true, false            -- rage/energy/runic power, no mana benefit
+	elseif class == "HUNTER" then
+		return true, true             -- AP (ranged AP) + mana pool
+	elseif class == "MAGE" or class == "WARLOCK" then
+		return false, true            -- caster, mana
+	elseif class == "PRIEST" then
+		return false, true            -- caster/healer, mana
+	elseif class == "PALADIN" then
+		if spec == 1 then return false, true   -- Holy (healer): no AP
+		else return true, true end             -- Prot/Ret/unknown: physical + mana
+	elseif class == "SHAMAN" then
+		if spec == 2 then return true, true    -- Enhancement (melee, mana)
+		else return false, true end            -- Elemental/Resto/unknown: caster/healer, mana
+	elseif class == "DRUID" then
+		if spec == 2 then return true, false   -- Feral (energy/rage, no mana benefit)
+		else return false, true end            -- Balance/Resto/unknown: caster/healer, mana
+	end
+	return true, true                          -- unknown class: count everything (safe default)
+end
+
+-- returns true if buff `key` (classicBuffs[k][1]) should NOT be counted for a player with these needs.
+local function LK_SkipBuff(key, needsPhys, needsMana, isPriest)
+	if key == "ap" or key == "bom" or key == "bos" then
+		return not needsPhys           -- Attack Power / Blessing of Might / Blessing of Sanctuary
+	elseif key == "int" or key == "spirit" or key == "bow" then
+		return not needsMana           -- Intellect / Spirit / Blessing of Wisdom
+	elseif key == "armor" then
+		return not isPriest            -- Inner Fire (priest self-buff)
+	end
+	return false                       -- MotW / Stamina / Shadow Protection / Blessing of Kings = everyone
+end
+
 local function GetRaidBuffs(checkType)
 	local buffsList,buffsListLen = module.db.raidBuffs,#module.db.raidBuffs
 	local classicBuffsList
@@ -853,6 +910,11 @@ local function GetRaidBuffs(checkType)
 	for j=1,40 do
 		local name,_,subgroup, _, _, class = GetRaidRosterInfo(j)
 		if name and subgroup <= gMax then
+			local lkPhys, lkMana, lkPriest = true, true, false
+			if ExRT.isLK then
+				lkPhys, lkMana = LK_PlayerNeeds(class, LK_GetSpecIndex(name))
+				lkPriest = (class == "PRIEST")
+			end
 			for k=1,buffsListLen * 2 do
 				isAnyBuff[k] = false
 			end
@@ -885,11 +947,13 @@ local function GetRaidBuffs(checkType)
 				end
 			end
 			for k=1,buffsListLen do
-				if not isAnyBuff[k] then
-					f[k] = f[k] + 1
-				end
-				if not isAnyBuff[buffsListLen + k] then
-					f[buffsListLen + k] = f[buffsListLen + k] + 1
+				if not (ExRT.isLK and LK_SkipBuff(buffsList[k][1], lkPhys, lkMana, lkPriest)) then
+					if not isAnyBuff[k] then
+						f[k] = f[k] + 1
+					end
+					if not isAnyBuff[buffsListLen + k] then
+						f[buffsListLen + k] = f[buffsListLen + k] + 1
+					end
 				end
 			end
 		end

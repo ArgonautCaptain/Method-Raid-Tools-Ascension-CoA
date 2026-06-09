@@ -97,6 +97,34 @@ local function CreateTimers(ctime,cname)
 	end
 end
 
+-- WotLK: decide if a group member counts toward "group in combat".
+-- Reuses Raid Cooldowns' (ExCD2) range cache so we don't issue extra UnitInRange polls.
+-- ExCD2 refreshes ExRT.A.ExCD2.db.status_UnitIsOutOfRange every 0.25s for tracked units.
+local function LK_TimerUnitNearby(unit)
+	if UnitIsUnit and UnitIsUnit(unit,"player") then
+		return true
+	end
+	local cd = ExRT.A and ExRT.A.ExCD2
+	local cache = cd and cd.db and cd.db.status_UnitIsOutOfRange
+	if cache then
+		local name = UnitName(unit)
+		if name then
+			local outOfRange = cache[name]
+			if outOfRange ~= nil then
+				return not outOfRange
+			end
+		end
+	end
+	-- Fallback only for units ExCD2 isn't tracking (rare): direct range query.
+	if UnitInRange then
+		local inRange, checked = UnitInRange(unit)
+		if checked then
+			return inRange and true or false
+		end
+	end
+	return true
+end
+
 function module:timer(elapsed)
 	if module.db.timertopull > 0 then
 		if math_ceil(module.db.timertopull) < math_ceil(module.db.lasttimertopull) then
@@ -132,11 +160,15 @@ function module:timer(elapsed)
 			module.frame._groupCombatPoll = 0
 			local groupInCombat = false
 			local n = (GetNumGroupMembers and GetNumGroupMembers()) or 0
+			-- WotLK: only count members that are actually near us (avoids false starts
+			-- when someone is killing mobs far away). Range data is reused from ExCD2.
+			local useRange = ExRT.isLK and (VMRT.Timers.GroupCombatRange ~= false)
 			if n == 0 then
 				groupInCombat = UnitAffectingCombat("player") and true or false
 			elseif IsInRaid and IsInRaid() then
 				for i=1,n do
-					if UnitAffectingCombat("raid"..i) then
+					local unit = "raid"..i
+					if UnitAffectingCombat(unit) and (not useRange or LK_TimerUnitNearby(unit)) then
 						groupInCombat = true
 						break
 					end
@@ -146,7 +178,8 @@ function module:timer(elapsed)
 					groupInCombat = true
 				else
 					for i=1,(n-1) do
-						if UnitAffectingCombat("party"..i) then
+						local unit = "party"..i
+						if UnitAffectingCombat(unit) and (not useRange or LK_TimerUnitNearby(unit)) then
 							groupInCombat = true
 							break
 						end
