@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="https://via.placeholder.com/120?text=MRT" alt="Method Raid Tools" width="120">
+  <img src="https://raw.githubusercontent.com/Exorsus/ExorsusRaidTools/master/Icon/ExRT.tga.png" alt="Method Raid Tools" width="120">
 </p>
 
 <p align="center">
-  <b>Method Raid Tools — полный бэкпорт для WotLK 3.3.5a</b><br>
-  <i>Современные рейдовые инструменты на клиенте 3.3.5a</i>
+  <b>Method Raid Tools — Full backport for WotLK 3.3.5a</b><br>
+  <i>Modern raid tools on the 3.3.5a client</i>
 </p>
 
 <br>
@@ -18,8 +18,8 @@
 <h1 align="center">Method Raid Tools — WotLK 3.3.5a backport</h1>
 
 <p align="center">
-  <b>Полноценный бэкпорт аддона Method Raid Tools с актуального клиента WoW на версию 3.3.5a (Wrath of the Lich King).</b><br>
-  <i>Слияние последнего WotLK-релиза MRT (4840) и современной версии (5240) с совместимостью для приватных серверов.</i>
+  <b>A complete backport of the Method Raid Tools addon from the retail WoW client to version 3.3.5a (Wrath of the Lich King).</b><br>
+  <i>A merge of the last WotLK release of MRT (4840) and the modern retail version (5240), with compatibility for private servers.</i>
 </p>
 
 <p align="center">
