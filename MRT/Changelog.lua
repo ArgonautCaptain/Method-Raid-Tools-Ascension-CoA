@@ -1,6 +1,12 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+v5.1.4-WotLK335a
+* Fixes
+* Note: added Help info
+* Reminder: added Help info
+* Raid Cooldowns: changed cooldowns for some spells
+
 v5.1.3-WotLK335a
 * Fixes
 * Note: added other icons

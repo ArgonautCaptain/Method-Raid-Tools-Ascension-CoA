@@ -998,35 +998,50 @@ end
 
 function ExRT.F.GetUnitRaidRole(name)
 	local unit = ExRT.F.findunitbyname and ExRT.F.findunitbyname(name) or name
-	local role = UnitGroupRolesAssigned and UnitGroupRolesAssigned(unit)
-	if role == "TANK" or role == "HEALER" or role == "DAMAGER" then
-		return role
-	end
-	if GetPartyAssignment and GetPartyAssignment("MAINTANK", unit) then
-		return "TANK"
-	end
-	local _, class = UnitClass(unit)
-	if not class then return nil end
-	if class == "PRIEST" or class == "MAGE" or class == "WARLOCK" or class == "HUNTER" then
-		if class == "PRIEST" then
-			local powerType = UnitPowerType(unit)
-			if powerType == 0 then
+	-- 1) LFD-assigned role. On 3.3.5a UnitGroupRolesAssigned returns three booleans
+	-- (isTank,isHealer,isDamage), on later clients a single string.
+	if UnitGroupRolesAssigned then
+		local r1,r2,r3 = UnitGroupRolesAssigned(unit)
+		if r1 == "TANK" or r1 == "HEALER" or r1 == "DAMAGER" then
+			return r1
+		elseif type(r1) == "boolean" then
+			if r1 then
+				return "TANK"
+			elseif r2 then
+				return "HEALER"
+			elseif r3 then
 				return "DAMAGER"
 			end
-			return "HEALER"
 		end
+	end
+	-- 2) Raid main tank assignment
+	if GetPartyAssignment and UnitExists and UnitExists(unit) and GetPartyAssignment("MAINTANK", unit) then
+		return "TANK"
+	end
+	-- 3) Spec detected from talents (MRT inspect data, same source as cd list)
+	local specID = VMRT and VMRT.ExCD2 and VMRT.ExCD2.gnGUIDs and VMRT.ExCD2.gnGUIDs[name]
+	local specRole = specID and ExRT.GDB.ClassSpecializationRole and ExRT.GDB.ClassSpecializationRole[specID]
+	if specRole == "TANK" then
+		return "TANK"
+	elseif specRole == "HEAL" then
+		return "HEALER"
+	elseif specRole == "MELEE" or specRole == "RANGE" then
 		return "DAMAGER"
-	elseif class == "ROGUE" then
-		return "DAMAGER"
-	elseif class == "DEATHKNIGHT" then
-		return "DAMAGER"
-	elseif class == "WARRIOR" then
-		return "DAMAGER"
-	elseif class == "PALADIN" then
-		return "DAMAGER"
-	elseif class == "SHAMAN" then
-		return "DAMAGER"
+	end
+	-- 4) Class/aura heuristic fallback
+	local _, class = UnitClass(unit)
+	if not class then return nil end
+	if class == "PRIEST" then
+		local shadowform = GetSpellInfo and GetSpellInfo(15473)
+		if shadowform and UnitBuff and UnitBuff(unit, shadowform) then
+			return "DAMAGER"
+		end
+		return "HEALER"
 	elseif class == "DRUID" then
+		-- bear form uses rage
+		if UnitPowerType and UnitPowerType(unit) == 1 then
+			return "TANK"
+		end
 		return "DAMAGER"
 	end
 	return "DAMAGER"
@@ -2998,11 +3013,68 @@ do
 		return scantip
 	end
 
-	function ExRT.F.WarmUpSpell(spellID)
+	-- Persist spell name/texture cache between sessions (VMRT.SpellCache):
+	-- tooltip scans for spells missing from the 3.3.5a client are expensive,
+	-- without persistence every relog repeats all of them (= UI freezes).
+	local persistBound = false
+	local function bindPersist()
+		if persistBound then return end
+		if type(VMRT) ~= "table" then return end
+		VMRT.SpellCache = VMRT.SpellCache or {}
+		local s = VMRT.SpellCache
+		s.name = s.name or {}
+		s.tex = s.tex or {}
+		s.unk = s.unk or {}
+		for k,v in pairs(cacheName) do s.name[k] = v end
+		for k,v in pairs(cacheTex) do s.tex[k] = v end
+		for k,v in pairs(cacheUnknown) do s.unk[k] = v end
+		cacheName, cacheTex, cacheUnknown = s.name, s.tex, s.unk
+		persistBound = true
+	end
+
+	-- Budget for synchronous tooltip scans: at most SCAN_BUDGET per frame,
+	-- the rest are warmed up in the background via ticker (no freeze).
+	local SCAN_BUDGET = 15
+	local scanFrameTime, scanFrameCount = -1, 0
+	local pendingScan, pendingTicker = {}, nil
+	local function queueWarmUp(spellID)
+		for i=1,#pendingScan do
+			if pendingScan[i] == spellID then return end
+		end
+		pendingScan[#pendingScan+1] = spellID
+		if pendingTicker then return end
+		if not (C_Timer and C_Timer.NewTicker) then return end
+		pendingTicker = C_Timer.NewTicker(0.05, function()
+			local n = 0
+			while n < 5 and #pendingScan > 0 do
+				local id = table.remove(pendingScan)
+				ExRT.F.WarmUpSpell(id, true)
+				n = n + 1
+			end
+			if #pendingScan == 0 and pendingTicker then
+				pendingTicker:Cancel()
+				pendingTicker = nil
+			end
+		end)
+	end
+
+	function ExRT.F.WarmUpSpell(spellID, force)
 		spellID = tonumber(spellID)
 		if not spellID then return end
+		bindPersist()
 		if cacheName[spellID] and cacheTex[spellID] then return end
 		if cacheUnknown[spellID] then return end
+		if not force then
+			local now = GetTime()
+			if now ~= scanFrameTime then
+				scanFrameTime, scanFrameCount = now, 0
+			end
+			if scanFrameCount >= SCAN_BUDGET then
+				queueWarmUp(spellID)
+				return
+			end
+			scanFrameCount = scanFrameCount + 1
+		end
 		local n0, _, tex0 = GetSpellInfo(spellID)
 		if n0 and n0 ~= "" then cacheName[spellID] = n0 end
 		if tex0 then cacheTex[spellID] = tex0 end
@@ -3037,21 +3109,64 @@ do
 		end
 	end
 
+	-- 3.3.5a: icon files load at draw time and can be evicted when no widget
+	-- references them anymore (timeline rebuilds recreate widgets). Pin every
+	-- icon we ever return on a rendered 2x2 px frame so the client keeps them
+	-- in memory -> no repeated disk-load freezes on each timeline update.
+	local pinFrame, pinned, pinnedCount = nil, {}, 0
+	local function pin(tex)
+		if type(tex) ~= "string" or pinned[tex] or pinnedCount >= 1000 then return tex end
+		if not pinFrame then
+			pinFrame = CreateFrame("Frame", nil, UIParent)
+			pinFrame:SetSize(2, 2)
+			pinFrame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
+			pinFrame:SetAlpha(0.02)
+			pinFrame:SetFrameStrata("BACKGROUND")
+			pinFrame:Show()
+		end
+		local t = pinFrame:CreateTexture(nil, "BACKGROUND")
+		t:SetAllPoints(pinFrame)
+		t:SetTexture(tex)
+		pinned[tex] = t
+		pinnedCount = pinnedCount + 1
+		-- a texture needs ~1 rendered frame to load; after that the kept object
+		-- reference prevents unload, so hide it to avoid stacking draw calls
+		pinFrame.toHide = pinFrame.toHide or {}
+		pinFrame.toHide[#pinFrame.toHide+1] = t
+		if not pinFrame.sweep and C_Timer and C_Timer.NewTicker then
+			pinFrame.sweep = C_Timer.NewTicker(2, function()
+				local list = pinFrame.toHide
+				local keep = list[#list] -- newest may not have rendered yet
+				for i=1,#list do
+					if list[i] ~= keep then list[i]:Hide() end
+					list[i] = nil
+				end
+				list[1] = keep
+			end)
+		end
+		return tex
+	end
+	ExRT.F.PinTexture = pin
+
 	function ExRT.F.GetSpellTextureSafe(spellID)
 		if not spellID then return "Interface\\Icons\\INV_Misc_QuestionMark" end
+		bindPersist()
+		local id = tonumber(spellID)
 		local tex = GetSpellTexture and GetSpellTexture(spellID)
-		if tex then return tex end
+		if tex then return pin(tex) end
+		if id and cacheTex[id] then return pin(cacheTex[id]) end
 		local _, _, infoTex = GetSpellInfo(spellID)
-		if infoTex then cacheTex[tonumber(spellID) or 0] = infoTex; return infoTex end
+		if infoTex then if id then cacheTex[id] = infoTex end return pin(infoTex) end
 		ExRT.F.WarmUpSpell(spellID)
-		tex = (GetSpellTexture and GetSpellTexture(spellID)) or cacheTex[spellID]
-		if tex then return tex end
+		tex = (GetSpellTexture and GetSpellTexture(spellID)) or (id and cacheTex[id])
+		if tex then return pin(tex) end
 		_, _, tex = GetSpellInfo(spellID)
-		return tex or "Interface\\Icons\\INV_Misc_QuestionMark"
+		return pin(tex or "Interface\\Icons\\INV_Misc_QuestionMark")
 	end
 
 	function ExRT.F.GetSpellInfoSafe(spellID)
 		if not spellID then return nil end
+		bindPersist()
 		local id = tonumber(spellID)
 		local name, rank, tex = GetSpellInfo(spellID)
 		if id then

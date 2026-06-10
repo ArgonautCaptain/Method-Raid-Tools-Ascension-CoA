@@ -1,4 +1,4 @@
-﻿local GlobalAddonName, ExRT = ...
+local GlobalAddonName, ExRT = ...
 
 if ExRT.locale ~= "zhTW" then
 	return
@@ -102,6 +102,7 @@ L.NoteTimer = "計時器:"
 L.NoteHelp8 = "在此代碼中的全部文字 (\"...\" 在當前範例中) 僅針對所選職業顯示 (像是此例中的聖騎與牧師)。您可以使用任意數量的職業。"
 L.NoteHelpAdvanced = "進階說明"
 L.NoteHelpAdv1 = "此範例將被替換為選定的首領戰鬥片段的動態計時器。計時器僅在特定的首領階段有效 (當前範例為第2階段)。僅適用於插件BigWigs或DBM。"
+L.NoteHelpAdvPg = "全域階段 4。全域階段是指從戰鬥開始以來的階段數，適用於階段為 1-2-1-2-… 的首領（在目前範例中，僅在第二次進入第二階段時生效）。"
 L.NoteHelpAdv2 = "此範例將被替換為選定的首領戰鬥片段的動態計時器。計時器僅在條件滿足後才啟動。 條件格式 \"|cffffff00event:spellID:counter|r\"。戰鬥紀錄事件: |cffffff00SCC|r - 法術成功施放, |cffffff00SCS|r - 法術開始施放, |cffffff00SAA|r - 光環應用在任何目標, |cffffff00SAR|r - 光環從任何目標移除。|cffffff00Counter|r 從戰鬥一開始就使用此事件的重複次數。使用 |cffffff000|r 在任何事件。"
 L.NoteHelpAdv3 = "此範例將被替換為選定的首領戰鬥片段的動態計時器。計時器只有在手動啟動後才有效。使用聊天指令 \"|cffffff00/rt note starttimer customevent|r\" or lua function \"|cffffff00GMRT.F.Note_Timer(\"customevent\")|r\""
 L.NoteHelpAdv4 = "此範例將被替換為選定的首領戰鬥片段的動態計時器。此條件將運行weakauras插件的自定義事件。事件名稱 - |cffffff00MRT_NOTE_TIME_EVENT|r。事件將在計時器的20、15、10、5、4、3、2、1,0秒觸發。1參數是條件名稱 (|cffffff00nzoth_hs1|r 在此範例), 2參數 - 剩餘時間, 整數, 3參數 - 註記中的文字。"

@@ -7485,9 +7485,9 @@ function module.options:Load()
 			self.backClassColor:SetGradientAlpha("HORIZONTAL", self.backClassColorR, self.backClassColorG, self.backClassColorB, alpha, self.backClassColorR, self.backClassColorG, self.backClassColorB, 0)
 		end
 
-		if self:IsMouseOver() and not self.colExpand:IsShown() and self.colBack:IsShown() then
+		if self:IsMouseOver() and not self.colExpand:IsShown() and self.colBack:IsShown() and not self.colExpandHide then
 			self.colExpand:Show()
-		elseif not self:IsMouseOver() and self.colExpand:IsShown() then
+		elseif (not self:IsMouseOver() or self.colExpandHide) and self.colExpand:IsShown() then
 			self.colExpand:Hide()
 		end
 
@@ -7763,8 +7763,12 @@ function module.options:Load()
 	  	ELib.Tooltip:HideAdd()
 	end
 	local function SpellsListColSetValue(self,value)
-		local isEnabled = VMRT.ExCD2.colSet[value] and VMRT.ExCD2.colSet[value].enabled
-	  	self.text:SetText(L.cd2AddSpellFrameColumnText.." "..(not isEnabled and "|cffff0000" or "|cffffffff")..value)
+		if self.zeroToNil and value == 0 then
+			self.text:SetText(UNUSED or "-")
+		else
+			local isEnabled = VMRT.ExCD2.colSet[value] and VMRT.ExCD2.colSet[value].enabled
+		  	self.text:SetText(L.cd2AddSpellFrameColumnText.." "..(not isEnabled and "|cffff0000" or "|cffffffff")..value)
+		end
 		if self.lock then return end
 		local toStore = (self.zeroToNil and value == 0) and nil or value
 		if type(self.keystr) == "table" then
@@ -7804,6 +7808,7 @@ function module.options:Load()
 			module.options.addModSpellFrame:Hide()
 		end
 		module.options.addModSpellFrame.data = nil
+		module.options.addModSpellFrame.new_class = self.new_class
 		module.options.addModSpellFrame:Show()
 	end
 
@@ -7868,6 +7873,7 @@ function module.options:Load()
 
 		line.tooltipFrame = CreateFrame("Frame",nil,line)
 		line.tooltipFrame:SetAllPoints(line.spellName)
+		line.tooltipFrame:EnableMouse(true)
 		line.tooltipFrame:SetScript("OnEnter", SpellsListTooltipFrameOnEnter)
 		line.tooltipFrame:SetScript("OnLeave", SpellsListTooltipFrameOnLeave)
 
@@ -7933,23 +7939,37 @@ function module.options:Load()
 		line.colBack:SetPoint("LEFT",line.col)
 		line.colBack:SetPoint("RIGHT",line.col)
 
-		line.colExpand = ELib:Button(line,L.cd2BySpec):Size(90,8):Point("LEFT",line.col,(ExRT.isClassic and not ExRT.isLK) and 15 or -30,0):Point("BOTTOM",line,0,0):OnClick(SpellsListLineColExpand)
+		-- by spec: left half of the column slider (right edge at slider center)
+		line.colExpand = ELib:Button(line,L.cd2BySpec):Size(60,8):Point("TOPLEFT",line.col,"BOTTOMLEFT",0,-1):OnClick(SpellsListLineColExpand)
 		if ExRT.is10 or ExRT.isLK1 then
 			line.colExpand.Texture:SetGradient("VERTICAL",CreateColor(0.05,0.26,0.09,1), CreateColor(0.20,0.41,0.25,1))
 		else
 			line.colExpand.Texture:SetGradientAlpha("VERTICAL",0.05,0.26,0.09,1, 0.20,0.41,0.25,1)
 		end
 		local textObj = line.colExpand:GetTextObj()
-		textObj:SetFont(textObj:GetFont(),8,"")
+		if textObj then
+			textObj:SetFont(textObj:GetFont(),8,"")
+			textObj:ClearAllPoints()
+			textObj:SetPoint("CENTER",line.colExpand,"CENTER",0,0)
+			textObj:SetJustifyH("CENTER")
+			if textObj.SetJustifyV then textObj:SetJustifyV("MIDDLE") end
+		end
 
-		line.colExpand2 = ELib:Button(line,L.cd2ByRole):Size(90,8):Point("LEFT",line.col,60,0):Point("BOTTOM",line,0,0):OnClick(SpellsListLineColExpandRole)
+		-- by role: right half of the column slider (left edge at slider center)
+		line.colExpand2 = ELib:Button(line,L.cd2ByRole):Size(60,8):Point("TOPLEFT",line.col,"BOTTOMLEFT",60,-1):OnClick(SpellsListLineColExpandRole)
 		if ExRT.is10 or ExRT.isLK1 then
 			line.colExpand2.Texture:SetGradient("VERTICAL",CreateColor(0.26,0.05,0.09,1), CreateColor(0.41,0.20,0.25,1))
 		else
 			line.colExpand2.Texture:SetGradientAlpha("VERTICAL",0.26,0.05,0.09,1, 0.41,0.20,0.25,1)
 		end
 		local textObj2 = line.colExpand2:GetTextObj()
-		textObj2:SetFont(textObj2:GetFont(),8,"")
+		if textObj2 then
+			textObj2:SetFont(textObj2:GetFont(),8,"")
+			textObj2:ClearAllPoints()
+			textObj2:SetPoint("CENTER",line.colExpand2,"CENTER",0,0)
+			textObj2:SetJustifyH("CENTER")
+			if textObj2.SetJustifyV then textObj2:SetJustifyV("MIDDLE") end
+		end
 
 
 		line.prior = ELib:Slider(line,""):Size(120):Point("LEFT",line.col,"RIGHT",15,0):Range(0,100):SetTo(101):OnChange(SpellsListPrioritySetValue)
@@ -7973,12 +7993,14 @@ function module.options:Load()
 		line.cd = ELib:Text(line,""):Size(40,SPELL_LINE_HEIGHT):Point("LEFT",line.prior,"RIGHT",15,1):Font(ExRT.F.defFont,14):Shadow():Center():Color(1,.3,.3)
 		line.cdTooltipFrame = CreateFrame("Frame",nil,line)
 		line.cdTooltipFrame:SetAllPoints(line.cd)
+		line.cdTooltipFrame:EnableMouse(true)
 		line.cdTooltipFrame:SetScript("OnEnter", SpellsListCDTooltipFrameOnEnter)
 		line.cdTooltipFrame:SetScript("OnLeave", SpellsListCDTooltipFrameOnLeave)
 
 		line.dur = ELib:Text(line,""):Size(40,SPELL_LINE_HEIGHT):Point("LEFT",line.cd,"RIGHT",5,0):Font(ExRT.F.defFont,14):Shadow():Center():Color(.3,1,.3)
 		line.durTooltipFrame = CreateFrame("Frame",nil,line)
 		line.durTooltipFrame:SetAllPoints(line.dur)
+		line.durTooltipFrame:EnableMouse(true)
 		line.durTooltipFrame:SetScript("OnEnter", SpellsListDurTooltipFrameOnEnter)
 		line.durTooltipFrame:SetScript("OnLeave", SpellsListDurTooltipFrameOnLeave)
 
@@ -8258,6 +8280,9 @@ function module.options:Load()
 					tremove(newList,#newList)
 				end
 			end
+			if not self.search then
+				newList[#newList+1] = {isAddButton = true, class = class}
+			end
 			list = newList
 		elseif categoryNow and not module.options.CATEGORIES_VIS[categoryNow].ignoreSubcats then
 			local newList = {}
@@ -8412,6 +8437,11 @@ function module.options:Load()
 
 				line.data = nil
 
+				if data.class then
+					line.buttonAddBig.new_class = data.class
+				else
+					line.buttonAddBig.new_class = nil
+				end
 				line.buttonAddBig:Show()
 
 				isHideMost = true
@@ -8500,8 +8530,11 @@ function module.options:Load()
 					end
 					if dataSpecs > 1 then
 						line.colBack:Show()
+						line.colExpandHide = nil
 					else
-						line.colBack:Hide()
+						-- single-spec (talent) cooldown: keep hover zone so "by role" still shows (like retail), but hide "by spec"
+						line.colBack:Show()
+						line.colExpandHide = true
 						if specID then
 							line.spec:SetTexture(ExRT.GDB.ClassSpecializationIcons[specID])
 							line.spec:Show()
@@ -8957,6 +8990,10 @@ function module.options:Load()
 		local data = self.data
 		if not data then
 			data = {0,"OTHER,USER",1,{0,0,0}}
+			if self.new_class then
+				data[2] = self.new_class..",USER"
+				self.new_class = nil
+			end
 			self.data = data
 		end
 		self:Update()
@@ -13560,8 +13597,8 @@ if ExRT.isLK then
 		{12292,	"WARRIOR",	3, nil,	nil, {12292,	180,	30}},
 		{12328,	"WARRIOR",	1, nil,	{12328,	30,	10}},
 		{2687,	"WARRIOR",	1,	{2687,	60,	10}},
-		{20230,	"WARRIOR",	3,	{20230,	1800,	12}},
-		{60970,	"WARRIOR",	1, nil,	nil, {60970,	90,	0}},
+		{20230,	"WARRIOR",	3,	{20230,	300,	12}},
+		{60970,	"WARRIOR",	1, nil,	nil, {60970,	45,	0}},
 		{46968,	"WARRIOR",	3, nil,	nil, nil, {46968,	20,	4}},
 
 
@@ -13577,7 +13614,7 @@ if ExRT.isLK then
 		{12042,	"MAGE",	3, nil,	{12042,	120,	15}},
 		{12043,	"MAGE",	1, nil,	{12043,	120,	10}},
 		{122,	"MAGE",	1,	{122,	25,	8}},
-		{11129,	"MAGE",	3, nil,	nil, {11129,	180,	0}},
+		{11129,	"MAGE",	3, nil,	nil, {11129,	120,	0}},
 		{31661,	"MAGE",	1, nil,	nil, {31661,	20,	5}},
 		{11426,	"MAGE",	1, nil,	nil, nil, {11426,	30,	60}},
 		{44572,	"MAGE",	1, nil,	nil, nil, {44572,	30,	5}},
@@ -13596,7 +13633,7 @@ if ExRT.isLK then
 		{31821,	"PALADIN",	1, nil,	{31821,	120,	6}},
 		{20066,	"PALADIN",	1, nil,	nil, nil, {20066,	60,	60}},
 		{10308,	"PALADIN",	1,	{10308,	60,	6}},
-		{498,	"PALADIN",	1,	{498,	60,	12}},
+		{498,	"PALADIN",	1,	{498,	180,	12}},
 		{31842,	"PALADIN",	1, nil,	{31842,	180,	15}},
 		{54428,	"PALADIN",	1,	{54428,	60,	15}},
 		{20216,	"PALADIN",	1, nil,	{20216,	120,	10}},
@@ -13613,20 +13650,20 @@ if ExRT.isLK then
 		{20608,	"SHAMAN",	1,	{21169,	1800,	0}},
 		{2894,	"SHAMAN",	1,	{2894,	600,	120}},
 		{2062,	"SHAMAN",	1,	{2062,	600,	120}},
-		{8177,	"SHAMAN",	1,	{8177,	25,	15}},
+		{8177,	"SHAMAN",	1,	{8177,	15,	15}},
 		{51490,	"SHAMAN",	1, nil,	{51490,	45,	0}},
 		{16166,	"SHAMAN",	3, nil,	{16166,	180,	15}},
 		{30823,	"SHAMAN",	1, nil,	nil, {30823,	60,	15}},
 		{55198,	"SHAMAN",	1, nil,	nil, nil, {55198,	180,	20}},
 		{51514,	"SHAMAN",	1,	{51514,	45,	30}},
-		{16188,	"SHAMAN",	1, nil,	nil, nil, {16188,	180,	0}},
+		{16188,	"SHAMAN",	1, nil,	nil, nil, {16188,	120,	0}},
 		{57994,	"SHAMAN",	1,	{57994,	6,	0}},
 		{8983,	"SHAMAN",	1,	{8983,	30,	15}},
 		{51533,	"SHAMAN",	1, nil,	nil, {51533,	180,	30}},
 
 
 		{20765,	"WARLOCK",	3,	{20765,	900,	0}},
-		{17928,	"WARLOCK",	1,	{17928,	120,	8}},
+		{17928,	"WARLOCK",	1,	{17928,	40,	8}},
 		{30283,	"WARLOCK",	1, nil,	nil, nil, {30283,	20,	2}},
 		{6229,	"WARLOCK",	1,	{6229,	30,	30}},
 		{29858,	"WARLOCK",	1,	{29858,	180,	0}},
@@ -13672,14 +13709,14 @@ if ExRT.isLK then
 		{64901,	"PRIEST",	1,	{64901,	360,	0}},
 		{47788,	"PRIEST",	3, nil,	nil, {47788,	180,	10}},
 		{33206,	"PRIEST",	3, nil,	{33206,	180,	8}},
-		{10890,	"PRIEST",	1,	{10890,	27,	8}},
+		{10890,	"PRIEST",	1,	{10890,	30,	8}},
 		{586,	"PRIEST",	1,	{586,	30,	10}},
-		{47585,	"PRIEST",	3, nil,	nil, nil, {47585,	180,	6}},
+		{47585,	"PRIEST",	3, nil,	nil, nil, {47585,	120,	6}},
 		{64044,	"PRIEST",	1, nil,	nil, nil, {64044,	120,	3}},
 		{15487,	"PRIEST",	1, nil,	nil, nil, {15487,	45,	5}},
 		{14751,	"PRIEST",	1, nil,	{14751,	180,	0}},
 		{34433,	"PRIEST",	1,	{34433,	300,	15}},
-		{47540,	"PRIEST",	1, nil,	{47540,	8,	2}},
+		{47540,	"PRIEST",	1, nil,	{47540,	12,	2}},
 		{33076,	"PRIEST",	1,	{33076,	10,	30}},
 		{34861,	"PRIEST",	1, nil,	nil, {34861,	6,	0}},
 		{32379,	"PRIEST",	1,	{32379,	12,	0}},
@@ -13714,9 +13751,9 @@ if ExRT.isLK then
 		{51052,	"DEATHKNIGHT",	3, nil,	nil, nil, {51052,	120,	10}},
 		{49028,	"DEATHKNIGHT",	3, nil,	{49028,	90,	12}},
 		{49016,	"DEATHKNIGHT",	1, nil,	{49016,	180,	30}},
-		{48792,	"DEATHKNIGHT",	3,	{48792,	180,	12}},
+		{48792,	"DEATHKNIGHT",	3,	{48792,	120,	12}},
 		{55233,	"DEATHKNIGHT",	3, nil,	{55233,	60,	10}},
-		{49222,	"DEATHKNIGHT",	1, nil,	nil, nil, {49222,	120,	300}},
+		{49222,	"DEATHKNIGHT",	1, nil,	nil, nil, {49222,	60,	300}},
 		{49206,	"DEATHKNIGHT",	3, nil,	nil, nil, {49206,	180,	30}},
 		{47568,	"DEATHKNIGHT",	3,	{47568,	300,	0}},
 		{49203,	"DEATHKNIGHT",	1, nil,	nil, {49203,	60,	10}},
@@ -13968,6 +14005,10 @@ if ExRT.isLK then
 	module.db.spell_cdByTalent_fix[9863] = {17123,{"*0.7","*0.4"}}
 	module.db.spell_cdByTalent_fix[42650] = {55620,{-60,-120}}
 	module.db.spell_cdByTalent_fix[49576] = {49588,{-5,-10}}
+	module.db.spell_cdByTalent_fix[20230] = {12312,{-30,-60}}
+	module.db.spell_cdByTalent_fix[1719] = {12312,{-30,-60}}
+	module.db.spell_cdByTalent_fix[47540] = {47507,{"*0.9","*0.8"}}
+	module.db.spell_cdByTalent_fix[10890] = {15392,{-2,-4}}
 
 	module.db.spell_durationByTalent_fix[1044] = {20174,{2,4}}
 

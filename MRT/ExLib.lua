@@ -2803,6 +2803,7 @@ do
 	local function Widget_Tooltip(self,anchor,isButton)
 		local f = CreateFrame(isButton and "Button" or "Frame",nil,self:GetParent())
 		f:SetAllPoints(self)
+		f:EnableMouse(true)
 		f.t = self
 		f.a = anchor or "ANCHOR_RIGHT"
 		f:SetScript("OnEnter",OnTooltipEnter)

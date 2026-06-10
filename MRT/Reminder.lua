@@ -2627,7 +2627,7 @@ end
 function options:Load()
 	self:CreateTilte()
 
-	ExRT.lib:Text(self,"v."..addonVersion.." beta",10):Point("BOTTOMLEFT",self.title,"BOTTOMRIGHT",5,2)
+	self.versionText = ExRT.lib:Text(self,"v."..addonVersion.." beta",10):Point("BOTTOMLEFT",self.title,"BOTTOMRIGHT",5,2)
 
 	local encountersList = ExRT.F.GetEncountersList(true,false,false)
 
@@ -4466,10 +4466,15 @@ function options:Load()
 
 		if not (_dbg and _dbg.SkipIconPrewarm) then
 			if not module._iconPrewarmFrame then
+				-- 3.3.5a loads texture files at DRAW time: the frame must actually be
+				-- rendered on screen (2x2 px, near-zero alpha) or nothing gets warmed.
+				-- Loaded textures stay referenced forever -> client can't evict them ->
+				-- no repeated disk-load freezes.
 				local f = CreateFrame("Frame", nil, UIParent)
-				f:SetSize(1, 1)
-				f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -9999, -9999)
-				f:SetAlpha(0)
+				f:SetSize(2, 2)
+				f:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
+				f:SetAlpha(0.02)
+				f:SetFrameStrata("BACKGROUND")
 				f:Show()
 				module._iconPrewarmFrame = f
 				module._iconPrewarmCache = {}
@@ -4478,10 +4483,17 @@ function options:Load()
 				local cache = module._iconPrewarmCache
 				local queue = module._iconPrewarmQueue
 				local queued = module._iconPrewarmQueued
+				local lastBatch = {}
 				f:SetScript("OnUpdate", function(self)
+					-- previous batch has rendered for a frame -> safe to hide
+					-- (object reference keeps the file loaded, no eviction)
+					for i=#lastBatch,1,-1 do
+						lastBatch[i]:Hide()
+						lastBatch[i] = nil
+					end
 					local n = #queue
 					if n == 0 then return end
-					local budget = 8
+					local budget = 2
 					while budget > 0 and n > 0 do
 						local path = queue[n]
 						queue[n] = nil
@@ -4492,6 +4504,7 @@ function options:Load()
 							tex:SetAllPoints(self)
 							tex:SetTexture(path)
 							cache[path] = tex
+							lastBatch[#lastBatch+1] = tex
 						end
 						budget = budget - 1
 					end
@@ -18319,24 +18332,40 @@ function options:Load()
 	end
 
 	do
-			local b
-			local ok = pcall(function()
+			local b, isTemplate
+			pcall(function()
 				local ok,btn=pcall(CreateFrame,"Button",nil,self,"MainHelpPlateButton")
 				if ok and btn then
 					b=btn
-				else
-					b=CreateFrame("Button",nil,self)
+					isTemplate=true
 				end
 			end)
-			if not ok or not b then
+			if not b then
+				-- 3.3.5a fallback: retail template is unavailable, use own icon texture
 				b = CreateFrame("Button",nil,self)
-				b:SetSize(16,16)
-				b:SetNormalTexture("Interface\\Buttons\\UI-HelpButton")
-				b:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight","ADD")
+				b:SetSize(18,18)
+				b:SetNormalTexture([[Interface\AddOns\MRT\media\helpicon]])
+				b:SetHighlightTexture([[Interface\AddOns\MRT\media\helpicon]],"ADD")
+				local hl = b:GetHighlightTexture()
+				if hl then hl:SetAlpha(0.35) end
+
+				b:SetScript("OnEnter",function(self)
+					GameTooltip:SetOwner(self,"ANCHOR_RIGHT")
+					GameTooltip:AddLine(L.ReminderQuickStartTooltip or "Help",1,1,1,true)
+					GameTooltip:Show()
+				end)
+				b:SetScript("OnLeave",function(self)
+					GameTooltip_Hide()
+				end)
 			end
+			b.isHelpTemplate = isTemplate
 			self.quickStartButton = b
 		end
-	self.quickStartButton:SetPoint("TOPLEFT",190,25)
+	if self.versionText then
+		self.quickStartButton:SetPoint("LEFT",self.versionText,"RIGHT",6,1)
+	else
+		self.quickStartButton:SetPoint("TOPLEFT",190,25)
+	end
 	self.quickStartButton:SetScale(.8)
 	self.quickStartButton:SetScript("OnClick",function()
 		self.quickStartFrame:Show()
@@ -18346,48 +18375,60 @@ function options:Load()
 	end
 
 
-	self.quickStartFrame = ELib:Popup(L.ReminderQuickStart):Size(750,750)
+	self.quickStartFrame = ELib:Popup(L.ReminderQuickStart):Size(760,640)
 	if ExRT and ExRT.F and ExRT.F.AddonScaleApply then ExRT.F.AddonScaleApply(self.quickStartFrame) end
 
-	self.quickStartFrame.img1 = self.quickStartFrame:CreateTexture()
-	self.quickStartFrame.img1:SetPoint("TOPLEFT",10,-20)
-	self.quickStartFrame.img1:SetTexture([[Interface\AddOns\MRT\media\remhelp]])
-	self.quickStartFrame.img1:SetTexCoord(0/1024,94/1024,0/1024,23/1024)
-	self.quickStartFrame.img1:SetSize(94-0,23-0)
+	-- 3.3.5a: content placed on a scroll frame, rows spaced by max(image, text)
+	-- height, so long localized texts are not cut off by images or frame edge
+	local qsScroll = ELib:ScrollFrame(self.quickStartFrame):Size(744,560):Point("TOP",0,-22)
+	self.quickStartFrame.scroll = qsScroll
 
-	self.quickStartFrame.text1 = ELib:Text(self.quickStartFrame,L.ReminderQuickStart1,12):Point("TOPLEFT",self.quickStartFrame.img1,"TOPRIGHT",10,0):Point("RIGHT",self.quickStartFrame,-10,0):Color()
-
-	self.quickStartFrame.img2 = self.quickStartFrame:CreateTexture()
-	self.quickStartFrame.img2:SetPoint("TOPLEFT",self.quickStartFrame.img1,"BOTTOMLEFT",0,-10)
-	self.quickStartFrame.img2:SetTexture([[Interface\AddOns\MRT\media\remhelp]])
-	self.quickStartFrame.img2:SetTexCoord(97/1024,547/1024,0/1024,338/1024)
-	self.quickStartFrame.img2:SetSize((547-97)*0.5,(338-0)*0.5)
-
-	self.quickStartFrame.text2 = ELib:Text(self.quickStartFrame,L.ReminderQuickStart2,12):Point("TOPLEFT",self.quickStartFrame.img2,"TOPRIGHT",10,0):Point("RIGHT",self.quickStartFrame,-10,0):Color()
-
-	self.quickStartFrame.img3 = self.quickStartFrame:CreateTexture()
-	self.quickStartFrame.img3:SetPoint("TOPLEFT",self.quickStartFrame.img2,"BOTTOMLEFT",0,-10)
-	self.quickStartFrame.img3:SetTexture([[Interface\AddOns\MRT\media\remhelp]])
-	self.quickStartFrame.img3:SetTexCoord(553/1024,1000/1024,0/1024,216/1024)
-	self.quickStartFrame.img3:SetSize((1000-553)*0.5,(216-0)*0.5)
-
-	self.quickStartFrame.text3 = ELib:Text(self.quickStartFrame,L.ReminderQuickStart3,12):Point("TOPLEFT",self.quickStartFrame.img3,"TOPRIGHT",10,0):Point("RIGHT",self.quickStartFrame,-10,0):Color()
-
-	self.quickStartFrame.img4 = self.quickStartFrame:CreateTexture()
-	self.quickStartFrame.img4:SetPoint("TOPLEFT",self.quickStartFrame.img3,"BOTTOMLEFT",0,-10)
-	self.quickStartFrame.img4:SetTexture([[Interface\AddOns\MRT\media\remhelp]])
-	self.quickStartFrame.img4:SetTexCoord(553/1024,1000/1024,220/1024,727/1024)
-	self.quickStartFrame.img4:SetSize((1000-553)*0.5,(727-220)*0.5)
-
-	self.quickStartFrame.text4 = ELib:Text(self.quickStartFrame,L.ReminderQuickStart4,12):Point("TOPLEFT",self.quickStartFrame.img4,"TOPRIGHT",10,0):Point("RIGHT",self.quickStartFrame,-10,0):Color()
-
-	self.quickStartFrame.img5 = self.quickStartFrame:CreateTexture()
-	self.quickStartFrame.img5:SetPoint("TOPLEFT",self.quickStartFrame.img4,"BOTTOMLEFT",0,-10)
-	self.quickStartFrame.img5:SetTexture([[Interface\AddOns\MRT\media\remhelp]])
-	self.quickStartFrame.img5:SetTexCoord(3/1024,91/1024,28/1024,49/1024)
-	self.quickStartFrame.img5:SetSize(91-3,49-28)
-
-	self.quickStartFrame.text5 = ELib:Text(self.quickStartFrame,L.ReminderQuickStart5,12):Point("TOPLEFT",self.quickStartFrame.img5,"TOPRIGHT",10,0):Point("RIGHT",self.quickStartFrame,-10,0):Color()
+	local QS_TEXTURE = [[Interface\AddOns\MRT\media\remhelp]]
+	local qsRows = {
+		{0,94,0,23,1,L.ReminderQuickStart1},
+		{97,547,0,338,0.5,L.ReminderQuickStart2},
+		{553,1000,0,216,0.5,L.ReminderQuickStart3},
+		{553,1000,220,727,0.5,L.ReminderQuickStart4},
+		{3,91,28,49,1,L.ReminderQuickStart5},
+	}
+	for i=1,#qsRows do
+		local r = qsRows[i]
+		local img = qsScroll.C:CreateTexture()
+		img:SetTexture(QS_TEXTURE)
+		img:SetTexCoord(r[1]/1024,r[2]/1024,r[3]/1024,r[4]/1024)
+		img:SetSize((r[2]-r[1])*r[5],(r[4]-r[3])*r[5])
+		-- GBB-style text handling: explicit width + measured height, no rect
+		-- collapse -> no "..." truncation (3.3.5a)
+		local txt = ELib:Text(qsScroll.C,r[6],12):Point("TOPLEFT",img,"TOPRIGHT",10,0):Color()
+		txt:SetJustifyV("TOP")
+		txt:SetWidth(699-(r[2]-r[1])*r[5])
+		if txt.SetWordWrap then txt:SetWordWrap(true) end
+		if txt.SetNonSpaceWrap then txt:SetNonSpaceWrap(true) end
+		self.quickStartFrame["img"..i] = img
+		self.quickStartFrame["text"..i] = txt
+	end
+	local qsFrame = self.quickStartFrame
+	local function qsRelayout()
+		local yOff = 10
+		for i=1,#qsRows do
+			local img = qsFrame["img"..i]
+			local txt = qsFrame["text"..i]
+			img:ClearAllPoints()
+			img:SetPoint("TOPLEFT",qsScroll.C,"TOPLEFT",10,-yOff)
+			local hImg = img:GetHeight() or 0
+			txt:SetHeight(0)
+			local hTxt = (txt.GetStringHeight and txt:GetStringHeight()) or 0
+			if hTxt and hTxt > 0 then
+				txt:SetHeight(hTxt+2)
+			else
+				hTxt = txt:GetHeight() or 0
+			end
+			yOff = yOff + math.max(hImg,hTxt) + 14
+		end
+		qsScroll:SetNewHeight(yOff + 10)
+	end
+	qsRelayout()
+	self.quickStartFrame:HookScript("OnShow",qsRelayout)
 
 	self.quickStartFrame.url = ELib:Edit(self.quickStartFrame):Size(300,20):Point("BOTTOM",0,20):Text("https://www.method.gg/method-raid-tools-reminders"):LeftText(LFG_LIST_MORE or "More:"):Run(function (self)
 		self:SetScript("OnEditFocusGained", function(self)
@@ -18403,37 +18444,6 @@ function options:Load()
 		if tab == 1 or tab == 2 then options:UpdateData() end
 		if tab == 4 then options.timeLine:Update() end
 		if tab == 5 then options.assign:Update() end
-	end
-
-	local function _profwrap(t, key, label)
-		if type(t) ~= "table" then return end
-		local orig = t[key]
-		if type(orig) ~= "function" then return end
-		t[key] = function(...)
-			local profile = VMRT and VMRT.DebugReminder and VMRT.DebugReminder.ProfileFreeze
-			if not profile then return orig(...) end
-			local s = debugprofilestop()
-			local r1, r2, r3, r4 = orig(...)
-			local elapsed = debugprofilestop() - s
-			local thresh = (type(profile) == "table" and profile.thresholdMs) or 5
-			if elapsed > thresh then
-				print(string.format(
-					"|cffff8888[Reminder Freeze]|r %s = %.1fms",
-					label, elapsed
-				))
-			end
-			return r1, r2, r3, r4
-		end
-	end
-	_profwrap(options.assign, "Update", "options.assign:Update")
-	_profwrap(options.timeLine, "Update", "options.timeLine:Update")
-	_profwrap(options.assign, "GetTimeLineData", "options.assign:GetTimeLineData")
-	_profwrap(options.assign, "GetRemindersList", "options.assign:GetRemindersList")
-	_profwrap(options.timeLine, "GetTimeLineData", "options.timeLine:GetTimeLineData")
-	_profwrap(options.timeLine, "GetRemindersList", "options.timeLine:GetRemindersList")
-	if ELib and ELib.ScrollDropDown then
-		_profwrap(ELib.ScrollDropDown, "ToggleDropDownMenu", "ELib.ScrollDropDown.ToggleDropDownMenu")
-		_profwrap(ELib.ScrollDropDown, "Reload", "ELib.ScrollDropDown:Reload")
 	end
 
 	self.tab:SetTo(VMRT.Reminder2.OptSavedTabNum or 1)
@@ -22420,8 +22430,62 @@ function module:SetProfile(profile,sharedProfile)
 	end
 end
 
+do
+	-- 3.3.5a: texture files load from disk at first DRAW: the first opening of
+	-- boss lists loads dozens of bossicons TGAs in one frame = hard freeze that
+	-- Lua profiling cannot see. Warm them up after login on a rendered 2x2 px
+	-- frame (alpha ~0) and keep references so the client never evicts them.
+	local warmed
+	function module:PrewarmBossIcons()
+		if warmed then return end
+		warmed = true
+		if not (C_Timer and C_Timer.After and C_Timer.NewTicker) then return end
+		C_Timer.After(5, function()
+			local pack = (ExRT and ExRT.BossIconFileByKey) or (_G.MRT and _G.MRT.BossIconFileByKey)
+			if not pack then return end
+			local files = {}
+			for _,file in pairs(pack) do
+				files[#files+1] = "Interface\\AddOns\\"..GlobalAddonName.."\\media\\bossicons\\"..file..".tga"
+			end
+			files[#files+1] = "Interface\\AddOns\\"..GlobalAddonName.."\\media\\remhelp"
+			files[#files+1] = "Interface\\AddOns\\"..GlobalAddonName.."\\media\\helpicon"
+			if #files == 0 then return end
+			local holder = CreateFrame("Frame", nil, UIParent)
+			holder:SetSize(2, 2)
+			holder:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
+			holder:SetAlpha(0.02)
+			holder:SetFrameStrata("BACKGROUND")
+			holder:Show()
+			module._bossIconHolder = holder
+			local texs = {}
+			local i, ticker = 0
+			ticker = C_Timer.NewTicker(0.1, function()
+				for _=1,2 do
+					i = i + 1
+					if i > #files then
+						ticker:Cancel()
+						-- loaded textures stay referenced (no eviction), but
+						-- hide them so 140 quads don't draw every frame
+						C_Timer.After(2, function()
+							for j=1,#texs do texs[j]:Hide() end
+						end)
+						return
+					end
+					local tex = holder:CreateTexture(nil, "BACKGROUND")
+					tex:SetAllPoints(holder)
+					tex:SetTexture(files[i])
+					texs[#texs+1] = tex
+				end
+			end)
+		end)
+	end
+end
+
 function module.main:ADDON_LOADED()
 	VMRT = _G.VMRT
+
+	module:PrewarmBossIcons()
+
 	VMRT.Reminder2 = VMRT.Reminder2 or {
 
 		FontOutline = true,

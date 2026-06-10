@@ -585,6 +585,41 @@ local function resizeAutoIcons(text, fontSize)
 	end))
 end
 
+-- Resolve the player's combat role for {D}/{H}/{T} note tags.
+-- Retail uses GetSpecialization; 3.3.5a has no spec API, so derive the role from the
+-- player's primary talent tree. Ambiguous trees (Druid Feral, all Death Knight trees)
+-- default to DAMAGER since bear-tank / DK-tank can't be told apart from DPS by talents.
+local NOTE_ROLE_BY_CLASS = {
+	WARRIOR     = {"DAMAGER","DAMAGER","TANK"},
+	PALADIN     = {"HEALER","TANK","DAMAGER"},
+	HUNTER      = {"DAMAGER","DAMAGER","DAMAGER"},
+	ROGUE       = {"DAMAGER","DAMAGER","DAMAGER"},
+	PRIEST      = {"HEALER","HEALER","DAMAGER"},
+	DEATHKNIGHT = {"DAMAGER","DAMAGER","DAMAGER"},
+	SHAMAN      = {"DAMAGER","DAMAGER","HEALER"},
+	MAGE        = {"DAMAGER","DAMAGER","DAMAGER"},
+	WARLOCK     = {"DAMAGER","DAMAGER","DAMAGER"},
+	DRUID       = {"DAMAGER","DAMAGER","HEALER"},
+}
+local function GetNoteRole()
+	if GetSpecialization and GetSpecializationInfo then
+		local spec = GetSpecialization()
+		if spec then return select(5, GetSpecializationInfo(spec)) end
+		return nil
+	end
+	if not GetTalentTabInfo then return nil end
+	local _, class = UnitClass("player")
+	local map = class and NOTE_ROLE_BY_CLASS[class]
+	if not map then return nil end
+	local numTabs = (GetNumTalentTabs and GetNumTalentTabs()) or 3
+	local maxPoints, primary = -1, 1
+	for i = 1, numTabs do
+		local pts = select(5, GetTalentTabInfo(i))
+		if pts and pts > maxPoints then maxPoints = pts; primary = i end
+	end
+	return map[primary] or "DAMAGER"
+end
+
 local txtWithIcons
 do
 	txtWithIcons = function(self, t, onlyTimerUpdate)
@@ -596,13 +631,14 @@ do
 				t = string_gsub(t,"{self}",VMRT.Note.SelfText or "")
 			end
 
-			local spec = GetSpecialization()
-			if spec then
-				local role = select(5,GetSpecializationInfo(spec))
+			local role = GetNoteRole and GetNoteRole()
+			if role then
 				if role ~= "HEALER" then t = string_gsub(t,"{[Hh]}.-{/[Hh]}","") end
 				if role ~= "TANK" then t = string_gsub(t,"{[Tt]}.-{/[Tt]}","") end
 				if role ~= "DAMAGER" then t = string_gsub(t,"{[Dd]}.-{/[Dd]}","") end
 			end
+			-- Strip the surviving role markers so the kept text shows without {D}/{H}/{T}.
+			t = string_gsub(t,"{/?[DdHhTt]}","")
 
 			t =    t:gsub("{0}.-{/0}","")
 				:gsub("(\n{!?[CcPpGg]:?[^}]+})\n","%1")
@@ -3234,56 +3270,153 @@ function module.options:Load()
 	end)
 
 
-	self.textHelp = ELib:Text(self.tab.tabs[4],
-		"|cffffff00||cffRRGGBB|r...|cffffff00||r|r - "..L.NoteHelp1..
-		"|n|cffffff00{spell:|r|cff00ff0017|r|cffffff00}|r - "..L.NoteHelp3..
-		"|n|cffffff00{self}|r - "..L.NoteHelp4..
-		"|n|cffffff00{p:|r|cff00ff00JaneD|r|cffffff00,|r|cff00ff00JennyB-HowlingFjord|r|cffffff00}|r...|cffffff00{/p}|r - "..L.NoteHelp5..
-		"|n|cffffff00{!p:|r|cff00ff00Leeroy|r|cffffff00,|r|cff00ff00Juron|r|cffffff00}|r...|cffffff00{/p}|r - "..L.NoteHelp5b..
-		"|n|cffffff00{icon:|r|cff00ff00Interface/Icons/inv_hammer_unique_sulfuras|r|cffffff00}|r - "..L.NoteHelp6..
-		"|n|cffffff00{c:|r|cff00ff00Paladin,Priest|r|cffffff00}|r...|cffffff00{/c}|r - "..L.NoteHelp8..
-		"|n|cffffff00{!c:|r|cff00ff00Mage,Hunter|r|cffffff00}|r...|cffffff00{/c}|r - "..L.NoteHelp8b..
-		"|n|cffffff00{g|r|cff00ff002|r|cffffff00}|r...|cffffff00{/g}|r - "..L.NoteHelp10..
-		"|n|cffffff00{!g|r|cff00ff0034|r|cffffff00}|r...|cffffff00{/g}|r - "..L.NoteHelp10b..
-		(MRT.isClassic and "|n|cffffff00{race:|r|cff00ff00troll,orc|r|cffffff00}|r...|cffffff00{/race}|r - "..L.NoteHelp11 or "")..
-		(MRT.isClassic and "|n|cffffff00{!race:|r|cff00ff00dwarf|r|cffffff00}|r...|cffffff00{/race}|r - "..L.NoteHelp11b or "")..
-		("|n|cffffff00{time:|r|cff00ff002:45|r|cffffff00}|r - "..L.NoteHelp7 or "")..
-		(not MRT.isClassic and "|n|cffffff00{p|r|cff00ff002|r|cffffff00}|r...|cffffff00{/p}|r - "..L.NoteHelp9 or "")..
-		"|n|cffffff00{0}|r...|cffffff00{/0}|r - "..L.NoteHelp12
-	):Point("TOPLEFT",10,-20):Point("TOPRIGHT",-10,-20):Color()
+	-- Help tab: ONE scroll frame for the WHOLE page (basic lines + Advanced button +
+	-- advanced lines). Each help line is its own FontString with explicit width +
+	-- measured height, because on 3.3.5a a FontString truncates text taller than its
+	-- height (GroupBulletinBoard recipe: SetWidth -> SetHeight(0) -> GetStringHeight ->
+	-- SetHeight). Advanced lines stay hidden until "Advanced Help" is toggled; the single
+	-- right-side scrollbar then covers the entire note so you can scroll to the very bottom.
+	local HELP_SPACING = 4
 
-	self.advancedHelp = ELib:Button(self.tab.tabs[4],L.NoteHelpAdvanced):Size(400,20):Point("TOP",self.textHelp,"BOTTOM",0,-20):OnClick(function()
+	local function BuildHelpLines(parent, lines, store, opts)
+		local prev
+		for i = 1, #lines do
+			local fs = ELib:Text(parent, lines[i]):Color()
+			if prev then
+				fs:Point("TOPLEFT", prev, "BOTTOMLEFT", 0, -HELP_SPACING)
+			elseif opts and opts.anchorFrame then
+				fs:Point("TOP", opts.anchorFrame, "BOTTOM", 0, opts.y or -8)
+				fs:Point("LEFT", parent, "LEFT", opts.x or 10, 0)
+			else
+				fs:Point("TOPLEFT", (opts and opts.x) or 10, (opts and opts.y) or -10)
+			end
+			store[#store + 1] = fs
+			prev = fs
+		end
+		return prev
+	end
 
-		module.options.advancedScroll:SetShown(not module.options.advancedScroll:IsShown())
+	local function LayoutHelpLines(store, width)
+		local total = 0
+		for i = 1, #store do
+			local fs = store[i]
+			fs:SetWidth(width)
+			fs:SetHeight(0)
+			local h = fs:GetStringHeight()
+			if not h or h < 1 then h = 12 end
+			fs:SetHeight(h)
+			total = total + h + HELP_SPACING
+		end
+		return total
+	end
+
+	-- One scroll frame filling the whole Help sub-tab
+	self.helpScroll = ELib:ScrollFrame(self.tab.tabs[4]):Point("TOPLEFT",0,0):Point("BOTTOMRIGHT",0,0)
+	ELib:Border(self.helpScroll,0)
+	self.helpScroll:HideScrollOnNoScroll()
+	self.helpScroll.C:SetWidth(820)
+	local helpC = self.helpScroll.C
+
+	-- Basic help lines (descriptions from localization; tag tokens keep original colors)
+	local basicLines = {}
+	local function addB(s) basicLines[#basicLines + 1] = s end
+	addB("|cffffff00||cffRRGGBB|r...|cffffff00||r|r - "..L.NoteHelp1)
+	-- Role tags {D}/{H}/{T}: NoteHelp2 takes the role name (DAMAGER/HEALER/TANK globals)
+	addB("|cffffff00{D}|r...|cffffff00{/D}|r - "..L.NoteHelp2:format(DAMAGER or "Damager"))
+	addB("|cffffff00{H}|r...|cffffff00{/H}|r - "..L.NoteHelp2:format(HEALER or "Healer"))
+	addB("|cffffff00{T}|r...|cffffff00{/T}|r - "..L.NoteHelp2:format(TANK or "Tank"))
+	-- NoteHelp3 embeds |T135940:0|t (a retail FileDataID); 3.3.5a only renders texture
+	-- PATHS, so swap in the real spell-17 icon path so the inline icon shows.
+	local help3 = L.NoteHelp3
+	local spell17Icon = (GetSpellTexture and GetSpellTexture(17)) or "Interface\\Icons\\Spell_Holy_PowerWordShield"
+	help3 = help3:gsub("|T%d+:", "|T"..spell17Icon..":")
+	addB("|cffffff00{spell:|r|cff00ff0017|r|cffffff00}|r - "..help3)
+	addB("|cffffff00{self}|r - "..L.NoteHelp4)
+	addB("|cffffff00{p:|r|cff00ff00JaneD|r|cffffff00,|r|cff00ff00JennyB-HowlingFjord|r|cffffff00}|r...|cffffff00{/p}|r - "..L.NoteHelp5)
+	addB("|cffffff00{!p:|r|cff00ff00Leeroy|r|cffffff00,|r|cff00ff00Juron|r|cffffff00}|r...|cffffff00{/p}|r - "..L.NoteHelp5b)
+	addB("|cffffff00{icon:|r|cff00ff00Interface/Icons/inv_hammer_unique_sulfuras|r|cffffff00}|r - "..L.NoteHelp6)
+	addB("|cffffff00{c:|r|cff00ff00Paladin,Priest|r|cffffff00}|r...|cffffff00{/c}|r - "..L.NoteHelp8)
+	addB("|cffffff00{!c:|r|cff00ff00Mage,Hunter|r|cffffff00}|r...|cffffff00{/c}|r - "..L.NoteHelp8b)
+	addB("|cffffff00{g|r|cff00ff002|r|cffffff00}|r...|cffffff00{/g}|r - "..L.NoteHelp10)
+	addB("|cffffff00{!g|r|cff00ff0034|r|cffffff00}|r...|cffffff00{/g}|r - "..L.NoteHelp10b)
+	if MRT.isClassic then
+		addB("|cffffff00{race:|r|cff00ff00troll,orc|r|cffffff00}|r...|cffffff00{/race}|r - "..L.NoteHelp11)
+		addB("|cffffff00{!race:|r|cff00ff00dwarf|r|cffffff00}|r...|cffffff00{/race}|r - "..L.NoteHelp11b)
+	end
+	addB("|cffffff00{time:|r|cff00ff002:45|r|cffffff00}|r - "..L.NoteHelp7)
+	if not MRT.isClassic then
+		addB("|cffffff00{p|r|cff00ff002|r|cffffff00}|r...|cffffff00{/p}|r - "..L.NoteHelp9)
+	end
+	addB("|cffffff00{0}|r...|cffffff00{/0}|r - "..L.NoteHelp12)
+
+	self.helpBasicFS = {}
+	local lastBasic = BuildHelpLines(helpC, basicLines, self.helpBasicFS, {x = 10, y = -15})
+	self.textHelp = self.helpBasicFS[1]
+
+	self.advancedHelp = ELib:Button(helpC,L.NoteHelpAdvanced):Size(400,20):Point("TOP",lastBasic,"BOTTOM",0,-20):OnClick(function()
+		local o = module.options
+		o.advancedShown = not o.advancedShown
+		for i = 1, #o.helpAdvFS do o.helpAdvFS[i]:SetShown(o.advancedShown) end
+		if o.LayoutHelp then o:LayoutHelp() end
+		if not o.advancedShown and o.helpScroll and o.helpScroll.ScrollBar then o.helpScroll.ScrollBar:SetTo(0) end
 	end)
 
-	self.advancedScroll = ELib:ScrollFrame(self.tab.tabs[4]):Size(850,100):Point("TOP",self.advancedHelp,"BOTTOM",0,-20):Point("BOTTOM",self.tab.tabs[4],"BOTTOM",0,0):Height(400):Shown(false)
-	self.advancedScroll.C:SetWidth(850 - 16)
-	ELib:Border(self.advancedScroll,0)
-	ELib:DecorationLine(self.advancedScroll):Point("TOPLEFT",0,1):Point("BOTTOMRIGHT",'x',"TOPRIGHT",0,0)
+	-- Advanced help lines (multi-line code/example blocks split into separate FontStrings)
+	local advLines = {}
+	local function addA(s) advLines[#advLines + 1] = s end
+	addA("|cffffff00{time:|r|cff00ff001:06,p2|r|cffffff00}|r - "..L.NoteHelpAdv1)
+	addA("|cffffff00{time:|r|cff00ff000:30,SCC:17:2|r|cffffff00}|r - "..L.NoteHelpAdv2)
+	addA("   "..(HUD_EDIT_MODE_ENABLE_ADVANCED_OPTIONS or "Advanced Options")..": |cffffff00{time:|cff00ff00TIME|r,|cff00ff00SCC/SCS/SAA/SAR|r:|cff00ff00SPELL_ID|r:|cff00ff00SPELL_COUNT|r:|cff00ffffSOURCE_NAME|r:|cff00ffffPHASE|r}|r")
+	addA("|cffffff00{time:|r|cff00ff002:00,e,customevent|r|cffffff00}|r - "..L.NoteHelpAdv3)
+	addA("|cffffff00{time:|r|cff00ff003:40,glowall|r|cffffff00}|r - "..L.NoteHelpAdv6)
+	addA("|cffffff00{time:|r|cff00ff004:15,glow|r|cffffff00}|r - "..L.NoteHelpAdv7)
+	addA("|cffffff00{time:|r|cff00ff000:45,wa:nzoth_hs1|r|cffffff00}|r - "..L.NoteHelpAdv4)
+	addA("   WA Function example:")
+	addA("   Events: |cffffff00MRT_NOTE_TIME_EVENT|r")
+	addA("   |cffff8bf3function(event,...)|r")
+	addA("|cffff8bf3     if event == \"MRT_NOTE_TIME_EVENT\" then|r")
+	addA("|cffff8bf3       local timerName, timeLeft, noteText = ...|r")
+	addA("|cffff8bf3       if timerName == \"nzoth_hs1\" and timeLeft == 3 then|r")
+	addA("|cffff8bf3         return true|r")
+	addA("|cffff8bf3       end|r")
+	addA("|cffff8bf3     end|r")
+	addA("|cffff8bf3   end|r")
+	addA(L.NoteHelpAdv5)
+	addA(" |cffe6ff15{time:0:30,SCC:17:2,wa:eventName1,wa:eventName2}|r")
+	addA(" |cffff9f05{time:1:40,p1.5}First intermission|r")
+	addA(" |cffe6ff15{p,SCC:17:2}Until end of the fight{/p}|r")
+	addA(" |cffff9f05{p,SCC:17:2,SCC:17:3}Until second condition{/p}|r")
+	addA(" |cffe6ff15{time:0:20,p2,wa:use_hs,glowall}|r")
+	addA(" |cffff9f05{time:65,SCC:17:2:"..UnitName'player'.."} Count casts only for player "..UnitName'player'.." |r")
+	addA(" |cffe6ff15{time:1:05,SCC:17:2::p3} Count casts only on phase 3 |r")
 
-	self.textHelpAdv = ELib:Text(self.advancedScroll.C,
-		"|cffffff00{time:|r|cff00ff001:06,p2|r|cffffff00}|r - "..L.NoteHelpAdv1..
-		"|n|cffffff00{time:|r|cff00ff000:30,SCC:17:2|r|cffffff00}|r - "..L.NoteHelpAdv2..
-		"|n   "..(HUD_EDIT_MODE_ENABLE_ADVANCED_OPTIONS or "Advanced Options")..": |cffffff00{time:|cff00ff00TIME|r,|cff00ff00SCC/SCS/SAA/SAR|r:|cff00ff00SPELL_ID|r:|cff00ff00SPELL_COUNT|r:|cff00ffffSOURCE_NAME|r:|cff00ffffPHASE|r}|r"..
-		"|n|cffffff00{time:|r|cff00ff002:00,e,customevent|r|cffffff00}|r - "..L.NoteHelpAdv3..
-		"|n|cffffff00{time:|r|cff00ff003:40,glowall|r|cffffff00}|r - "..L.NoteHelpAdv6..
-		"|n|cffffff00{time:|r|cff00ff004:15,glow|r|cffffff00}|r - "..L.NoteHelpAdv7..
-		"|n|cffffff00{time:|r|cff00ff000:45,wa:nzoth_hs1|r|cffffff00}|r - "..L.NoteHelpAdv4..
-		"|n   WA Function example:|n   Events: |cffffff00MRT_NOTE_TIME_EVENT|r|n   |cffff8bf3function(event,...)|n     if event == \"MRT_NOTE_TIME_EVENT\" then|n       local timerName, timeLeft, noteText = ...|n       if timerName == \"nzoth_hs1\" and timeLeft == 3 then|n         return true|n       end|n     end|n   end|r|n"..
-		"|n"..L.NoteHelpAdv5.."|n |cffe6ff15{time:0:30,SCC:17:2,wa:eventName1,wa:eventName2}|r|n |cffff9f05{time:1:40,p1.5}First intermission|r|n |cffe6ff15{p,SCC:17:2}Until end of the fight{/p}|r|n |cffff9f05{p,SCC:17:2,SCC:17:3}Until second condition{/p}|r|n|n |cffe6ff15{time:0:20,p2,wa:use_hs,glowall}|r"..
-		"|n |cffff9f05{time:65,SCC:17:2:"..UnitName'player'.."} Count casts only for player "..UnitName'player'.." |r|n |cffe6ff15{time:1:05,SCC:17:2::p3} Count casts only on phase 3 |r"
-	):Point("LEFT",10,0):Point("RIGHT",-10,0):Point("TOP",0,-5):Color()
+	self.helpAdvFS = {}
+	BuildHelpLines(helpC, advLines, self.helpAdvFS, {anchorFrame = self.advancedHelp, x = 10, y = -20})
+	self.advancedShown = false
+	for i = 1, #self.helpAdvFS do self.helpAdvFS[i]:Hide() end
 
-	local height = self.textHelpAdv:GetHeight()
-	if height and height > 100 then
-		self.advancedScroll:Height(height + 10)
+	function self:LayoutHelp()
+		local vw = self.helpScroll:GetWidth()
+		if not vw or vw < 100 then vw = 850 end
+		self.helpScroll.C:SetWidth(vw - 4)
+		local w = vw - 30
+		if w < 100 then w = 800 end
+		local basicH = LayoutHelpLines(self.helpBasicFS, w)
+		local total = 15 + basicH + 20 + 20         -- topPad + basic + gap + button
+		if self.advancedShown then
+			local advH = LayoutHelpLines(self.helpAdvFS, w)
+			total = total + 20 + advH                -- gap + advanced
+		end
+		total = total + 20                           -- bottom padding
+		self.helpScroll:Height(total)
 	end
+	self:LayoutHelp()
 
 	module:RegisterEvents("GROUP_ROSTER_UPDATE")
 
 	function self:OnShow()
 		module.main:GROUP_ROSTER_UPDATE()
+		if self.LayoutHelp then self:LayoutHelp() end
 	end
 
 	function self:UpdateOptions()
@@ -3920,32 +4053,27 @@ function module.frame:Save(blackNoteID)
 	local encounterID = VMRT.Note.AutoLoad[blackNoteID or 0] or "-"
 	local noteName = (blackNoteID and VMRT.Note.BlackNames[blackNoteID]) or (not blackNoteID and VMRT.Note.DefName) or ""
 
-	if MRT.isClassic and not MRT.isLK then
-		local MSG_LIMIT_COUNT = 10
-		local MSG_LIMIT_TIME = 6
-		if #arrtosand >= MSG_LIMIT_COUNT and module.options.buttonsend then
-			module.options.buttonsend:Disable()
-			C_Timer.After(floor((#arrtosand+1)/MSG_LIMIT_COUNT * MSG_LIMIT_TIME),function()
-				module.options.buttonsend:Enable()
-			end)
-		end
-		for i=1,#arrtosand,MSG_LIMIT_COUNT do
-			local start = i
-			C_Timer.After(floor((start-1)/MSG_LIMIT_COUNT) * MSG_LIMIT_TIME + 0.05,function()
-				for j=start,min(#arrtosand,start+MSG_LIMIT_COUNT-1) do
-					MRT.F.SendExMsg("multiline",indextosnd.."\t"..arrtosand[j])
-				end
-			end)
-		end
-		C_Timer.After(floor((#arrtosand)/MSG_LIMIT_COUNT) * MSG_LIMIT_TIME + 0.1,function()
-			MRT.F.SendExMsg("multiline_add",MRT.F.CreateAddonMsg(indextosnd,encounterID,noteName))
+	-- 3.3.5a: addon messages MUST be spaced out. Sending all chunks in one frame
+	-- trips the server-side anti-flood, which silently drops one (or more) chunks.
+	-- The receiver just concatenates whatever arrived (no per-chunk index/integrity
+	-- check), so a whole ~220-char chunk goes missing mid-note. Pace the sends.
+	local SEND_DELAY = 0.15
+	local total = #arrtosand
+	if total >= 10 and module.options.buttonsend then
+		module.options.buttonsend:Disable()
+		C_Timer.After((total+1)*SEND_DELAY,function()
+			if module.options.buttonsend then module.options.buttonsend:Enable() end
 		end)
-	else
-		for i=1,#arrtosand do
-			MRT.F.SendExMsg("multiline",indextosnd.."\t"..arrtosand[i])
-		end
-		MRT.F.SendExMsg("multiline_add",MRT.F.CreateAddonMsg(indextosnd,encounterID,noteName))
 	end
+	for i=1,total do
+		local idx = i
+		C_Timer.After((idx-1)*SEND_DELAY,function()
+			MRT.F.SendExMsg("multiline",indextosnd.."\t"..arrtosand[idx])
+		end)
+	end
+	C_Timer.After(total*SEND_DELAY,function()
+		MRT.F.SendExMsg("multiline_add",MRT.F.CreateAddonMsg(indextosnd,encounterID,noteName))
+	end)
 end
 
 function module.frame:Clear()
@@ -3968,6 +4096,35 @@ function module.frame:UpdateOptionsText(onlyPage)
 	end
 end
 
+-- Single, full repaint of a received note. Heavy (re-parses text, repositions
+-- all markers), so we run it once per transfer instead of once per chunk.
+function module:DoReceivedRender()
+	MRT.F:FireCallback("Note_ReceivedText",VMRT.Note.Text1)
+	module.allframes:UpdateText()
+	module.frame:UpdateOptionsText()
+	if type(WeakAuras)=="table" and WeakAuras.ScanEvents and type(WeakAuras.ScanEvents)=="function" then
+		WeakAuras.ScanEvents("EXRT_NOTE_UPDATE")
+		WeakAuras.ScanEvents("MRT_NOTE_UPDATE")
+	end
+end
+
+-- Debounced repaint: each arriving chunk reschedules, so the note is painted
+-- once the transfer settles. Keeps loading smooth instead of "jumpy".
+function module:ScheduleReceivedRender()
+	module._renderToken = (module._renderToken or 0) + 1
+	local token = module._renderToken
+	C_Timer.After(0.25,function()
+		if module._renderToken ~= token then return end
+		module:DoReceivedRender()
+	end)
+end
+
+-- Immediate repaint (finalizer arrived) + cancel any pending debounced one.
+function module:ForceReceivedRender()
+	module._renderToken = (module._renderToken or 0) + 1
+	module:DoReceivedRender()
+end
+
 function module:addonMessage(sender, prefix, ...)
 	if prefix == "multiline" then
 		if VMRT.Note.OnlyPromoted and IsInRaid() and MRT.F.IsPlayerRLorOfficer(sender) == false then
@@ -3986,19 +4143,16 @@ function module:addonMessage(sender, prefix, ...)
 		module.db.msgindex = msgnowindex
 		module:SaveText(module.db.lasttext, module.db.msgindex)
 		module:ModHistory(module.db.msgindex, {bossID = -1, name = -1})
-		MRT.F:FireCallback("Note_ReceivedText",VMRT.Note.Text1)
-		module.allframes:UpdateText()
 		VMRT.Note.AutoLoad[0] = nil
 		VMRT.Note.DefName = nil
-		module.frame:UpdateOptionsText()
 		if VMRT.Note.EnableWhenReceive and not VMRT.Note.enabled then
 			module:Enable()
 		end
 		module.allframes.red_back:Show()
-		if type(WeakAuras)=="table" and WeakAuras.ScanEvents and type(WeakAuras.ScanEvents)=="function" then
-			WeakAuras.ScanEvents("EXRT_NOTE_UPDATE")
-			WeakAuras.ScanEvents("MRT_NOTE_UPDATE")
-		end
+		-- 3.3.5a: chunks now arrive spaced out (anti-flood). Painting on every
+		-- chunk made loading look jumpy - debounce a single repaint once the
+		-- transfer settles. The multiline_add finalizer forces it immediately.
+		module:ScheduleReceivedRender()
 	elseif prefix == "multiline_add" then
 		if VMRT.Note.OnlyPromoted and IsInRaid() and MRT.F.IsPlayerRLorOfficer(sender) == false then
 			return
@@ -4016,6 +4170,7 @@ function module:addonMessage(sender, prefix, ...)
 		if sender == MRT.SDB.charKey then
 			return
 		end
+		module:ForceReceivedRender()
 		if VMRT.Note.SaveAllNew then
 			local finded = false
 			if noteName then
@@ -4419,6 +4574,23 @@ do
 			wipe(encounter_time_c)
 			wipe(encounter_time_wa_uids)
 			module.db.encounter_time = GetTime()
+			-- Manual simulation (no real encounterID, e.g. /mrt note timer): auto-stop
+			-- once the last note event has elapsed, instead of requiring a 2nd command.
+			-- Real boss fights (encounterID set) are untouched - they end on ENCOUNTER_END.
+			if not encounterID then
+				local maxT = 0
+				for m,s,opts in noteText:gmatch("{time:(%d+):(%d+)([^}]*)}") do
+					if not opts:find(",[epS]") then  -- skip event/phase/counter-relative lines
+						local t = (tonumber(m) or 0)*60 + (tonumber(s) or 0)
+						if t > maxT then maxT = t end
+					end
+				end
+				module.db.simTimer = true
+				module.db.simTimerEnd = maxT > 0 and (module.db.encounter_time + maxT + 3) or nil
+			else
+				module.db.simTimer = nil
+				module.db.simTimerEnd = nil
+			end
 			encounter_time_p[1] = module.db.encounter_time
 			encounter_time_p["1"] = module.db.encounter_time
 			currPhase = 1
@@ -4471,6 +4643,8 @@ do
 
 		module:UnregisterTimer()
 		module.db.encounter_time = nil
+		module.db.simTimer = nil
+		module.db.simTimerEnd = nil
 		wipe(encounter_time_p)
 		wipe(encounter_time_c)
 		wipe(encounter_time_wa_uids)
@@ -4485,6 +4659,11 @@ do
 		tmr = tmr + elapsed
 		if tmr > 1 then
 			tmr = 0
+			-- auto-stop the manual simulation once the last note event has passed
+			if module.db.simTimer and module.db.simTimerEnd and GetTime() >= module.db.simTimerEnd then
+				module.main:ENCOUNTER_END()
+				return
+			end
 			if module.frame:IsShown() then
 				module.allframes:UpdateText(true)
 			end
