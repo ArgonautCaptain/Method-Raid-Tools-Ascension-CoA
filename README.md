@@ -1,153 +1,107 @@
-# Method Raid Tools (MRT) — WotLK 3.3.5a Backport
+<p align="center">
+  <img src="https://via.placeholder.com/120?text=MRT" alt="Method Raid Tools" width="120">
+</p>
 
-A full backport of the **Method Raid Tools** addon from retail to **WoW 3.3.5a**
-(Wrath of the Lich King, build `12340`, interface `30300`).
+<p align="center">
+  <b>Method Raid Tools — полный бэкпорт для WotLK 3.3.5a</b><br>
+  <i>Современные рейдовые инструменты на клиенте 3.3.5a</i>
+</p>
 
-The codebase is a merge of two upstream sources:
+<br>
 
-- **MRT 4840** — the last WotLK-era release of MRT.
-- **MRT 5240** — the current retail (modern) release of MRT.
+<p align="center">
+  <img src="https://img.shields.io/badge/MRT-WotLK%20Backport-ff8800?style=for-the-badge&logo=appveyor">
+  <img src="https://img.shields.io/badge/WotLK-3.3.5a-blue?style=for-the-badge">
+  <img src="https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge">
+</p>
 
-Retail features are layered on top of the WotLK base.
+<h1 align="center">Method Raid Tools — WotLK 3.3.5a backport</h1>
 
-> **Awesome WotLK** patched client (where extra retail APIs and events such
-> as `NAME_PLATE_UNIT_ADDED`, `C_NamePlate.*`, `C_VoiceChat.*` work natively).
-> The addon detects native APIs and skips its shims when they are present.
+<p align="center">
+  <b>Полноценный бэкпорт аддона Method Raid Tools с актуального клиента WoW на версию 3.3.5a (Wrath of the Lich King).</b><br>
+  <i>Слияние последнего WotLK-релиза MRT (4840) и современной версии (5240) с совместимостью для приватных серверов.</i>
+</p>
 
-
-<img width="1337" height="1007" alt="mrt-window" src="https://github.com/user-attachments/assets/379fe914-7ea4-45f1-9c9a-45df918a7414" />
-
-
----
-
-## WeakAura — Kaze MRT Timer (backported)
-
-The companion WeakAura **Kaze MRT Timer**
-([wago.io/bcVeRwoUj](https://wago.io/bcVeRwoUj)) — used as a clean,
-modern timer overlay on top of MRT — has been backported to 3.3.5a
-and is fully working with this version of MRT. Import it into
-WeakAuras-3.3.5a and it will pick up MRT's note timers,
-`{time:...}` markup and Reminder events out of the box.
+<p align="center">
+  <a href="#english">English</a> ·
+  <a href="#russian">Русский</a>
+</p>
 
 ---
 
-## Installation
+<a name="english"></a>
+## English
 
-1. Download / clone this repo.
-2. Copy the inner `MRT/` folder into your client's
-   `Interface\AddOns\` directory.
-3. (Re)launch the game. At the character select screen you should see
-   **Method Raid Tools** enabled in the AddOns list.
-4. In-game, type `/mrt` (or `/rt`, `/exrt`, `/ert`, `/raidtools`,
-   `/methodraidtools`) to open the options window.
+<p align="center">
+  <a href="#modules">Modules</a> ·
+  <a href="#installation">Installation</a> ·
+  <a href="#advanced-features">Advanced Features</a> ·
+  <a href="#slash-commands">Slash Commands</a> ·
+  <a href="#credits">Credits</a>
+</p>
 
-No external dependencies are required — `LibStub`, `LibDeflate`, `LibCustomGlow`
-and the rest of Ace3-style libs ship vendored in `MRT/libs/`. The old
-`!!!ClassicAPI` requirement is **not** needed: `Mixin`, `CreateColor`,
-`SetGradient`, etc. are shimmed in `Compat335.lua`.
+### About
 
----
+**Method Raid Tools (MRT)** is a comprehensive raid utility addon: notes, timers, reminders, readiness checks, combat analysis, and more. This repository is a **full backport of MRT** (based on versions 4840 + 5240) to the **WoW 3.3.5a (WotLK)** client.
 
-## Modules
+The addon works on any WotLK private server. When used with a patched client (e.g., **Awesome WotLK**), it automatically takes advantage of native APIs (NamePlates, VoiceChat, etc.).
 
-Every major retail MRT module has been ported and is enabled by default
-(toggleable in `/mrt` → Options).
+<a name="modules"></a>
+### Modules
 
-### Raid coordination
+#### Raid coordination
 
-- **Note** — the classic shared raid note (text + icon markup).
-  Sync with the raid leader / assists, edit live, multiple per-boss
-  pages, dynamic timer markup (e.g. `{time:p1, 0:30}`), per-line color
-  highlighting, and per-character "personal" assignments.
-- **VisNote (Visual Note)** — graphical note builder: drop boss icons,
-  player tokens, marker icons and arrows on a canvas, then broadcast
-  the resulting picture to the raid alongside the text note.
-- **Reminder** — the personal callout / reminder engine (the retail
-  "WeakAuras-lite" inside MRT). Pre-configured trigger types for
-  spells, auras, casts, units in range, raid composition, BigWigs/DBM
-  events, etc. **Boss timings and phase scripts for WotLK, TBC and
-  Vanilla raids are bundled** — they were imported and adapted from
-  [Zidras/DBM-Warmane](https://github.com/Zidras/DBM-Warmane), so
-  phase-aware reminders (`{phase:N}`, `Switch to phase`, etc.)
-  fire on the correct pulls without any extra setup.
-- **Timers** — pull timer / break timer / custom raid timer, with
-  Dynamic Pull Timer support (per-spec optimal pull window).
-- **Raid Cooldowns (ExCD2)** — external CD bars: shows the raid's
-  defensives, raid CDs (Divine Hymn, Aura Mastery, Tranquility,
-  Anti-Magic Zone, etc.), Innervate, brez CDs, and any custom spell
-  per-class. Includes Reminder-style highlighting on the player's
-  nameplate when a watched CD is up.
-- **BattleRes** — combat-res tracker. WotLK has no
-  shared bres pool, but the panel still tracks per-class cooldown
-  state across the raid (Rebirth) so the
-  raid leader knows who is up.
-- **Marks (Skull/Cross/etc. assignments)**, **MarksSimple**,
-  **MarksBar** — marker assignment lists, the floating mark bar
-  with `/rt mark N` macro support, and the world-marker (flare /
-  beacon) pinger.
-- **Interrupts** — kick rotation tracker. CLEU-driven kick log,
-  per-target kick assignments, nameplate highlights and a
-  "next kicker" announcer.
-- **Raid Check (RaidCheck)** — food / flask / runes / Vantus / raid
-  buffs / consumables / durability checker. Supports CTRA / oRA3
-  durability interop, autonomous Inspect-based durability scanning,
-  and a one-click ready-check window.
-- **Raid Groups (RaidGroups)** — saved raid layouts (named profiles)
-  that you can re-apply with one click or via slash command.
-- **Invite Tool (InviteTool)** — auto-invite, disband, reinvite,
-  pre-saved invite lists. Reads keywords from whisper / chat.
-- **Raid Attendance (RaidAttendance)** — automatic roster snapshots
-  for attendance tracking; can be saved manually with `/rt roster`.
-- **Encounter** — server-agnostic encounter detection (`ENCOUNTER_START`
-  / `ENCOUNTER_END` shim) used by every other module.
-- **Pets** — extra pet info / pet-owner mapping for all CLEU
-  consumers (so a Ghoul/Imp's damage credits the right hunter / lock
-  / DK in fight log and CD bars).
-- **WhoPulled** — first-pull / "who pulled" detector with chat
-  callout.
-- **Auto Logging (AutoLogging)** — auto-toggles the WoW combat log
-  (`/combatlog`) on raid pulls and turns it off on wipes / kills, so
-  you do not lose Warcraft Logs uploads.
+- **Note** — shared raid notes with icons, timers (`{time:...}`), personal assignments, and multiple boss pages. Syncs with raid leader.
+- **VisNote (Visual Note)** — graphical note builder: drop boss icons, player tokens, markers and arrows on a canvas, then broadcast the picture alongside the text note.
+- **Reminder** — the built-in reminder engine (a "WeakAuras-lite" inside MRT). Triggers on spells, auras, casts, distance, raid composition, BigWigs/DBM events. **Boss timings for WotLK, TBC and Vanilla raids are bundled** (imported from DBM-Warmane).
+- **Timers** — pull timer, break timer, custom raid timers, dynamic pull timer (spec‑optimal window).
+- **Raid Cooldowns (ExCD2)** — external CD bars: defensives, raid CDs (Divine Hymn, Tranquility, AMZ, etc.), Innervate, brez. Highlights on nameplates when a watched CD is ready.
+- **Interrupts** — kick rotation tracker: interrupt log, per‑target assignments, nameplate highlights, "next kicker" announcer.
+- **Raid Check** — food/flask/runes/Vantus/raid buffs/durability checker. CTRA/oRA3 interop, autonomous inspect‑based durability scan, one‑click ready check.
+- **Raid Groups** — saved raid layouts (profiles) you can apply with one command.
+- **Invite Tool** — auto‑invite, disband, reinvite, keyword‑based invite lists.
+- **Auto Logging** — automatically toggles `/combatlog` on pull and off on wipe/kill.
+- **Encounter** — server‑agnostic encounter start/end detection (shim for `ENCOUNTER_START/END`).
+- **Pets** — pet‑owner mapping for correct damage/cd attribution.
+- **WhoPulled** — "who pulled the boss?" detector with chat callout.
 
-### Inspect & Loot
+#### Inspect & Loot
 
-- **Inspect / Inspect Viewer (InspectViewer)** — async `NotifyInspect`
-  driver. The viewer shows raid-wide gear, gems, enchants, talents
-  (primary tree), set bonuses, and an item-level overview.
-- **Loot History (LootHistory)** — local loot drop log with filters
-  by player / boss / instance.
-- **Loot Link (LootLink)** — links the entire loot window to chat
-  with one command (`/rt loot`).
+- **Inspect / Inspect Viewer** — async inspection of gear, gems, enchants, talents (main tree), set bonuses, and item levels across the raid.
+- **Loot History** — local loot log filtered by player/boss/instance.
+- **Loot Link** — posts the entire loot window to chat with `/rt loot`.
 
-### Combat analysis — Fight Log (BossWatcher)
+#### Combat analysis — Fight Log (BossWatcher)
 
-- **BossWatcher (Fight Log)** — the in-game combat-log analyzer.
-  Per-fight tabs for Damage, Healing, Buffs/Debuffs, Enemy Casts,
-  Player Spells, Power, Interrupts/Dispels, Tracking, Death Log,
-  and Positions. Full segment / phase support, "Save fights"
-  persistence across `/reload`, and per-fight memory budget guard
-  (see below).
+- **BossWatcher (Fight Log)** — in‑game combat‑log analyzer. Tabs: Damage, Healing, Buffs/Debuffs, Enemy Casts, Player Spells, Power, Interrupts/Dispels, Tracking, Death Log, Positions. Full phase support, fight persistence across reloads, **memory cap protection for 32‑bit clients** (see below).
 
-### Other
+#### Other
 
-- **WA Checker (WAChecker)** — version-check WeakAuras across the
-  raid, see who has outdated / missing auras.
-- **Profiles** — export / import addon profiles between characters.
+- **WA Checker** — checks WeakAuras versions across the raid.
+- **Profiles** — export/import addon profiles between characters.
 
+<a name="installation"></a>
+### Installation
 
----
+1. Download the latest release (or clone this repository).
+2. Extract the archive.
+3. **Important:** the addon folder must be named exactly **`MRT`** (GitHub ZIPs extract with a `-master` suffix — rename it).
+4. Move the `MRT` folder into: \Interface\AddOns\
+5. **No need** to install `!!!ClassicAPI` — all missing APIs (Mixin, CreateColor, SetGradient, etc.) are shimmed in `Compat335.lua`.
+6. Enable the addon on the character‑select screen and launch the game. Type `/mrt` (or `/rt`, `/exrt`, `/ert`, `/raidtools`, `/methodraidtools`) to open.
 
+### Compatibility
 
-## Fight Log memory cap fix (32-bit WoW)
+- Built and tested on **WoW 3.3.5a** (Interface `30300`, build `12340`).
+- Works on any WotLK private server (developed on Warmane).
+- On the patched **Awesome WotLK** client, natively uses `NAME_PLATE_UNIT_ADDED`, `C_NamePlate.*`, `C_VoiceChat.*` when available.
 
-Retail MRT records every CLEU event of the pull into per-fight Lua
-tables. On a 64-bit retail client this is fine; on a 3.3.5a 32-bit
-client a 30-minute progress wipe-fest will OOM the game and either
-crash the client or evict you to the character screen.
+<a name="advanced-features"></a>
+### Advanced Features
 
-This backport adds a per-fight memory budget on top of the
-BossWatcher recorder. The relevant caps live near the top of
-`MRT/BossWatcher.lua`:
+#### Fight Log memory cap fix (32‑bit WoW)
+
+Retail MRT records every CLEU event into Lua tables. On a 64‑bit client this is fine; on a 32‑bit 3.3.5a client a long progress night will OOM the game. This backport adds a **per‑fight memory budget** (configurable in `MRT/BossWatcher.lua`):
 
 | Cap                          | Default | What it limits                              |
 | ---------------------------- | ------- | ------------------------------------------- |
@@ -157,101 +111,79 @@ BossWatcher recorder. The relevant caps live near the top of
 | `BW_TRACKED_GUID_CAP`        | 1 000   | Distinct tracked GUIDs per fight            |
 | `BW_TOTAL_BUDGET_KB`         | 150 MB  | Cumulative budget across saved fights       |
 
-When a per-fight cap is hit, MRT stops appending to that bucket
-(damage / healing totals are still accurate; only the granular
-event log is truncated) and prints a yellow warning to the chat:
+When a cap is hit, MRT prints a warning and truncates only the granular log (totals remain accurate). Two extra toggles in `/mrt` → BossWatcher options:
 
-> `[MRT/BossWatcher]` recorded fight log truncated (X cap reached).
-> Consider enabling 'Disable buffs & debuffs' or 'Reduced detail
-> (5s segments)' on long fights to avoid the cap.
+- **Disable buffs & debuffs** — skips aura logging entirely (massive memory saving).
+- **Reduced detail (5s segments)** — increases segment interval from 1s to 5s (∼5× memory reduction).
 
-When the cumulative `BW_TOTAL_BUDGET_KB` is exceeded across saved
-fights, the oldest saved fight is evicted (and a chat warning is
-printed) instead of the client OOMing.
+<a name="slash-commands"></a>
+### Slash Commands
 
-Two extra toggles are exposed in `/mrt` → BossWatcher options:
+All commands accept any of these prefixes: `/rt`, `/exrt`, `/ert`, `/mrt`, `/raidtools`, `/methodraidtools`.
 
-- **Disable buffs & debuffs** — skips aura logging entirely. Buffs
-  and debuffs are by far the largest source of memory use; on a long
-  H-LK or H-Sindragosa progress night this single toggle drops fight
-  RAM by ~5–10×.
-- **Reduced detail (5s segments)** — bumps the segment interval
-  from 1 s to 5 s, cutting graph/segment memory ~5×.
-
-Both toggles are off by default. Turn them on for long progress
-fights or low-memory clients; turn them off for normal tactics
-review.
-
----
-
-# Slash Commands
-
-All commands accept any of these prefixes: `/rt`, `/exrt`, `/ert`, `/mrt`, `/raidtools`, `/methodraidtools`
-
-## Core
+#### Core
 
 | Command | Description |
-|---|---|
+|---------|-------------|
 | `/rt` | Open MRT options window |
-| `/rt set` | Open options window (alias) |
+| `/rt set` | Open options (alias) |
 | `/rt icon` | Toggle minimap icon |
 | `/rt getver` | Ask raid for MRT version |
 | `/rt getverg` | Ask guild for MRT version |
-| `/rt quit` | Disable MRT for session (until reload) |
-| `/rt profiler` | Open CPU profiling window |
+| `/rt quit` | Disable MRT until reload |
+| `/rt profiler` | Open CPU profiler window |
 | `/rl` | Reload UI (registered by MRT) |
 
-## Note
+#### Note
 
 | Command | Description |
-|---|---|
-| `/rt note` (`/rt n`) | Toggle on-screen note window |
+|---------|-------------|
+| `/rt note` (`/rt n`) | Toggle on‑screen note window |
 | `/rt editnote` | Open Notes tab in options |
 | `/rt note set <name>` | Switch to and broadcast saved note `<name>` |
-| `/rt note show <name>` | Add extra window for note `<name>` |
-| `/rt note timer` | Fire ENCOUNTER_START/ENCOUNTER_END for testing timers |
+| `/rt note show <name>` | Open extra window for note `<name>` |
+| `/rt note timer` | Fire ENCOUNTER_START/END for testing timers |
 | `/rt note starttimer <name>` | Start custom note timer |
 | `/rt note synctimer <name>` | Sync custom note timer with raid |
 | `/rt note phase <N>` | Advance note phase counter to N |
 
-## Timers
+#### Timers
 
 | Command | Description |
-|---|---|
-| `/rt pull` | 10-second pull timer |
-| `/rt pull <X>` | X-second pull timer |
-| `/rt afk <X>` | X-minute break timer (0 = cancel) |
+|---------|-------------|
+| `/rt pull` | 10‑second pull timer |
+| `/rt pull <X>` | X‑second pull timer |
+| `/rt afk <X>` | X‑minute break timer (0 = cancel) |
 | `/rt timer <NAME> <X>` | Custom raid timer |
 | `/rt mytimer <X>` | Local countdown to X seconds |
-| `/rt dpt` | Dynamic Pull Timer (spec-optimal time) |
-| `/rt cleutimer <event> <id> <t>` | CLEU-driven timer (advanced) |
+| `/rt dpt` | Dynamic Pull Timer (spec‑optimal time) |
 
-## Marks / World Markers
+#### Marks & World Markers
 
 | Command | Description |
-|---|---|
-| `/rt mark 1..4` | Apply marks group 1-4 (configured in MarksSimple) |
+|---------|-------------|
+| `/rt mark 1..4` | Apply mark groups 1‑4 (configured in MarksSimple) |
 | `/rt mark 5` | Clear all marks |
 | `/rt mb` / `/rt mm` | Toggle floating Marks Bar |
 
-## Raid Groups
+#### Raid Groups
 
 | Command | Description |
-|---|---|
+|---------|-------------|
 | `/rt raidgroup <name>` | Apply saved raid layout `<name>` |
-| `/rt inv` | Run autoinvite |
+| `/rt inv` | Auto‑invite |
 | `/rt dis` | Disband raid |
 | `/rt reinv` | Disband + reinvite raid |
-| `/rt invlist <N>` | Invite from predefined list N |
+| `/rt invlist <N>` | Invite from preset list N |
 
-## Raid Check / Consumables
+#### Raid Check
 
 | Command | Description |
-|---|---|
+|---------|-------------|
 | `/rt check` | Open raid buffs/consumables window |
-| `/rt food` | Print missing food locally |
+| `/rt food` | Print missing food (local) |
 | `/rt foodchat` | Announce missing food to chat |
-| `/rt flask` | Print missing flasks locally |
+| `/rt flask` | Print missing flasks (local) |
 | `/rt flaskchat` | Announce missing flasks to chat |
 | `/rt potion` | Print missing potion users |
 | `/rt potionchat` | Announce missing potion users |
@@ -259,119 +191,179 @@ All commands accept any of these prefixes: `/rt`, `/exrt`, `/ert`, `/mrt`, `/rai
 | `/rt check v` / `vc` | Check Vantus runes |
 | `/rt check b` / `bc` | Check raid buffs |
 
-## Raid Attendance
+#### Attendance
 
 | Command | Description |
-|---|---|
+|---------|-------------|
 | `/rt roster` | Save current raid roster snapshot |
 
-## Raid Cooldowns (ExCD2)
+#### Raid Cooldowns (ExCD2)
 
 | Command | Description |
-|---|---|
+|---------|-------------|
 | `/rt cd` | Toggle Raid CD bars on/off |
-| `/rt runcd <id> <name>` | Force-trigger a CD (debug) |
+| `/rt runcd <id> <name>` | Force‑trigger a CD (debug) |
 | `/rt resetcd <id> <name>` | Reset a CD to ready (debug) |
 | `/cddebug` | Toggle CD debug logging |
 
-## Inspect Viewer
+#### Inspect / Loot
 
 | Command | Description |
-|---|---|
+|---------|-------------|
 | `/rt raid` | Open Inspect Viewer (gear/talents) |
-
-## Loot Link
-
-| Command | Description |
-|---|---|
 | `/rt loot` | Link loot window contents to chat |
 
-## Fight Log (BossWatcher)
+#### Fight Log (BossWatcher)
 
 | Command | Description |
-|---|---|
+|---------|-------------|
 | `/rt fl` (`/rt bw`) | Open Fight Log window |
 | `/rt fl s` / `start` | Manually start logging current fight |
 | `/rt fl e` / `end` | Manually stop logging |
-| `/rt fl c` / `clear` | Clear in-memory fight buffer |
-| `/rt fl reset` | Wipe saved-fights buffer |
+| `/rt fl c` / `clear` | Clear in‑memory fight buffer |
+| `/rt fl reset` | Wipe saved‑fights buffer |
 | `/rt fl save` | Save current fights to SavedVariables |
 | `/rt fl phase` | Advance active phase counter |
 | `/rt fl allenergy` | Toggle "log all energy" debug mode |
 
-## Reminder
+#### Reminder
 
 | Command | Description |
-|---|---|
+|---------|-------------|
 | `/rt rem ver` | Query raid for Reminder DB version |
 
-## Debug
+#### Debug
 
 | Command | Description |
-|---|---|
-| `/mrtcleu on` | Print every SPELL_CAST_SUCCESS, SPELL_AURA_APPLIED, SPELL_CAST_START |
+|---------|-------------|
+| `/mrtcleu on` | Enable CLEU sniffer (prints every spell event) |
 | `/mrtcleu off` | Disable sniffer, print summary |
 | `/mrtcleu status` | Show CLEU dispatcher wiring status |
-| `/rt profiler` | CPU profiler — sortable by module/function |
+| `/rt profiler` | CPU profiler |
 | `/cdtalread` | Talent broadcast debug |
 
-## Debug commands
+<a name="credits"></a>
+### Credits
 
-Useful only when reproducing a bug or wiring a new module. They add
-spam to the chat frame, so leave them off in normal play.
-
-| Command                  | Effect                                                                       |
-| ------------------------ | ---------------------------------------------------------------------------- |
-| `/mrtcleu on`            | Enable the **CLEU sniffer** — prints every `SPELL_CAST_SUCCESS` /           |
-|                          | `SPELL_AURA_APPLIED` / `SPELL_CAST_START` event MRT receives. Useful when   |
-|                          | a Reminder / ExCD2 trigger is not firing.                                    |
-| `/mrtcleu off`           | Disable the sniffer and print a summary of received events.                 |
-| `/mrtcleu status`        | Show whether MRT's CLEU dispatcher and CLEU modules are correctly wired.    |
-| `/rt profiler`           | Open the CPU profiler window — sortable by module / function CPU + memory. |
-
-There is also a Reminder-side debug toggle (Options →
-Reminder → "Debug mode") that enables verbose logging of trigger
-evaluation. Pair it with `MRT_VERBOSE_DEBUG = true` in chat
-(`/run MRT_VERBOSE_DEBUG = true`) to also surface `DebugPrint(...)`
-output from the rest of the addon.
-
-If MRT looks dead after a `/reload`, the first thing to check is:
-
-```
-/run print(MRT and "ok" or "no MRT", MRT and MRT.A and "modules: "..tostring((function() local n=0 for _ in pairs(MRT.A) do n=n+1 end return n end)()) or "?")
-```
-
-That confirms whether the addon loaded at all and how many modules
-registered.
+- Original addon: **Method Raid Tools Team**
+- WotLK 3.3.5a backport: **ExoJdi**
+- Boss timings database: **Zidras / DBM-Warmane**
+- Testing & community support
 
 ---
 
-## Reporting bugs
+<a name="russian"></a>
+## Русский
 
-When something goes wrong, **please open a GitHub issue** at
-<https://github.com/ExoJdi/MRT/issues> with:
+<p align="center">
+<a href="#модули-1">Модули</a> ·
+<a href="#установка-1">Установка</a> ·
+<a href="#расширенные-возможности">Расширенные возможности</a> ·
+<a href="#команды-слэша">Команды слэша</a> ·
+<a href="#благодарности-1">Благодарности</a>
+</p>
 
-1. **A clear description** of what happened and what you expected
-   to happen.
-2. **Reproduction steps** — exact slash commands, the boss / phase
-   you were in, any other addons that were involved, whether you
-   were on the Awesome WotLK patched client or vanilla 3.3.5a.
-3. **Screenshots** of the bug, the chat error (if any), and the
-   relevant settings tab in MRT options.
-4. **The Lua error stack**, if you got one — copy the full
-   `BugSack` / `!ImprovedErrorFrame` text.
-5. (optional but very helpful) The output of `/mrtcleu status`
-   captured during the bug.
+### Об аддоне
 
-The smaller and more reproducible the report, the faster the fix.
+**Method Raid Tools (MRT)** — набор инструментов для рейдовой игры. Этот репозиторий содержит **полный бэкпорт MRT** (версии 4840 + 5240) для клиента **WoW 3.3.5a (WotLK)**.
+
+<a name="модули-1"></a>
+### Модули
+
+#### Рейд-координация
+
+- **Note** — рейдовые заметки с иконками, таймерами и синхронизацией.
+- **VisNote** — визуальный редактор заметок (игровое поле с иконками).
+- **Reminder** — движок напоминаний (триггеры на заклинания, ауры, касты, фазы боссов). Встроены тайминги для всех боссов WotLK/TBC/Vanilla.
+- **Timers** — пулл-таймер, таймер перерыва, пользовательские таймеры.
+- **Raid Cooldowns (ExCD2)** — панель внешних кулдаунов рейда.
+- **Interrupts** — трекер кик-ротации.
+- **Raid Check** — проверка расходников и баффов.
+- **Raid Groups** — сохранённые раскладки групп.
+- **Invite Tool** — авто-приглашение, реинвайт.
+- **Auto Logging** — автоматический `/combatlog`.
+
+#### Инспект и лут
+
+- **Inspect Viewer** — просмотр экипировки, талантов, камней и чарок всего рейда.
+- **Loot History** — лог выпавшего лута.
+- **Loot Link** — отправка содержимого лута в чат.
+
+#### Анализ боя — Fight Log
+
+- **BossWatcher** — встроенный анализатор логов с вкладками урона, исцеления, кастов, прерываний и т.д. Защита от переполнения памяти.
+
+#### Другое
+
+- **WA Checker** — проверка версий WeakAuras.
+- **Profiles** — экспорт/импорт профилей.
+
+<a name="установка-1"></a>
+### Установка
+
+1. Скачайте релиз или клонируйте репозиторий.
+2. Распакуйте архив.
+3. **Важно:** папка должна называться ровно **`MRT`**.
+4. Переместите `MRT` в `\Interface\AddOns\`.
+5. **`!!!ClassicAPI` не требуется** — все шимы уже внутри.
+6. Включите аддон в игре и введите `/mrt`.
+
+### Совместимость
+
+- **WoW 3.3.5a** (Interface `30300`). Работает на любом WotLK-сервере.
+
+<a name="расширенные-возможности"></a>
+### Расширенные возможности
+
+#### Защита памяти Fight Log (32-битный клиент)
+
+В `MRT/BossWatcher.lua` заданы лимиты памяти на бой. При достижении лимита старое сохранение удаляется, а не вызывает вылет клиента. В настройках BossWatcher можно отключить запись ауэр или уменьшить детализацию графиков.
+
+<a name="команды-слэша"></a>
+### Команды слэша
+
+Основные префиксы: `/rt`, `/mrt`, `/exrt`, `/ert`, `/raidtools`, `/methodraidtools`.
+
+| Команда | Описание |
+|---------|----------|
+| `/rt` | Открыть настройки |
+| `/rt pull [X]` | Пулл-таймер |
+| `/rt check` | Проверка расходников |
+| `/rt note` | Показать заметки |
+| `/rt fl` | Открыть боевой лог |
+| `/rt cd` | Панель кулдаунов |
+| `/rt raid` | Инспектор экипировки |
+| `/rt loot` | Отправить лут в чат |
+| `/rt roster` | Сохранить состав рейда |
+| `/rt inv` / `/rt dis` | Пригласить / расформировать |
+
+Полный список команд см. в [английской версии](#slash-commands).
+
+<a name="благодарности-1"></a>
+### Благодарности
+
+- Оригинальный аддон: **Команда Method Raid Tools**
+- Бэкпорт: **ExoJdi**
+- Тайминги боссов: **Zidras / DBM-Warmane**
 
 ---
 
-## Donate / Support
+## Сообщение об ошибках
 
-If this backport saved your raid night, you can drop a thank-you /
-buy the backporter a coffee here:
+Если вы нашли баг, пожалуйста, откройте **issue** на GitHub:  
+[https://github.com/ExoJdi/MRT/issues](https://github.com/ExoJdi/MRT/issues)
 
+Приложите:
+- Описание что произошло и что ожидалось.
+- Шаги воспроизведения.
+- Скриншоты, ошибку Lua (если есть).
+- Результат `/mrtcleu status` (если уместно).
+
+---
+
+## Donate / Поддержать
+
+Если бэкпорт спас ваш рейд, вы можете поблагодарить автора:  
 **[boosty.to/exojdi](https://boosty.to/exojdi)**
 
-Cheers, and good luck on your pulls. — *exojdi*
+Удачи на пуллах! — *exojdi*
