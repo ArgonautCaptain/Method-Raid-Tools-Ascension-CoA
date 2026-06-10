@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source srcset="https://cdn.jsdelivr.net/gh/ExoJdi/Method-Raid-Tools-3.3.5a/.github/logo.png" media="(prefers-color-scheme: dark)">
-    <img src="https://cdn-icons-png.flaticon.com/512/1694/1694730.png" alt="Raid Tools" width="120">
+    <img src="https://cdn.jsdelivr.net/gh/ExoJdi/Method-Raid-Tools-3.3.5a/.github/logo.png" alt="Method Raid Tools" width="120">
   </picture>
 </p>
 
@@ -13,7 +13,7 @@
 <br>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/ExoJdi/Method-Raid-Tools-3.3.5a?style=for-the-badge&label=MRT%20for%20WotLK&color=ff8800&cacheSeconds=1">
+  <img src="https://img.shields.io/badge/MRT%20for%20WotLK-5.1.4-ff8800?style=for-the-badge&logo=appveyor">
   <img src="https://img.shields.io/badge/WotLK-3.3.5a-blue?style=for-the-badge">
   <img src="https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge">
 </p>
