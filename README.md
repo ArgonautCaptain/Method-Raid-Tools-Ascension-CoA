@@ -10,7 +10,8 @@
 <br>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/MRT-WotLK%20Backport-ff8800?style=for-the-badge&logo=appveyor">
+  <img src="https://img.shields.io/badge/MRT-WotLK%20Backport-ff8800?style=for-the-badge">
+  <img src="https://img.shields.io/github/v/release/ExoJdi/MRT?style=for-the-badge&label=version&color=ff8800">
   <img src="https://img.shields.io/badge/WotLK-3.3.5a-blue?style=for-the-badge">
   <img src="https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge">
 </p>
