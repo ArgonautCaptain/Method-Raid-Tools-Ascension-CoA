@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Exorsus/ExorsusRaidTools/master/Icon/ExRT.tga.png" alt="Method Raid Tools" width="120">
+  <picture>
+    <source srcset="https://cdn.jsdelivr.net/gh/ExoJdi/Method-Raid-Tools-3.3.5a/.github/logo.png" media="(prefers-color-scheme: dark)">
+    <img src="https://cdn.jsdelivr.net/gh/ExoJdi/Method-Raid-Tools-3.3.5a/.github/logo.png" alt="Method Raid Tools" width="120">
+  </picture>
 </p>
 
 <p align="center">
@@ -10,7 +13,7 @@
 <br>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/ExoJdi/MRT?style=for-the-badge&label=MRT&color=ff8800&sort=date">
+  <img src="https://img.shields.io/badge/MRT%20for%20WotLK-5.1.4-ff8800?style=for-the-badge&logo=appveyor">
   <img src="https://img.shields.io/badge/WotLK-3.3.5a-blue?style=for-the-badge">
   <img src="https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge">
 </p>
@@ -351,7 +354,7 @@ All commands accept any of these prefixes: `/rt`, `/exrt`, `/ert`, `/mrt`, `/rai
 ## Сообщение об ошибках
 
 Если вы нашли баг, пожалуйста, откройте **issue** на GitHub:  
-[https://github.com/ExoJdi/MRT/issues](https://github.com/ExoJdi/MRT/issues)
+[https://github.com/ExoJdi/Method-Raid-Tools-3.3.5a/issues](https://github.com/ExoJdi/Method-Raid-Tools-3.3.5a/issues)
 
 Приложите:
 - Описание что произошло и что ожидалось.
