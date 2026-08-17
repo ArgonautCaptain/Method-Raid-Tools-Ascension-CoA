@@ -3917,7 +3917,7 @@ function module.main:ADDON_LOADED()
 	VMRT = _G.VMRT
 	VMRT.RaidCheck = VMRT.RaidCheck or {
 		ReadyCheckFrame = true,
-		ReadyCheckFrameOnlyRL = true,
+		ReadyCheckFrameOnlyRL = false,
 	}
 
 	VMRT.RaidCheck.FlaskExp = VMRT.RaidCheck.FlaskExp or 1
