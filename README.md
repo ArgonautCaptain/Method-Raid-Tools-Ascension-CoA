@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <b>Method Raid Tools — Full backport for WotLK 3.3.5a</b><br>
+  <b>Method Raid Tools — Full backport for Project Ascension Conquest of Azeroth</b><br>
   <i>Modern raid tools on the 3.3.5a client</i>
 </p>
 
@@ -18,7 +18,7 @@
   <img src="https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge">
 </p>
 
-<h1 align="center">Method Raid Tools — WotLK 3.3.5a backport</h1>
+<h1 align="center">Method Raid Tools — Full backport for Project Ascension Conquest of Azeroth</h1>
 
 <p align="center">
   <b>A complete backport of the Method Raid Tools addon from the retail WoW client to version 3.3.5a (Wrath of the Lich King).</b><br>
