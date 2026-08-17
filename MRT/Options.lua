@@ -562,18 +562,18 @@ OptionsFrame.chkHideOnEsc:SetScript("OnShow", function(self,event)
 	self:SetChecked(VMRT.Addon.DisableHideESC)
 end)
 
-OptionsFrame.authorLeft = ELib:Text(OptionsFrame,L.setauthor,12):Size(150,25):Point(15,-195):Shadow():Top()
-OptionsFrame.authorRight = ELib:Text(OptionsFrame,"Jdi",12):Size(520,25):Point(135,-195):Color():Shadow():Top()
+-- CoA fork credits
+OptionsFrame.maintainerLeft = ELib:Text(OptionsFrame,"CoA Maintainer",12):Size(150,25):Point(15,-195):Shadow():Top()
+OptionsFrame.maintainerRight = ELib:Text(OptionsFrame,"Thranduil",12):Size(520,25):Point(135,-195):Color():Shadow():Top()
 
-OptionsFrame.versionLeft = ELib:Text(OptionsFrame,L.setver,12):Size(150,25):Point(15,-215):Shadow():Top()
-OptionsFrame.versionRight = ELib:Text(OptionsFrame,(MRT.VString or ("v"..tostring(MRT.V)))..(MRT.T == "R" and "" or " "..MRT.T),12):Size(520,25):Point(135,-215):Color():Shadow():Top()
+OptionsFrame.contactLeft = ELib:Text(OptionsFrame,"Contact",12):Size(150,25):Point(15,-215):Shadow():Top()
+OptionsFrame.contactRight = ELib:Text(OptionsFrame,"In game - Thranduil",12):Size(520,25):Point(135,-215):Color():Shadow():Top()
 
-OptionsFrame.contactLeft = ELib:Text(OptionsFrame,L.setcontact,12):Size(150,25):Point(15,-235):Shadow():Top()
-OptionsFrame.contactRight = ExRT.F.LinkText(OptionsFrame,"Discord - Exo Jdi","https://discord.gg/KdXVaEZPH9",12)
-OptionsFrame.contactRight:SetPoint("TOPLEFT",OptionsFrame,"TOPLEFT",135,-231)
+OptionsFrame.originalAuthorLeft = ELib:Text(OptionsFrame,"Original Author",12):Size(150,25):Point(15,-235):Shadow():Top()
+OptionsFrame.originalAuthorRight = ELib:Text(OptionsFrame,"Jdi",12):Size(520,25):Point(135,-235):Color():Shadow():Top()
 
-OptionsFrame.thanksLeft = ELib:Text(OptionsFrame,L.SetThanks,12):Size(150,25):Point(15,-255):Shadow():Top()
-OptionsFrame.thanksRight = ELib:Text(OptionsFrame,"Phanx, funkydude, Shurshik, Kemayo, Guillotine, Rabbit, fookah, diesal2010, Felix, yuk6196, martinkerth, Gyffes, Cubetrace, tigerlolol, Morana, SafeteeWoW, Dejablue, Wollie, eXochron, Firehead94, Mitalie, m33shoq",12):Size(540,0):Point(135,-255):Color():Shadow():Top()
+OptionsFrame.thanksLeft = ELib:Text(OptionsFrame,"Thanks",12):Size(150,25):Point(15,-255):Shadow():Top()
+OptionsFrame.thanksRight = ELib:Text(OptionsFrame,"Biletitan, Devious, Deanbarbary",12):Size(540,0):Point(135,-255):Color():Shadow():Top()
 
 if L.TranslateBy ~= "" then
 	OptionsFrame.translateLeft = ELib:Text(OptionsFrame,L.SetTranslate,12):Size(150,25):Point("LEFT",OptionsFrame,15,0):Point("TOP",OptionsFrame.thanksRight,"BOTTOM",0,-8):Shadow():Top()

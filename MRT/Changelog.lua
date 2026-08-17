@@ -1,6 +1,11 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+v0.1.0-CoA
+* Ported from v5.1.4-WotLK335a to v0.1.0-CoA
+* Changed Raid Check module to support Project Ascension CoA
+* Added placeholder food & flask checks using English names for buffs (will be updated to CoA spell IDs later)
+
 v5.1.4-WotLK335a
 * Fixes
 * Note: added Help info
