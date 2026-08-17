@@ -168,13 +168,347 @@ module.db.tablePotion = ExRT.isWotLKOnly and {
 module.db.hsSpells = {
 	[6262] = true,
 }
-module.db.raidBuffs = {
-	{ATTACK_POWER_TOOLTIP or "AP","WARRIOR",6673,264761},
-	{SPELL_STAT3_NAME or "Stamina","PRIEST",21562,264764},
-	{SPELL_STAT4_NAME or "Int","MAGE",1459,264760},
-	{STAT_VERSATILITY or "Vers","DRUID",1126},
-	{STAT_MASTERY or "Mastery", "SHAMAN", 462854},
+module.db.coaBuffs = {
+	{
+		key = "stats10",
+		header = "10% Stats",
+		name = "10% Stats",
+		iconSpell = 561387,
+		spells = {
+			[561387] = true, -- Greater Whispers of N'zoth — Cultist - Class Buff
+			[561242] = true, -- Greater Etching of the Leylines — Runemaster - Class Buff
+			[572553] = true, -- Greater Devotion of Emperors — Sun Cleric - Class Buff
+			[572630] = true, -- Greater Gift of Fervor — Templar - Class Buff
+		},
+	},
+
+	{
+		key = "minorStats",
+		header = "Minor Stats",
+		name = "Minor Armor and All Stats",
+		iconSpell = 523513,
+		spells = {
+			[523513] = true, -- Greater Footpad's Adaptation — Ranger - Class Buff
+			[561387] = true, -- Greater Man'ari Intuition — Felsworn - Class Buff
+			[570756] = true, -- Greater Earthen Endurance — Primalist - Class Buff
+			[803657] = true, -- Greater Beetle Pheromones — Venomancer - Class Buff
+			[523510] = true, -- Greater Knight's Edict — Witch Hunter - Class Buff
+		},
+	},
+
+	{
+		key = "stamina",
+		header = "Stam",
+		name = "Stamina",
+		iconSpell = 680299,
+		spells = {
+			[680299] = true, -- Greater Sanguinary Offering — Bloodmage - Class Buff
+			[803730] = true, -- Greater Mark of Rivendare — Knight of Xoroth - Class Buff
+			[680298] = true, -- Greater Rite of Resolve — Reaper - Class Buff
+			[680286] = true, -- Greater Foul Mandate — Necromancer - Class Buff
+		},
+	},
+
+	{
+		key = "strength",
+		header = "Str",
+		name = "Strength",
+		iconSpell = 680280,
+		spells = {
+			[680280] = true, -- Greater Honor — Guardian - Class Buff
+			[680300] = true, -- Greater Mark of Korth'azz — Knight of Xoroth - Class Buff
+			[578130] = true, -- Greater Rite of Power — Reaper - Class Buff
+		},
+	},
+
+	{
+		key = "agility",
+		header = "Agi",
+		name = "Agility",
+		iconSpell = 680310,
+		spells = {
+			[680310] = true, -- Greater Primal Instinct — Primalist - Class Buff
+			[680306] = true, -- Greater Gift of Zeal — Templar - Class Buff
+			[680312] = true, -- Greater Spider Pheromones — Venomancer - Class Buff
+			[300886] = true, -- Brutal Shout — Barbarian - Class Buff
+			[561241] = true, -- Greater Etching of the Dextrous — Runemaster - Class Buff
+		},
+	},
+
+	{
+		key = "ap",
+		header = "AP",
+		name = "Attack Power",
+		iconSpell = 680308,
+		spells = {
+			[680308] = true, -- Greater Illidari Intuition — Felsworn - Class Buff
+			[572390] = true, -- Greater Devotion of Dawn — Sun Cleric - Class Buff
+			[680303] = true, -- Greater Inquisitor's Edict — Witch Hunter - Class Buff
+		},
+		-- No Spell ID in spreadsheet:
+		--   Barbarian - Class Buff — Removed?
+	},
+
+	{
+		key = "ap5",
+		header = "5% AP",
+		name = "5% Attack Power",
+		iconSpell = 560001,
+		spells = {
+			[560001] = true, -- Eternal Presence — Bloodmage - Eternal
+			[560550] = true, -- Call of the Monastery — Templar - Oathkeeper
+			[804730] = true, -- Symbol of the Warspear — Barbarian - Brutality
+			[712367] = true, -- Overwhelming Presence — Guardian - Gladiator
+			[704994] = true, -- Xorothian Empowerment — Knight of Xoroth - Hellfire
+			[560593] = true, -- The BIG Guns! — Tinker - Demolition
+			[300871] = true, -- Strength of Da Loa — Witch Doctor - Shadowhunting
+			[524854] = true, -- Veiled in Darkness — Witch Hunter - Houndmaster
+		},
+		-- No Spell ID in spreadsheet:
+		--   Barbarian - Headhunting — Removed?
+	},
+
+	{
+		key = "haste10",
+		header = "10% Haste",
+		name = "10% Melee & Range Haste",
+		iconSpell = 560549,
+		spells = {
+			[560549] = true, -- Eye of the Tyrant — Felsworn - Tyrant
+			[560542] = true, -- Felguard — Felsworn - Slaying
+			[560540] = true, -- Leyline Disturbance — Runemaster - Engravement
+			[560096] = true, -- Devotion of Khaz'goroth — Templar - Zealot
+			[300872] = true, -- Monster Hunting — Witch Hunter - Inquisition
+			[705031] = true, -- Double the Pace — Ranger - Class Buff
+			[300876] = true, -- Elune's Blessing — Starcaller - Sentinel
+			[706632] = true, -- Mechanical Enhancements — Tinker - Mechanics
+			[503707] = true, -- Darkspear Traditionalist — Witch Doctor - Shadowhunting
+		},
+	},
+
+	{
+		key = "intellect",
+		header = "Int",
+		name = "Intellect",
+		iconSpell = 561387,
+		spells = {
+			[561387] = true, -- Greater Whispers of N'zoth — Cultist - Class Buff
+			[680301] = true, -- Greater Celestial Mind — Starcaller - Class Buff
+			[572396] = true, -- Greater Nozdormu's Wisdom — Chronomancer - Class Buff
+			[570170] = true, -- Greater Seal of Alysrazor — Pyromancer - Class Buff
+			[578316] = true, -- Greater Call of the Storm — Stormbringer - Class Buff
+		},
+	},
+
+	{
+		key = "spirit",
+		header = "Spirit",
+		name = "Spirit",
+		iconSpell = 561392,
+		spells = {
+			[561392] = true, -- Greater Whispers of Y'shaarj — Cultist - Class Buff
+			[572817] = true, -- Greater Grove Instinct — Primalist - Class Buff
+			[712459] = true, -- Greater Toxic Pheromones — Venomancer - Class Buff
+			[680307] = true, -- Greater Chromie's Wisdom — Chronomancer - Class Buff
+			[680872] = true, -- Greater Spirit Wuju — Witch Doctor - Class Buff
+		},
+	},
+
+	{
+		key = "spellPower",
+		header = "SP",
+		name = "Spell Power",
+		iconSpell = 575045,
+		spells = {
+			[575045] = true, -- Greater Devotion of Radiance — Sun Cleric - Class Buff
+			[573067] = true, -- Greater Whispers of C'thun — Cultist - Class Buff
+			[572790] = true, -- Greater Grim Mandate — Necromancer - Class Buff
+			[712460] = true, -- Greater Mark of Blaumeux — Knight of Xoroth - Class Buff
+		},
+	},
+
+	{
+		key = "spellHaste3",
+		header = "3% S.Haste",
+		name = "3% Spell Haste",
+		iconSpell = 560541,
+		spells = {
+			[560541] = true, -- Wonders of Time — Chronomancer - Time
+			[804257] = true, -- Glaring Rays — Sun Cleric - Blessings
+			[704644] = true, -- Dark Frenzy — Bloodmage - Accursed
+			[300957] = true, -- Dark Presence — Bloodmage - Sanguine
+			[560526] = true, -- Visions — Cultist - Corruption
+			[560537] = true, -- Apothecary's Cauldron — Necromancer - Death
+			[680476] = true, -- Molten Fervor — Primalist - Geomancy
+			[504843] = true, -- Melting Point — Pyromancer - Incineration
+			[300959] = true, -- Fungal Link — Venomancer - Rot
+		},
+		-- No Spell ID in spreadsheet:
+		--   Witch Doctor - Brewing — Removed?
+		--   Witch Doctor - Shadowhunting — Removed?
+		--   Witch Doctor - Voodoo — Removed?
+		--   Witch Hunter - Houndmaster — Removed?
+	},
+
+	{
+		key = "manaRegen",
+		header = "Mana Regen",
+		name = "Mana Regeneration",
+		iconSpell = 681160,
+		spells = {
+			[681160] = true, -- Greater Devotion of Grace — Sun Cleric - Class Buff
+			[681442] = true, -- Greater Witching Edict — Witch Hunter - Class Buff
+			[803665] = true, -- Greater Mana Module — Tinker - Class Buff
+			[680291] = true, -- Greater Call of the Wind — Stormbringer - Class Buff
+		},
+	},
+
+	{
+		key = "replenishment",
+		header = "Replen",
+		name = "Replenishment",
+		iconSpell = 1257670,
+		spells = {
+			[1257670] = true, -- Replenishment — Primalist - Mountain King; Replenishment — Witch Hunter - Black Knight; Replenishment — Cultist - Heretic; Replenishment — Pyromancer - Flameweaving; Replenishment — Venomancer - Vizier; Replenishment — Witch Doctor - Brewing; Replenishment — Runemaster - Riftblade; Replenishment — Runemaster - Engravement; Replenishment — Chronomancer - Artificer; Replenishment — Runemaster - Glyphic; Replenishment — Sun Cleric - Piety
+		},
+	},
+
+	{
+		key = "crit3",
+		header = "3% Crit",
+		name = "3% Critical Strike (all)",
+		iconSpell = 300877,
+		spells = {
+			[300877] = true, -- Fine Tuning — Tinker - Invention
+			[300565] = true, -- Soulsight — Reaper - Domination
+			[560539] = true, -- Flow of Waters — Starcaller - Moon Priest
+			[560535] = true, -- Dark Sigil — Bloodmage - Accursed
+			[520372] = true, -- Conqueror's Will — Knight of Xoroth - War
+			[300889] = true, -- Blood Harvester — Reaper - Harvest
+			[680709] = true, -- Vigil of the Watchers — Starcaller - Warden
+			[300879] = true, -- Manhunter — Barbarian - Headhunting
+			[300873] = true, -- Infinity Stone — Chronomancer - Artificer
+			[800031] = true, -- Demonfire Pact — Felsworn - Infernal
+			[300958] = true, -- Chilling Presence — Necromancer - Rime
+			[301974] = true, -- Inner Flame — Pyromancer - Draconic
+			[800299] = true, -- Electrifying Aura — Stormbringer - Lightning
+			[300968] = true, -- Slayer — Witch Hunter - Boltslinger
+		},
+	},
+
+	{
+		key = "damage3",
+		header = "3% Damage",
+		name = "3% Damage Done (all)",
+		iconSpell = 300963,
+		spells = {
+			[300963] = true, -- Hellbringer — Knight of Xoroth - Hellfire
+			[561056] = true, -- Runic Power — Runemaster - Riftblade
+			[560534] = true, -- March of the Valkyr — Sun Cleric - Valkyrie
+			[300929] = true, -- Serendipity — Templar - Crusader
+			[560528] = true, -- Infinite Horizon — Chronomancer - Infinite
+			[503738] = true, -- Corpse Wagon — Necromancer - Animation
+			[300961] = true, -- Conductor In Charge — Stormbringer - Maelstrom
+			[560545] = true, -- Dark Loa's Blessing — Witch Doctor - Voodoo
+		},
+		-- No Spell ID in spreadsheet:
+		--   Felsworn - Tyrant — Removed
+	},
+
+	{
+		key = "resourceReduction5",
+		header = "5% Resource",
+		name = "5% Resource Reduction",
+		iconSpell = 803731,
+		spells = {
+			[803731] = true, -- Greater Mark of Zeliek — Knight of Xoroth - Class Buff
+			[681160] = true, -- Greater Devotion of Grace — Sun Cleric - Class Buff
+			[800195] = true, -- Greater Resourceful Wuju — Witch Doctor - Class Buff
+			[561243] = true, -- Greater Etching of the Magi — Runemaster - Class Buff
+		},
+	},
+
+	{
+		key = "damageReduction3",
+		header = "3% DR",
+		name = "3% Damage Reduction (all)",
+		iconSpell = 573290,
+		spells = {
+			[573290] = true, -- Ethereal Guard — Reaper - Domination
+			[704785] = true, -- Shrouded Stars — Starcaller - Moon Guard
+			[300974] = true, -- Charmed Plating — Venomancer - Fortitude
+			[704434] = true, -- Protection from Light — Cultist - Heretic
+		},
+		-- No Spell ID in spreadsheet:
+		--   Guardian - Vanguard — Confirmed removed
+		--   Chronomancer - Time — Cant find
+		--   Tinker - Invention — Removed?
+	},
+
+	{
+		key = "healing6",
+		header = "6% Healing",
+		name = "6% Healing Done",
+		iconSpell = 704623,
+		spells = {
+			[704623] = true, -- Rejuvenating Shadows — Bloodmage - Eternal
+			[806428] = true, -- Universal Donor — Bloodmage - Fleshweaver
+			[560547] = true, -- Sun Disc — Sun Cleric - Seraphim
+			[300515] = true, -- Fortified Body — Templar - Oathkeeper
+			[705811] = true, -- Cybernetic Revivification — Tinker - Invention
+			[504348] = true, -- Shadra's Presence — Venomancer - Vizier
+			[804705] = true, -- Ring of Life — Primalist - Grovekeeper
+		},
+	},
+
+	{
+		key = "concentration",
+		header = "Conc",
+		name = "Concentration",
+		iconSpell = 572399,
+		spells = {
+			[572399] = true, -- Stabilizing Pressure — Stormbringer - Class Buff
+		},
+		-- No Spell ID in spreadsheet:
+		--   Bloodmage - Class Buff — Unknown spell
+		--   Tinker - Class Buff — Unknown spell
+		--   Barbarian - Class Buff — Removed?
+	},
+
+	{
+		key = "armor",
+		header = "Armor",
+		name = "Armor",
+		iconSpell = 707541,
+		spells = {
+			[707541] = true, -- Crystal Enhancements — Barbarian - Ancestry
+			[685028] = true, -- Blood-Cursed Armor — Bloodmage - Fleshweaver
+			[807460] = true, -- Knight's Song — Guardian - Inspiration
+			[706222] = true, -- Protector's Hand — Primalist - Grovekeeper
+			[705094] = true, -- Defense of the Ancients — Ranger - Farstrider
+		},
+		-- No Spell ID in spreadsheet:
+		--   Stormbringer - Wind — Enveloping Winds
+		--   Felsworn - Slaying — Unknown spell
+	},
+
 }
+
+-- Reverse lookup used by both the Raid Check window and /rt check b.
+-- A single aura may satisfy multiple CoA categories, so each spell ID maps to a list of buff indexes.
+module.db.tableCoABuff = {}
+module.db.coaBuffByKey = {}
+for buffIndex, buffData in ipairs(module.db.coaBuffs) do
+	module.db.coaBuffByKey[buffData.key] = buffData
+	for spellID in pairs(buffData.spells) do
+		local matches = module.db.tableCoABuff[spellID]
+		if not matches then
+			matches = {}
+			module.db.tableCoABuff[spellID] = matches
+		end
+		matches[#matches + 1] = buffIndex
+	end
+end
 module.db.tableInt = {[1459]=true,[264760]=7,}
 module.db.tableStamina = {[21562]=true,[264764]=7,}
 module.db.tableAP = {[6673]=true,[264761]=7,}
@@ -832,153 +1166,72 @@ local function GetFlask(checkType)
 	end
 end
 
--- [WotLK 3.3.5] Role-aware buff relevance filter.
--- Skips counting a player for buffs that are irrelevant to their role/spec, so the chat report
--- no longer flags healers/casters for Attack Power (Battle Shout / Blessing of Might) nor pure
--- physical classes for caster buffs (Intellect / Spirit / Blessing of Wisdom). WotLK-only.
-local function LK_GetSpecIndex(name)
-	local insp = ExRT.A and ExRT.A.Inspect and ExRT.A.Inspect.db and ExRT.A.Inspect.db.inspectDB
-	if not insp then return nil end
-	local d = insp[name]
-	if not d then
-		local short = strsplit("-", name)
-		d = insp[short]
-		if not d then
-			for n,v in pairs(insp) do
-				if strsplit("-", n) == short then d = v break end
-			end
-		end
-	end
-	return d and d.specIndex
-end
-
--- returns needsPhys, needsMana for a class (+ talent spec index 1/2/3 if known) on WotLK.
--- Hybrids fall back to "count both" when spec is unknown (safe default), and resolve precisely
--- once inspect/spec data is available (MRT syncs it automatically between addon users).
-local function LK_PlayerNeeds(class, spec)
-	if class == "WARRIOR" or class == "ROGUE" or class == "DEATHKNIGHT" then
-		return true, false            -- rage/energy/runic power, no mana benefit
-	elseif class == "HUNTER" then
-		return true, true             -- AP (ranged AP) + mana pool
-	elseif class == "MAGE" or class == "WARLOCK" then
-		return false, true            -- caster, mana
-	elseif class == "PRIEST" then
-		return false, true            -- caster/healer, mana
-	elseif class == "PALADIN" then
-		if spec == 1 then return false, true   -- Holy (healer): no AP
-		else return true, true end             -- Prot/Ret/unknown: physical + mana
-	elseif class == "SHAMAN" then
-		if spec == 2 then return true, true    -- Enhancement (melee, mana)
-		else return false, true end            -- Elemental/Resto/unknown: caster/healer, mana
-	elseif class == "DRUID" then
-		if spec == 2 then return true, false   -- Feral (energy/rage, no mana benefit)
-		else return false, true end            -- Balance/Resto/unknown: caster/healer, mana
-	end
-	return true, true                          -- unknown class: count everything (safe default)
-end
-
--- returns true if buff `key` (classicBuffs[k][1]) should NOT be counted for a player with these needs.
-local function LK_SkipBuff(key, needsPhys, needsMana, isPriest)
-	if key == "ap" or key == "bom" or key == "bos" then
-		return not needsPhys           -- Attack Power / Blessing of Might / Blessing of Sanctuary
-	elseif key == "int" or key == "spirit" or key == "bow" then
-		return not needsMana           -- Intellect / Spirit / Blessing of Wisdom
-	elseif key == "armor" then
-		return not isPriest            -- Inner Fire (priest self-buff)
-	end
-	return false                       -- MotW / Stamina / Shadow Protection / Blessing of Kings = everyone
-end
-
+-- [CoA] Report missing raid-buff categories for every player in the active raid groups.
+-- CoA has no WotLK class/role relevance filter here: every configured category is checked uniformly.
 local function GetRaidBuffs(checkType)
-	local buffsList,buffsListLen = module.db.raidBuffs,#module.db.raidBuffs
-	local classicBuffsList
-	if ExRT.isClassic then
-		buffsList,buffsListLen = module.db.classicBuffs,#module.db.classicBuffs
-		classicBuffsList = {}
-		for k=1,buffsListLen do
-			for s in pairs(buffsList[k][4]) do
-				classicBuffsList[s] = k
-			end
-		end
+	local buffsList = module.db.coaBuffs
+	local buffsListLen = #buffsList
+	local missing = {}
+	for k=1,buffsListLen do
+		missing[k] = 0
 	end
-	local f = {}
-	for k=1,buffsListLen * 2 do
-		f[k] = 0
-	end
+
 	local gMax = ExRT.F.GetRaidDiffMaxGroup()
-	local isAnyBuff = {}
 	for j=1,40 do
-		local name,_,subgroup, _, _, class = GetRaidRosterInfo(j)
+		local name,_,subgroup = GetRaidRosterInfo(j)
 		if name and subgroup <= gMax then
-			local lkPhys, lkMana, lkPriest = true, true, false
-			if ExRT.isLK then
-				lkPhys, lkMana = LK_PlayerNeeds(class, LK_GetSpecIndex(name))
-				lkPriest = (class == "PRIEST")
-			end
-			for k=1,buffsListLen * 2 do
-				isAnyBuff[k] = false
-			end
-			for k=1,buffsListLen do
-				if (class == buffsList[k][2]) or ExRT.isClassic then
-					f[-k] = true
-				end
-			end
-			for i=1,40 do
-				local auraData = C_UnitAuras.GetAuraDataByIndex(name, i,"HELPFUL")
+			local hasBuff = {}
+			for i=1,60 do
+				local auraData = C_UnitAuras.GetAuraDataByIndex(name, i, "HELPFUL")
 				if not auraData then
 					break
-				else
-					if ExRT.isClassic then
-						local k = classicBuffsList[auraData.spellId]
-						if k then
-							isAnyBuff[k] = true
-							isAnyBuff[buffsListLen + k] = true
-						end
-					else
-						for k=1,buffsListLen do
-							if (auraData.spellId == buffsList[k][3]) or (buffsList[k][5] and buffsList[k][5][auraData.spellId]) then
-								isAnyBuff[k] = true
-								isAnyBuff[buffsListLen + k] = true
-							elseif auraData.spellId == buffsList[k][4] then
-								isAnyBuff[buffsListLen + k] = true
-							end
-						end
+				end
+
+				local matches = module.db.tableCoABuff[auraData.spellId]
+				if matches then
+					for m=1,#matches do
+						hasBuff[matches[m]] = true
 					end
 				end
 			end
+
 			for k=1,buffsListLen do
-				if not (ExRT.isLK and LK_SkipBuff(buffsList[k][1], lkPhys, lkMana, lkPriest)) then
-					if not isAnyBuff[k] then
-						f[k] = f[k] + 1
-					end
-					if not isAnyBuff[buffsListLen + k] then
-						f[buffsListLen + k] = f[buffsListLen + k] + 1
-					end
+				if not hasBuff[k] then
+					missing[k] = missing[k] + 1
 				end
 			end
 		end
 	end
 
-	if true then
-		if checkType == 3 then
-			checkType = nil
-		end
-		local result = format("|cff00ff00%s|r ",GARRISON_MISSION_PARTY_BUFFS or "Buffs")
-
-		local isAnyBuff = true
-		for k=1,buffsListLen do
-			if f[k] > 0 and f[-k] then
-				isAnyBuff = false
-				result = result .. (buffsList[k][2] or buffsList[k][1]) .. " ("..f[k].."), "
-			end
-		end
-		if isAnyBuff then
-			result = result .. ALL
-		else
-			result = result:gsub(", $","")
-		end
-		PublicResults(result,checkType)
+	if checkType == 3 then
+		checkType = nil
 	end
+
+	local prefix = format("|cff00ff00%s|r ", GARRISON_MISSION_PARTY_BUFFS or "Buffs")
+	local result = prefix
+	local anyMissing = false
+
+	for k=1,buffsListLen do
+		if missing[k] > 0 then
+			anyMissing = true
+			local label = buffsList[k].header or buffsList[k].name or buffsList[k].key
+			local entry = format("%s (%d)", label, missing[k])
+
+			-- Keep raid/party chat messages safely below the client message limit.
+			if #result + #entry + 2 > 220 and result ~= prefix then
+				PublicResults(result:gsub(", $", ""), checkType)
+				result = prefix
+			end
+			result = result .. entry .. ", "
+		end
+	end
+
+	if not anyMissing then
+		result = result .. ALL
+	else
+		result = result:gsub(", $", "")
+	end
+	PublicResults(result, checkType)
 end
 
 local function GetKits(checkType)
@@ -1771,62 +2024,31 @@ function module:slash(arg)
 	end
 end
 
-local RCW_iconsList = {'food','flask','rune','vantus','int','ap','vers','stam','mast','move','dur'}
-local RCW_iconsListHeaders = {L.RaidCheckHeadFood,L.RaidCheckHeadFlask,L.RaidCheckHeadRune,L.RaidCheckHeadVantus,SPELL_STAT4_NAME or "Int",ATTACK_POWER_TOOLTIP or "AP",STAT_VERSATILITY or "Vers",SPELL_STAT3_NAME or "Stamina",STAT_MASTERY or "Mastery",TUTORIAL_TITLE2 or "Movement",DURABILITY or "Durability"}
-local RCW_iconsListDebugIcons = {136000,967549,840006,1058937,135932,132333,136078,135987,4630367,4622448,132281}
+-- [CoA] Raid Check columns are defined directly by module.db.coaBuffs.
+-- Food/flask columns will be reintroduced after their CoA aura IDs are collected.
+local RCW_iconsList = {}
+local RCW_iconsListHeaders = {}
+local RCW_iconsListDebugIcons = {}
 local RCW_iconsListWide = {}
-local RCW_liveToClassicDiff = 0
+local RCW_GetSpellTexture = (ExRT.F and ExRT.F.GetSpellTextureSafe) or GetSpellTexture
 
-if ExRT.isClassic then
-	local wideDiff = 0
-	for k,v in pairs(RCW_iconsListWide) do
-		if v then
-			wideDiff = wideDiff - 1
-		end
-	end
-
-	RCW_liveToClassicDiff = (#module.db.classicBuffs + 2) - #RCW_iconsList + 1
-	local _Tex = (ExRT.F and ExRT.F.GetSpellTextureSafe) or GetSpellTexture
-	RCW_iconsListDebugIcons[1] = _Tex(33257) or "Interface\\Icons\\INV_Misc_Food_64"
-	RCW_iconsListDebugIcons[2] = _Tex(53755) or "Interface\\Icons\\INV_Potion_118"
-	RCW_iconsListHeaders[1] = "Food"
-	RCW_iconsListHeaders[2] = "Flask"
-	RCW_iconsListWide[2] = true
-	for i=3,#RCW_iconsList do
-		RCW_iconsList[i] = nil
-		RCW_iconsListHeaders[i] = nil
-		RCW_iconsListDebugIcons[i] = nil
-	end
-	if ExRT.isBC then
-		RCW_liveToClassicDiff = RCW_liveToClassicDiff + 1
-		RCW_iconsList[#RCW_iconsList+1] = "scrolls"
-		RCW_iconsListHeaders[#RCW_iconsList] = "Scr"
-		RCW_iconsListDebugIcons[#RCW_iconsList] = 134943
-		RCW_iconsListWide[#RCW_iconsList] = true
-	end
-	for i=1,#module.db.classicBuffs do
-		RCW_iconsList[#RCW_iconsList+1] = module.db.classicBuffs[i][1]
-		RCW_iconsListHeaders[#RCW_iconsList] = module.db.classicBuffs[i][2]
-		RCW_iconsListDebugIcons[#RCW_iconsList] = module.db.classicBuffs[i][3]
-	end
-	RCW_iconsList[#RCW_iconsList+1] = "dur"
-	RCW_iconsListHeaders[#RCW_iconsList] = "Dur"
-	RCW_iconsListDebugIcons[#RCW_iconsList] = 132281
-
-	for k,v in pairs(RCW_iconsListWide) do
-		if v then
-			wideDiff = wideDiff + 1
-		end
-	end
-	RCW_liveToClassicDiff = RCW_liveToClassicDiff + wideDiff
+for i,buffData in ipairs(module.db.coaBuffs) do
+	RCW_iconsList[i] = buffData.key
+	RCW_iconsListHeaders[i] = buffData.header or buffData.name or buffData.key
+	RCW_iconsListDebugIcons[i] = (buffData.iconSpell and RCW_GetSpellTexture(buffData.iconSpell)) or "Interface\\Icons\\INV_Misc_QuestionMark"
 end
 
-local RCW_liveToslDiff = 0
+local RCW_BASE_COLUMN_COUNT = #RCW_iconsList
+local RCW_COLUMN_WIDTH = 30
+local RCW_BASE_WIDTH = 190
+local function RCW_GetFrameWidth(extraCols)
+	return RCW_BASE_WIDTH + (RCW_BASE_COLUMN_COUNT + (extraCols or 0)) * RCW_COLUMN_WIDTH
+end
 
 _RemapFDIDArray(RCW_iconsListDebugIcons)
 
 module.frame = ELib:Template("ExRTDialogModernTemplate",UIParent)
-module.frame:SetSize(430+60+30+(ExRT.isClassic and 30*RCW_liveToClassicDiff or 0)+RCW_liveToslDiff,100)
+module.frame:SetSize(RCW_GetFrameWidth(),100)
 module.frame:SetPoint("CENTER",UIParent,"CENTER",0,0)
 module.frame:SetFrameStrata("DIALOG")
 module.frame:EnableMouse(true)
@@ -2132,7 +2354,7 @@ function module.frame:UpdateCols()
 	end
 	for i=1,40 do
 		local line = module.frame.lines[i]
-		line:SetSize(420+60+30+(ExRT.isClassic and 30*RCW_liveToClassicDiff or 0)+RCW_liveToslDiff+colsAdd*30,14)
+		line:SetSize(RCW_GetFrameWidth(colsAdd)-10,14)
 
 		local prevPointer = line[ RCW_iconsList[RCW_iconsList_ORIGIN].."pointer" ]
 
@@ -2160,7 +2382,7 @@ function module.frame:UpdateCols()
 		end
 
 	end
-	module.frame:SetWidth(430+60+30+(ExRT.isClassic and 30*RCW_liveToClassicDiff or 0)+RCW_liveToslDiff+colsAdd*30)
+	module.frame:SetWidth(RCW_GetFrameWidth(colsAdd))
 end
 
 function module.frame:Create()
@@ -2184,7 +2406,7 @@ function module.frame:Create()
 		else
 			line:SetPoint("TOPLEFT", module.frame.lines[i-1], "BOTTOMLEFT", 0, -0)
 		end
-		line:SetSize(420+60+30+(ExRT.isClassic and 30*RCW_liveToClassicDiff or 0)+RCW_liveToslDiff,14)
+		line:SetSize(RCW_GetFrameWidth()-10,14)
 
 		line.name = ELib:Text(line,"raid"..i):Size(130,12):Point("LEFT",20,0):Font(ExRT.F.defFont,12):Color():Shadow()
 
@@ -2456,7 +2678,7 @@ do
 		["Druid"]              = "MotW",
 		["Durability"]         = "Dur",
 		["Stamina"]            = "Stam",
-		["Armor"]              = "Arm",
+		["Armor"]              = "Armor",
 		["Bonus Armor"]        = "Arm",
 		["Item Lvl"]           = "ILvL",
 		["Item lvl"]           = "ILvL",
@@ -2482,20 +2704,12 @@ do
 		return text
 	end
 
-	local HEADER_SPELL_BY_KEY = {
-		druid   = 1126,
-		int     = 1459,
-		ap      = 6673,
-		spirit  = 14752,
-		armor   = 588,
-		shadow  = 976,
-		stamina = 1243,
-		bom     = 19740,
-		bow     = 19742,
-		bok     = 20217,
-		bos     = 25899,
-		ss      = 20707,
-	}
+	local HEADER_SPELL_BY_KEY = { ss = 20707 }
+	for _,buffData in ipairs(module.db.coaBuffs) do
+		if buffData.iconSpell then
+			HEADER_SPELL_BY_KEY[buffData.key] = buffData.iconSpell
+		end
+	end
 
 	local glyphAtlas = MRT and MRT.DiagonalGlyphAtlas
 
@@ -2838,7 +3052,7 @@ function module.frame:UpdateData(onlyLine)
 						break
 					elseif canaccessvalue and not canaccessvalue(auraData.spellId) then
 						break
-					elseif module.db.tableFood[auraData.spellId] then
+					elseif line.food and module.db.tableFood[auraData.spellId] then
 						local val = module.db.tableFood[auraData.spellId]
 
 						_SetTextureCompat(line.food.texture, 136000)
@@ -2860,10 +3074,10 @@ function module.frame:UpdateData(onlyLine)
 						end
 
 						buffCount = buffCount + 1
-					elseif auraData.icon == 134062 or auraData.icon == 132805 or auraData.icon == 133950 then
+					elseif line.food and (auraData.icon == 134062 or auraData.icon == 132805 or auraData.icon == 133950) then
 						_SetTextureCompat(line.food.texture, 134062)
 						line.food.text:SetText("")
-					elseif auraData.icon == 136000 then
+					elseif line.food and auraData.icon == 136000 then
 						_SetTextureCompat(line.food.texture, 136000)
 						line.food.text:SetTextColor(1,1,1)
 						local val1 = auraData.points and auraData.points[1]
@@ -2872,7 +3086,7 @@ function module.frame:UpdateData(onlyLine)
 						line.food.tooltip = i
 
 						buffCount = buffCount + 1
-					elseif module.db.tableFlask[auraData.spellId] then
+					elseif line.flask and module.db.tableFlask[auraData.spellId] then
 						local val = module.db.tableFlask[auraData.spellId]
 
 						local frame = line["flask"..(flaskCount == 1 and "" or tostring(flaskCount))]
@@ -2903,7 +3117,7 @@ function module.frame:UpdateData(onlyLine)
 						frame:Show()
 
 						buffCount = buffCount + 1
-					elseif module.db.tableScrolls[auraData.spellId] and ExRT.isClassic then
+					elseif line.scrolls and module.db.tableScrolls[auraData.spellId] and ExRT.isClassic then
 						local val = module.db.tableScrolls[auraData.spellId]
 
 						local frame = line["scrolls"..(scrollCount == 1 and "" or tostring(scrollCount))]
@@ -2934,7 +3148,7 @@ function module.frame:UpdateData(onlyLine)
 						frame:Show()
 
 						buffCount = buffCount + 1
-					elseif module.db.tableVantus[auraData.spellId] then
+					elseif line.vantus and module.db.tableVantus[auraData.spellId] then
 						local val = module.db.tableVantus[auraData.spellId]
 
 						line.vantus.texture:SetTexture(auraData.icon)
@@ -2956,31 +3170,33 @@ function module.frame:UpdateData(onlyLine)
 							line.rune.text:SetTextColor(1,0,0)
 							line.rune.text:SetText(val)
 						end
-					elseif ExRT.isClassic and module.db.tableClassicBuff[auraData.spellId] then
-						local data = module.db.tableClassicBuff[auraData.spellId]
+					elseif module.db.tableCoABuff[auraData.spellId] then
+						local matches = module.db.tableCoABuff[auraData.spellId]
 
-						for l=1,(data.multi and #data or 1) do
-							local bdata = data.multi and data[l] or data
+						for l=1,#matches do
+							local buffIndex = matches[l]
+							local buffData = module.db.coaBuffs[buffIndex]
+							local key = buffData and buffData.key
+							local frame = key and line[key]
 
-							local key = bdata[1]
-							line[key].texture:SetTexture(auraData.icon)
+							if frame then
+								frame.texture:SetTexture(auraData.icon or RCW_iconsListDebugIcons[buffIndex])
+								frame.text:SetText("")
+								frame.tooltip = "spell:"..auraData.spellId
 
-							local cdIcon = line[key].cd
-							if cdIcon then
-								if auraData.expirationTime and auraData.expirationTime > 0 and auraData.duration and auraData.duration > 0 and (auraData.expirationTime - GetTime()) > 0 then
-									cdIcon:SetCooldown(auraData.expirationTime - auraData.duration, auraData.duration)
-									cdIcon:Show()
-								else
-									cdIcon:Hide()
+								local cdIcon = frame.cd
+								if cdIcon then
+									if auraData.expirationTime and auraData.expirationTime > 0 and auraData.duration and auraData.duration > 0 and (auraData.expirationTime - currTime2) > 0 then
+										cdIcon:SetCooldown(auraData.expirationTime - auraData.duration, auraData.duration)
+										cdIcon:Show()
+									else
+										cdIcon:Hide()
+									end
 								end
 							end
-
-							local val = bdata[4][auraData.spellId]
-							if type(val) == "boolean" then val = "" end
-							line[key].text:SetText(val or "")
-
-							line[key].tooltip = "spell:"..auraData.spellId
 						end
+
+						buffCount = buffCount + 1
 					elseif auraData.spellId == 20707 and line.ss then
 						_SetTextureCompat(line.ss.texture, 136210)
 					end
@@ -3118,7 +3334,7 @@ function module.frame:UpdateData(onlyLine)
 						end
 					end
 
-					if ExRT.isClassic then
+					if line.flask then
 						local flaskNum = self.testData[line.pos].flaskNum or math.random(0,4)
 						self.testData[line.pos].flaskNum = flaskNum
 
@@ -3148,7 +3364,7 @@ function module.frame:UpdateData(onlyLine)
 
 					local lowFlask = self.testData[line.pos].lowFlask or math.random(1,60)
 					self.testData[line.pos].lowFlask = lowFlask
-					if lowFlask <= 10 and line.flask.texture:GetTexture() then
+					if line.flask and lowFlask <= 10 and line.flask.texture:GetTexture() then
 						line.flask.subIcon:Show()
 						line.flask.texture:SetAlpha(.6)
 					end
