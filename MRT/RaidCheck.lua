@@ -168,6 +168,7 @@ module.db.tablePotion = ExRT.isWotLKOnly and {
 module.db.hsSpells = {
 	[6262] = true,
 }
+-- [CoA TOOLTIP REV 2026-08-17] Exact player-aura tooltips + category header tooltips.
 module.db.coaBuffs = {
 	{
 		key = "stats10",
@@ -2221,16 +2222,84 @@ local function RCW_LineOnUpdate(self)
 		self.hoverShow = false
 	end
 end
-local function RCW_LineOnEnter(self)
-	if self.tooltip then
-		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-		if type(self.tooltip) == 'string' then
-			GameTooltip:SetHyperlink(self.tooltip)
-		else
-			GameTooltip:SetUnitAura(self:GetParent().unit, self.tooltip, "HELPFUL")
+-- [CoA] Tooltip compatibility for the 3.3.5 client.
+-- CoA raid-buff icons store the exact aura index + spell ID so we can show
+-- the player's actual provider buff, while retaining legacy string/number
+-- tooltip behavior used elsewhere in RaidCheck.
+local function RCW_ShowUnitBuffTooltip(owner, unit, auraIndex, spellID, auraName)
+	if not owner or not unit then return end
+
+	GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
+	local shown = false
+
+	local function tooltipHasContent()
+		if not GameTooltip.NumLines then return true end
+		local ok, numLines = pcall(GameTooltip.NumLines, GameTooltip)
+		return (not ok) or (numLines and numLines > 0)
+	end
+
+	local function tryTooltip(method, ...)
+		if not method then return false end
+		if GameTooltip.ClearLines then GameTooltip:ClearLines() end
+		local ok = pcall(method, GameTooltip, ...)
+		return ok and tooltipHasContent()
+	end
+
+	-- 3.3.5 normally exposes SetUnitBuff rather than the newer SetUnitAura.
+	if auraIndex and GameTooltip.SetUnitBuff then
+		shown = tryTooltip(GameTooltip.SetUnitBuff, unit, auraIndex, "HELPFUL")
+	end
+
+	-- Keep compatibility with clients/ports that do expose SetUnitAura.
+	if not shown and auraIndex and GameTooltip.SetUnitAura then
+		shown = tryTooltip(GameTooltip.SetUnitAura, unit, auraIndex, "HELPFUL")
+	end
+
+	-- If the unit-aura tooltip APIs are missing, reject the call, or leave the
+	-- tooltip empty, the exact observed aura spell ID still gives us the correct
+	-- provider spell tooltip.
+	if not shown and spellID then
+		if GameTooltip.SetSpellByID then
+			shown = tryTooltip(GameTooltip.SetSpellByID, spellID)
 		end
+		if not shown and GameTooltip.SetHyperlink then
+			shown = tryTooltip(GameTooltip.SetHyperlink, "spell:"..spellID)
+		end
+	end
+
+	if not shown and auraName then
+		GameTooltip:SetText(auraName)
+		shown = true
+	end
+
+	if shown then
 		GameTooltip:Show()
 	end
+end
+
+local function RCW_LineOnEnter(self)
+	local tooltip = self.tooltip
+	if not tooltip then return end
+
+	if type(tooltip) == "table" and tooltip.coaAura then
+		RCW_ShowUnitBuffTooltip(
+			self,
+			self:GetParent().unit,
+			tooltip.index,
+			tooltip.spellID,
+			tooltip.name
+		)
+		return
+	end
+
+	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+	if type(tooltip) == 'string' then
+		GameTooltip:SetHyperlink(tooltip)
+	elseif type(tooltip) == 'number' then
+		RCW_ShowUnitBuffTooltip(self, self:GetParent().unit, tooltip)
+		return
+	end
+	GameTooltip:Show()
 end
 local function RCW_LineOnLeave(self)
 	if self.tooltip then
@@ -2732,21 +2801,51 @@ do
 		return HEADER_COLUMN_OFFSET - wordCenterOffset
 	end
 
+	-- [CoA] Header tooltips describe the coverage category instead of showing
+	-- one arbitrary representative spell. This matters because some auras
+	-- legitimately satisfy multiple categories (for example a 10% all-stats
+	-- buff also satisfies Intellect coverage).
 	local function showHeaderTooltip(self)
 		local h = self.__header
 		if not h then return end
 		local idx = h.__columnIndex
 		local key = idx and RCW_iconsList[idx]
-		local spellID = key and HEADER_SPELL_BY_KEY[key]
+		local buffData = key and module.db.coaBuffByKey and module.db.coaBuffByKey[key]
+
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		if spellID and GameTooltip.SetSpellByID then
-			local ok = pcall(GameTooltip.SetSpellByID, GameTooltip, spellID)
-			if not ok then
-				GameTooltip:SetText(h.__rawText or "")
+
+		if buffData then
+			GameTooltip:SetText(buffData.name or buffData.header or key, 1, 0.82, 0)
+			GameTooltip:AddLine("Recognized buffs:", 0.75, 0.75, 0.75)
+
+			local names, seen = {}, {}
+			for spellID in pairs(buffData.spells or {}) do
+				local spellName = GetSpellInfo(spellID)
+				if spellName and not seen[spellName] then
+					seen[spellName] = true
+					names[#names+1] = spellName
+				end
+			end
+			table.sort(names)
+
+			for i=1,#names do
+				GameTooltip:AddLine(names[i], 1, 1, 1)
+			end
+			if #names == 0 then
+				GameTooltip:AddLine("No localized spell names available", 1, 0.4, 0.4)
 			end
 		else
-			GameTooltip:SetText(h.__rawText or "")
+			-- Dynamic/non-CoA columns retain their old representative spell tooltip.
+			local spellID = key and HEADER_SPELL_BY_KEY[key]
+			local shown = false
+			if spellID and GameTooltip.SetSpellByID then
+				shown = pcall(GameTooltip.SetSpellByID, GameTooltip, spellID)
+			end
+			if not shown then
+				GameTooltip:SetText(h.__rawText or "")
+			end
 		end
+
 		GameTooltip:Show()
 	end
 
@@ -3186,11 +3285,15 @@ function module.frame:UpdateData(onlyLine)
 								frame.texture:SetTexture(auraData.icon or RCW_iconsListDebugIcons[buffIndex])
 								frame.text:SetText("")
 
-								-- [CoA] Store the actual aura index, not just the spell ID.
-								-- RCW_LineOnEnter will call GameTooltip:SetUnitAura(), so hovering
-								-- this player's icon shows the exact active provider buff (for
-								-- example Elune's Blessing in the 10% Haste category).
-								frame.tooltip = i
+								-- [CoA] Keep both the exact observed aura index and spell ID.
+								-- The tooltip handler prefers the 3.3.5 SetUnitBuff API and falls
+								-- back to the exact spell ID if necessary.
+								frame.tooltip = {
+									coaAura = true,
+									index = i,
+									spellID = auraData.spellId,
+									name = auraData.name,
+								}
 
 								local cdIcon = frame.cd
 								if cdIcon then
