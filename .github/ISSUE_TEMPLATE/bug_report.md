@@ -4,6 +4,7 @@ about: Report an addon malfunction or unexpected behavior
 title: "[BUG] "
 labels: bug
 assignees: ''
+
 ---
 
 ## Description
@@ -25,12 +26,11 @@ What actually happens.
 If applicable, attach screenshots or a short clip to illustrate the issue.
 
 ## Environment
-- **WoW client version:** (e.g. 3.3.5a build 12340)
-- **Server:** (e.g. Warmane Icecrown / Lordaeron / Frostmourne)
-- **MRT version:** (see `MRT.toc` or `/rt version`)
-- **Character class / spec:** 
-- **Context:** (solo / party / raid / arena / BG)
-- **Boss / zone:** (if applicable)
+- Project Ascension realm:
+- Ascension client/build:
+- MRT CoA version:
+- Character class / specialization:
+- Context: solo / party / raid
 
 ## Other loaded addons
 List any addons that may conflict (DBM, BigWigs, GTFO, ElvUI, etc.).
