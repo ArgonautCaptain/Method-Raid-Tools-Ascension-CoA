@@ -12,18 +12,7 @@
 
 <br>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/MRT%20for%20WotLK-5.1.4-ff8800?style=for-the-badge&logo=appveyor">
-  <img src="https://img.shields.io/badge/WotLK-3.3.5a-blue?style=for-the-badge">
-  <img src="https://img.shields.io/badge/status-stable-brightgreen?style=for-the-badge">
-</p>
-
 <h1 align="center">Method Raid Tools — Full backport for Project Ascension Conquest of Azeroth</h1>
-
-<p align="center">
-  <b>A complete backport of the Method Raid Tools addon from the retail WoW client to version 3.3.5a (Wrath of the Lich King).</b><br>
-  <i>A merge of the last WotLK release of MRT (4840) and the modern retail version (5240), with compatibility for private servers.</i>
-</p>
 
 <p align="center">
   <a href="#english">English</a> ·
@@ -47,7 +36,11 @@
 
 **Method Raid Tools (MRT)** is a comprehensive raid utility addon: notes, timers, reminders, readiness checks, combat analysis, and more. This repository is a **full backport of MRT** (based on versions 4840 + 5240) to the **WoW 3.3.5a (WotLK)** client.
 
-The addon works on any WotLK private server. When used with a patched client (e.g., **Awesome WotLK**), it automatically takes advantage of native APIs (NamePlates, VoiceChat, etc.).
+Method Raid Tools for Project Ascension: Conquest of Azeroth
+
+Version: 0.1.0-CoA Beta
+Status: Beta
+Client: Project Ascension / 3.3.5a
 
 <a name="modules"></a>
 ### Modules
@@ -95,9 +88,10 @@ The addon works on any WotLK private server. When used with a patched client (e.
 
 ### Compatibility
 
-- Built and tested on **WoW 3.3.5a** (Interface `30300`, build `12340`).
-- Works on any WotLK private server (developed on Warmane).
-- On the patched **Awesome WotLK** client, natively uses `NAME_PLATE_UNIT_ADDED`, `C_NamePlate.*`, `C_VoiceChat.*` when available.
+This fork is developed and tested specifically for
+Project Ascension: Conquest of Azeroth.
+
+Other 3.3.5a private servers are not supported by this fork.
 
 <a name="advanced-features"></a>
 ### Advanced Features
