@@ -1,18 +1,8 @@
-<p align="center">
-  <picture>
-    <source srcset="https://cdn.jsdelivr.net/gh/ExoJdi/Method-Raid-Tools-3.3.5a/.github/logo.png" media="(prefers-color-scheme: dark)">
-    <img src="https://cdn.jsdelivr.net/gh/ExoJdi/Method-Raid-Tools-3.3.5a/.github/logo.png" alt="Method Raid Tools" width="120">
-  </picture>
-</p>
-
-<p align="center">
-  <b>Method Raid Tools — Full backport for Project Ascension Conquest of Azeroth</b><br>
-  <i>Modern raid tools on the 3.3.5a client</i>
-</p>
-
-<br>
-
 <h1 align="center">Method Raid Tools — Full backport for Project Ascension Conquest of Azeroth</h1>
+
+### CoA Raid Check
+
+![Method Raid Tools CoA Raid Check](.github/images/coa-raid-check.png)
 
 <p align="center">
   <a href="#english">English</a> ·
