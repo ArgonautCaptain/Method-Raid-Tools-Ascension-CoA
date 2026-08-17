@@ -2,8 +2,9 @@
 name: Performance issue
 about: Report freezes, lag, FPS drops or memory crashes
 title: "[PERF] "
-labels: performance
+labels: ''
 assignees: ''
+
 ---
 
 ## Type of issue
