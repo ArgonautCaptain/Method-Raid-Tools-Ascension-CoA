@@ -2024,18 +2024,39 @@ function module:slash(arg)
 	end
 end
 
--- [CoA] Raid Check columns are defined directly by module.db.coaBuffs.
--- Food/flask columns will be reintroduced after their CoA aura IDs are collected.
-local RCW_iconsList = {}
-local RCW_iconsListHeaders = {}
+-- [CoA] Raid Check columns.
+-- Food and Flask are detected by English aura-name prefix inside the same
+-- helpful-aura scan used for the CoA raid buffs, so they do not require a
+-- separate roster scan or a complete spell-ID list.
+-- Food and Flask spell IDs will be implemented in the future if we want to support non-English clients
+local RCW_iconsList = {"food","flask"}
+local RCW_iconsListHeaders = {"Food","Flask"}
 local RCW_iconsListDebugIcons = {}
 local RCW_iconsListWide = {}
 local RCW_GetSpellTexture = (ExRT.F and ExRT.F.GetSpellTextureSafe) or GetSpellTexture
 
-for i,buffData in ipairs(module.db.coaBuffs) do
+RCW_iconsListDebugIcons[1] = RCW_GetSpellTexture(33257) or "Interface\\Icons\\INV_Misc_Food_64"
+RCW_iconsListDebugIcons[2] = RCW_GetSpellTexture(53755) or "Interface\\Icons\\INV_Potion_118"
+
+for _,buffData in ipairs(module.db.coaBuffs) do
+	local i = #RCW_iconsList + 1
 	RCW_iconsList[i] = buffData.key
 	RCW_iconsListHeaders[i] = buffData.header or buffData.name or buffData.key
 	RCW_iconsListDebugIcons[i] = (buffData.iconSpell and RCW_GetSpellTexture(buffData.iconSpell)) or "Interface\\Icons\\INV_Misc_QuestionMark"
+end
+
+local function RCW_IsCoAFoodAuraName(name)
+	return type(name) == "string" and name:sub(1,8) == "Well Fed"
+end
+
+local function RCW_IsCoAEatingAuraName(name)
+	return name == "Food"
+end
+
+local RCW_EATING_FOOD_ICON = RCW_GetSpellTexture(969250) or RCW_iconsListDebugIcons[1]
+
+local function RCW_IsCoAFlaskAuraName(name)
+	return type(name) == "string" and name:sub(1,9) == "Distilled"
 end
 
 local RCW_BASE_COLUMN_COUNT = #RCW_iconsList
@@ -2309,6 +2330,22 @@ end
 local function RCW_AddIcon(parent,texture)
 	local icon = ELib:Icon(parent,texture,14)
 
+	-- [CoA MOUSE REV 2026-08-17]
+	-- ELib:Icon frames in this 3.3.5 port are not guaranteed to have mouse
+	-- interaction enabled.  The RaidCheck row highlight is only a texture and
+	-- cannot consume the mouse, but without EnableMouse() these OnEnter/OnLeave
+	-- handlers never fire.  Keep the buff icon above the row artwork and give
+	-- the full icon square an explicit mouse hitbox.
+	if icon.EnableMouse then
+		icon:EnableMouse(true)
+	end
+	if icon.SetHitRectInsets then
+		icon:SetHitRectInsets(0,0,0,0)
+	end
+	if icon.SetFrameLevel and parent and parent.GetFrameLevel then
+		icon:SetFrameLevel(parent:GetFrameLevel() + 5)
+	end
+
 	icon:SetScript("OnEnter",RCW_LineOnEnter)
 	icon:SetScript("OnLeave",RCW_LineOnLeave)
 
@@ -2318,6 +2355,12 @@ local function RCW_AddIcon(parent,texture)
 	icon.cd:SetAllPoints()
 	icon.cd:SetDrawEdge(false)
 	icon.cd:SetReverse(true)
+
+	-- The cooldown frame sits directly on top of the icon.  It is visual only;
+	-- never allow it to intercept the icon's mouseover.
+	if icon.cd.EnableMouse then
+		icon.cd:EnableMouse(false)
+	end
 	if ExRT.isClassic then
 		icon.cd:SetHideCountdownNumbers(true)
 		icon.cd.noCooldownCount = true
@@ -2358,6 +2401,9 @@ end
 local function CreateCol(line,key,i)
 	line[key.."pointer"] = CreateFrame("Frame",nil,line)
 	line[key.."pointer"]:SetSize(RCW_iconsListWide[i] and 60 or 30,14)
+	if line[key.."pointer"].EnableMouse then
+		line[key.."pointer"]:EnableMouse(false)
+	end
 
 	if i==1 then
 		line[key.."pointer"]:SetPoint("CENTER",line.name,"RIGHT",15 - 5,0)
@@ -2833,6 +2879,14 @@ do
 			if #names == 0 then
 				GameTooltip:AddLine("No localized spell names available", 1, 0.4, 0.4)
 			end
+		elseif key == "food" then
+			GameTooltip:SetText("Food", 1, 0.82, 0)
+			GameTooltip:AddLine("Detects any helpful aura whose name begins with:", 0.75, 0.75, 0.75, true)
+			GameTooltip:AddLine("Well Fed", 1, 1, 1)
+		elseif key == "flask" then
+			GameTooltip:SetText("Flask", 1, 0.82, 0)
+			GameTooltip:AddLine("Detects any helpful aura whose name begins with:", 0.75, 0.75, 0.75, true)
+			GameTooltip:AddLine("Distilled", 1, 1, 1)
 		else
 			-- Dynamic/non-CoA columns retain their old representative spell tooltip.
 			local spellID = key and HEADER_SPELL_BY_KEY[key]
@@ -3122,6 +3176,10 @@ function module.frame:UpdateData(onlyLine)
 				local buffCount = 0
 				local flaskCount = 1
 				local scrollCount = 1
+				-- Food priority state:
+				-- "Food" means the player is currently eating.  A "Well Fed..."
+				-- aura is the completed buff and always wins if both are present.
+				local coaWellFedFound = false
 
 				line.icon.texture:SetTexture(RCW_RCStatusToIcon[line.rc_status] or "")
 				line.mini.icon.texture:SetTexture(RCW_RCStatusToIcon[line.rc_status] or "")
@@ -3153,28 +3211,59 @@ function module.frame:UpdateData(onlyLine)
 						break
 					elseif canaccessvalue and not canaccessvalue(auraData.spellId) then
 						break
-					elseif line.food and module.db.tableFood[auraData.spellId] then
-						local val = module.db.tableFood[auraData.spellId]
+					elseif line.food and (
+						RCW_IsCoAFoodAuraName(auraData.name)
+						or RCW_IsCoAEatingAuraName(auraData.name)
+						or module.db.tableFood[auraData.spellId]
+					) then
+						local isWellFed = RCW_IsCoAFoodAuraName(auraData.name)
+						local isEating = RCW_IsCoAEatingAuraName(auraData.name)
 
-						_SetTextureCompat(line.food.texture, 136000)
-						if type(val)~="number" then
-							val = ""
-						elseif module.db.tableFoodIsBest[auraData.spellId] then
-							line.food.text:SetTextColor(0,1,0)
-						elseif val >= 30 or (UnitLevel'player' < 60 and val >= 10) then
-							line.food.text:SetTextColor(0,1,0)
-						else
-							line.food.text:SetTextColor(1,0,0)
+						-- A completed Well Fed buff always has priority over the
+						-- temporary "Food" eating aura.  If Food is encountered first,
+						-- it is displayed immediately and then replaced as soon as a
+						-- Well Fed aura appears later in the same scan.  If Food appears
+						-- after Well Fed, it is ignored.
+						if not isEating or not coaWellFedFound then
+							local val = module.db.tableFood[auraData.spellId]
+
+							if isEating then
+								line.food.texture:SetTexture(auraData.icon or RCW_EATING_FOOD_ICON)
+								line.food.text:SetText("")
+								line.food.texture:SetAlpha(1)
+								line.food.subIcon:Hide()
+							else
+								line.food.texture:SetTexture(auraData.icon or RCW_iconsListDebugIcons[1])
+								if type(val)~="number" then
+									val = ""
+								elseif module.db.tableFoodIsBest[auraData.spellId] then
+									line.food.text:SetTextColor(0,1,0)
+								elseif val >= 30 or (UnitLevel'player' < 60 and val >= 10) then
+									line.food.text:SetTextColor(0,1,0)
+								else
+									line.food.text:SetTextColor(1,0,0)
+								end
+								line.food.text:SetText(val)
+
+								if auraData.expirationTime and auraData.expirationTime - currTime2 < 600 and auraData.expirationTime ~= 0 then
+									line.food.subIcon:Show()
+									line.food.texture:SetAlpha(.6)
+								end
+							end
+
+							line.food.tooltip = {
+								coaAura = true,
+								index = i,
+								spellID = auraData.spellId,
+								name = auraData.name,
+							}
+
+							if isWellFed then
+								coaWellFedFound = true
+							end
+
+							buffCount = buffCount + 1
 						end
-						line.food.text:SetText(val)
-						line.food.tooltip = i
-
-						if auraData.expirationTime and auraData.expirationTime - currTime2 < 600 and auraData.expirationTime ~= 0 then
-							line.food.subIcon:Show()
-							line.food.texture:SetAlpha(.6)
-						end
-
-						buffCount = buffCount + 1
 					elseif line.food and (auraData.icon == 134062 or auraData.icon == 132805 or auraData.icon == 133950) then
 						_SetTextureCompat(line.food.texture, 134062)
 						line.food.text:SetText("")
@@ -3187,7 +3276,7 @@ function module.frame:UpdateData(onlyLine)
 						line.food.tooltip = i
 
 						buffCount = buffCount + 1
-					elseif line.flask and module.db.tableFlask[auraData.spellId] then
+					elseif line.flask and (RCW_IsCoAFlaskAuraName(auraData.name) or module.db.tableFlask[auraData.spellId]) then
 						local val = module.db.tableFlask[auraData.spellId]
 
 						local frame = line["flask"..(flaskCount == 1 and "" or tostring(flaskCount))]
@@ -3197,7 +3286,7 @@ function module.frame:UpdateData(onlyLine)
 							flaskCount = 4
 						end
 
-						frame.texture:SetTexture(auraData.icon)
+						frame.texture:SetTexture(auraData.icon or RCW_iconsListDebugIcons[2])
 						if type(val)=='number' then
 							if (UnitLevel'player' >= 60 and val >= 38) or (val >= 14) then
 								frame.text:SetTextColor(0,1,0)
@@ -3208,7 +3297,12 @@ function module.frame:UpdateData(onlyLine)
 						else
 							frame.text:SetText("")
 						end
-						frame.tooltip = i
+						frame.tooltip = {
+							coaAura = true,
+							index = i,
+							spellID = auraData.spellId,
+							name = auraData.name,
+						}
 
 						if auraData.expirationTime and auraData.expirationTime - currTime2 < 600 and auraData.expirationTime ~= 0 then
 							frame.subIcon:Show()
