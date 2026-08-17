@@ -2041,6 +2041,9 @@ end
 local RCW_BASE_COLUMN_COUNT = #RCW_iconsList
 local RCW_COLUMN_WIDTH = 30
 local RCW_BASE_WIDTH = 190
+-- [CoA UI REV 2026-08-17] Taller diagonal raid-buff header area.
+-- This controls both the header baseline and where the first roster row begins.
+local RCW_HEADER_HEIGHT = 80
 local function RCW_GetFrameWidth(extraCols)
 	return RCW_BASE_WIDTH + (RCW_BASE_COLUMN_COUNT + (extraCols or 0)) * RCW_COLUMN_WIDTH
 end
@@ -2048,7 +2051,7 @@ end
 _RemapFDIDArray(RCW_iconsListDebugIcons)
 
 module.frame = ELib:Template("ExRTDialogModernTemplate",UIParent)
-module.frame:SetSize(RCW_GetFrameWidth(),100)
+module.frame:SetSize(RCW_GetFrameWidth(),RCW_HEADER_HEIGHT + 50)
 module.frame:SetPoint("CENTER",UIParent,"CENTER",0,0)
 module.frame:SetFrameStrata("DIALOG")
 module.frame:EnableMouse(true)
@@ -2331,7 +2334,7 @@ function module.frame:UpdateCols()
 		local getX = module.frame.headers.getHeaderColumnX
 		local x = getX and getX(idx) or 155
 		header:ClearAllPoints()
-		header:SetPoint("BOTTOMLEFT", module.frame, "TOPLEFT", x, -50)
+		header:SetPoint("BOTTOMLEFT", module.frame, "TOPLEFT", x, -RCW_HEADER_HEIGHT)
 		header.__columnIndex = idx
 		if module.frame.headers.hookHeader then
 			module.frame.headers:hookHeader(header)
@@ -2402,7 +2405,7 @@ function module.frame:Create()
 		module.frame.lines[i] = line
 		line.pos = i
 		if i==1 then
-			line:SetPoint("TOPLEFT", 5, -50)
+			line:SetPoint("TOPLEFT", 5, -RCW_HEADER_HEIGHT)
 		else
 			line:SetPoint("TOPLEFT", module.frame.lines[i-1], "BOTTOMLEFT", 0, -0)
 		end
@@ -2658,7 +2661,7 @@ do
 	module.frame.headers = headers
 
 	local HEADER_BASE_X = 155
-	local HEADER_BASE_Y = -50
+	local HEADER_BASE_Y = -RCW_HEADER_HEIGHT
 	local function getHeaderColumnX(idx)
 		local x = HEADER_BASE_X
 		for j = 2, idx do
@@ -3001,7 +3004,7 @@ function module.frame:UpdateRoster()
 		end
 	end
 	self:UpdateLinesSize(count <= 20)
-	self.SizeMaximized = 55 + (count <= 20 and 20 or 14) * count
+	self.SizeMaximized = RCW_HEADER_HEIGHT + 5 + (count <= 20 and 20 or 14) * count
 	self.SizeMinimized = 25 + math.ceil(count / 4) * 14
 	self:SetHeight(self.maximized:IsShown() and self.SizeMaximized or self.SizeMinimized)
 end
