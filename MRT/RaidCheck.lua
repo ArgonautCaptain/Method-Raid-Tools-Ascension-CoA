@@ -3185,7 +3185,12 @@ function module.frame:UpdateData(onlyLine)
 							if frame then
 								frame.texture:SetTexture(auraData.icon or RCW_iconsListDebugIcons[buffIndex])
 								frame.text:SetText("")
-								frame.tooltip = "spell:"..auraData.spellId
+
+								-- [CoA] Store the actual aura index, not just the spell ID.
+								-- RCW_LineOnEnter will call GameTooltip:SetUnitAura(), so hovering
+								-- this player's icon shows the exact active provider buff (for
+								-- example Elune's Blessing in the 10% Haste category).
+								frame.tooltip = i
 
 								local cdIcon = frame.cd
 								if cdIcon then
