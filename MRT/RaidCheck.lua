@@ -406,7 +406,7 @@ module.db.coaBuffs = {
 		iconSpell = 300963,
 		spells = {
 			[300963] = true, -- Hellbringer — Knight of Xoroth - Hellfire
-			[561056] = true, -- Runic Power — Runemaster - Riftblade
+			[300944] = true, -- Runic Power — Runemaster - Riftblade
 			[560534] = true, -- March of the Valkyr — Sun Cleric - Valkyrie
 			[300929] = true, -- Serendipity — Templar - Crusader
 			[560528] = true, -- Infinite Horizon — Chronomancer - Infinite
@@ -441,6 +441,7 @@ module.db.coaBuffs = {
 			[704785] = true, -- Shrouded Stars — Starcaller - Moon Guard
 			[300974] = true, -- Charmed Plating — Venomancer - Fortitude
 			[704434] = true, -- Protection from Light — Cultist - Heretic
+			[560002] = true, -- Voidwarding
 		},
 		-- No Spell ID in spreadsheet:
 		--   Guardian - Vanguard — Confirmed removed
