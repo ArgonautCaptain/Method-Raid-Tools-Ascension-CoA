@@ -6,7 +6,7 @@ _G.MRT = MRT
 _G.ExRT = MRT
 
 MRT.V = 5014
-MRT.VString = "v0.1.0-CoA-beta.1"
+MRT.VString = "v0.1.0-CoA-beta.2"
 MRT.T = "R"
 
 MRT.Slash = {}

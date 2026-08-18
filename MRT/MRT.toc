@@ -4,7 +4,7 @@
 ## Notes: Method Raid Tools for Project Ascension: Conquest of Azeroth
 ## X-Website: https://github.com/ArgonautCaptain/Method-Raid-Tools-Ascension-WoW
 ## SavedVariables: VMRT
-## Version: v0.1.0-CoA-beta.1
+## Version: v0.1.0-CoA-beta.2
 ## AddonCompartmentFunc: MRT_MinimapClickFunction
 ## IconTexture: Interface\AddOns\MRT\media\MiniMap.tga
 Compat335.lua
