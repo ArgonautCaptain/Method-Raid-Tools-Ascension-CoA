@@ -245,6 +245,7 @@ module.db.coaBuffs = {
 			[680308] = true, -- Greater Illidari Intuition — Felsworn - Class Buff
 			[572390] = true, -- Greater Devotion of Dawn — Sun Cleric - Class Buff
 			[680303] = true, -- Greater Inquisitor's Edict — Witch Hunter - Class Buff
+			[712458] = true, -- Greater Power Wuju — Witch Doctor - Class Buff
 		},
 		-- No Spell ID in spreadsheet:
 		--   Barbarian - Class Buff — Removed?
@@ -342,6 +343,7 @@ module.db.coaBuffs = {
 			[680476] = true, -- Molten Fervor — Primalist - Geomancy
 			[504843] = true, -- Melting Point — Pyromancer - Incineration
 			[300959] = true, -- Fungal Link — Venomancer - Rot
+			[560525] = true, -- Fiery Passon -- Pyromancer - Flameweaving?
 		},
 		-- No Spell ID in spreadsheet:
 		--   Witch Doctor - Brewing — Removed?
