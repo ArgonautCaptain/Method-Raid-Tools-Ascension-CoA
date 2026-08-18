@@ -1,7 +1,12 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
-v0.1.1-CoA-beta.2
+v0.1.0-CoA-beta.3
+* Fixed a secure UI taint caused by MRT overriding the client's native Texture:SetAtlas method
+* Fixed Stone of Retreat world map POIs failing to cast with a CastSpellByID taint error
+* Updated SetAtlas compatibility handling to only provide a fallback when the client does not already implement SetAtlas
+
+v0.1.0-CoA-beta.2
 * Hotfix: corrected missing and incorrect CoA Raid Check spell IDs
 * Improved Raid Check buff detection accuracy
 

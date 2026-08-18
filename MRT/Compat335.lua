@@ -1402,12 +1402,18 @@ do
     end
   end
 end
+-- [CoA TAINT FIX 2026-08-18]
+-- Do not wrap or replace a native Texture:SetAtlas implementation.
+-- Project Ascension provides a native secure SetAtlas; replacing the shared
+-- texture metatable method taints Ascension UI code (including Stone of
+-- Retreat world-map POIs).  Only install MRT's compatibility implementation
+-- on clients where SetAtlas is genuinely absent.
 if not _G.__MRT_SetAtlasPatched then
 	local f = CreateFrame("Frame")
 	local tx = f:CreateTexture()
 	local mt = getmetatable(tx)
-	if mt and mt.__index then
-		local origSetAtlas = mt.__index.SetAtlas
+	local idx = mt and mt.__index
+	if type(idx) == "table" and type(idx.SetAtlas) ~= "function" then
 		local function applyKnownAtlas(self, atlas)
 			if type(atlas) ~= "string" or not self then return false end
 			local classKey = atlas:match("^classicon%-(.+)$") or atlas:match("^groupfinder%-icon%-class%-(.+)$")
@@ -1475,13 +1481,9 @@ if not _G.__MRT_SetAtlasPatched then
 			return false
 		end
 
-		mt.__index.SetAtlas = function(self, atlas, useAtlasSize)
+		idx.SetAtlas = function(self, atlas, useAtlasSize)
 			if applyKnownAtlas(self, atlas) then
 				return true
-			end
-			if type(origSetAtlas) == "function" then
-				local ok = pcall(origSetAtlas, self, atlas, useAtlasSize)
-				if ok then return true end
 			end
 			if self and type(self.SetTexture) == "function" then
 				pcall(self.SetTexture, self, "")
