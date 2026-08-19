@@ -233,6 +233,7 @@ module.db.coaBuffs = {
 			[680312] = true, -- Greater Spider Pheromones — Venomancer - Class Buff
 			[300886] = true, -- Brutal Shout — Barbarian - Class Buff
 			[561241] = true, -- Greater Etching of the Dextrous — Runemaster - Class Buff
+			[680308] = true, -- Greater Illidari Intuition — Felsworn - Class Buff
 		},
 	},
 
@@ -242,7 +243,6 @@ module.db.coaBuffs = {
 		name = "Attack Power",
 		iconSpell = 680308,
 		spells = {
-			[680308] = true, -- Greater Illidari Intuition — Felsworn - Class Buff
 			[572390] = true, -- Greater Devotion of Dawn — Sun Cleric - Class Buff
 			[680303] = true, -- Greater Inquisitor's Edict — Witch Hunter - Class Buff
 			[712458] = true, -- Greater Power Wuju — Witch Doctor - Class Buff
@@ -310,7 +310,6 @@ module.db.coaBuffs = {
 		spells = {
 			[561392] = true, -- Greater Whispers of Y'shaarj — Cultist - Class Buff
 			[572817] = true, -- Greater Grove Instinct — Primalist - Class Buff
-			[712459] = true, -- Greater Toxic Pheromones — Venomancer - Class Buff
 			[680307] = true, -- Greater Chromie's Wisdom — Chronomancer - Class Buff
 			[680872] = true, -- Greater Spirit Wuju — Witch Doctor - Class Buff
 		},
@@ -326,6 +325,7 @@ module.db.coaBuffs = {
 			[573067] = true, -- Greater Whispers of C'thun — Cultist - Class Buff
 			[572790] = true, -- Greater Grim Mandate — Necromancer - Class Buff
 			[712460] = true, -- Greater Mark of Blaumeux — Knight of Xoroth - Class Buff
+			[712459] = true, -- Greater Toxic Pheromones — Venomancer - Class Buff
 		},
 	},
 

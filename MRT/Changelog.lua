@@ -1,6 +1,10 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+v0.1.0-CoA-beta.4
+* Corrected several CoA raid buff spell IDs that were assigned to incorrect Raid Check categories
+* Improved CoA Raid Check buff classification accuracy
+
 v0.1.0-CoA-beta.3
 * Fixed a secure UI taint caused by MRT overriding the client's native Texture:SetAtlas method
 * Fixed Stone of Retreat world map POIs failing to cast with a CastSpellByID taint error
