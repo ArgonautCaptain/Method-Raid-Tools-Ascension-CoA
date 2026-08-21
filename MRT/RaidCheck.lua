@@ -228,7 +228,6 @@ module.db.coaBuffs = {
 		name = "Agility",
 		iconSpell = 680310,
 		spells = {
-			[680310] = true, -- Greater Primal Instinct — Primalist - Class Buff
 			[680306] = true, -- Greater Gift of Zeal — Templar - Class Buff
 			[680312] = true, -- Greater Spider Pheromones — Venomancer - Class Buff
 			[300886] = true, -- Brutal Shout — Barbarian - Class Buff
@@ -246,7 +245,7 @@ module.db.coaBuffs = {
 			[572390] = true, -- Greater Devotion of Dawn — Sun Cleric - Class Buff
 			[680303] = true, -- Greater Inquisitor's Edict — Witch Hunter - Class Buff
 			[712458] = true, -- Greater Power Wuju — Witch Doctor - Class Buff
-			[804730] = true, -- Symbol of the Warspear — Barbarian - Class Buff
+			[680310] = true, -- Greater Primal Instinct — Primalist - Class Buff
 		},
 		-- No Spell ID in spreadsheet:
 		--   Barbarian - Class Buff — Removed?
