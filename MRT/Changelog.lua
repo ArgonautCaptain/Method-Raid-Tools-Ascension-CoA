@@ -1,6 +1,9 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+v0.1.0-CoA-beta.5
+* Spell ID updates for CoA Raid Check module
+
 v0.1.0-CoA-beta.4
 * Corrected several CoA raid buff spell IDs that were assigned to incorrect Raid Check categories
 * Improved CoA Raid Check buff classification accuracy
