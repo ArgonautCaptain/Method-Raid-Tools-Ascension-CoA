@@ -246,6 +246,7 @@ module.db.coaBuffs = {
 			[680303] = true, -- Greater Inquisitor's Edict — Witch Hunter - Class Buff
 			[712458] = true, -- Greater Power Wuju — Witch Doctor - Class Buff
 			[680310] = true, -- Greater Primal Instinct — Primalist - Class Buff
+			[680315] = true, -- Greater Power Module - Tinker - Class Buff
 		},
 		-- No Spell ID in spreadsheet:
 		--   Barbarian - Class Buff — Removed?
@@ -311,6 +312,7 @@ module.db.coaBuffs = {
 			[572817] = true, -- Greater Grove Instinct — Primalist - Class Buff
 			[680307] = true, -- Greater Chromie's Wisdom — Chronomancer - Class Buff
 			[680872] = true, -- Greater Spirit Wuju — Witch Doctor - Class Buff
+			[572404] = true, -- Greater Bloodsoaked Offering - Bloodmage - Class Buff
 		},
 	},
 
