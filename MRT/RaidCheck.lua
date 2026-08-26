@@ -233,6 +233,7 @@ module.db.coaBuffs = {
 			[300886] = true, -- Brutal Shout — Barbarian - Class Buff
 			[561241] = true, -- Greater Etching of the Dextrous — Runemaster - Class Buff
 			[680308] = true, -- Greater Illidari Intuition — Felsworn - Class Buff
+			[680303] = true, -- Greater Inquisitor's Edict — Witch Hunter - Class Buff
 		},
 	},
 
@@ -243,10 +244,10 @@ module.db.coaBuffs = {
 		iconSpell = 680308,
 		spells = {
 			[572390] = true, -- Greater Devotion of Dawn — Sun Cleric - Class Buff
-			[680303] = true, -- Greater Inquisitor's Edict — Witch Hunter - Class Buff
 			[712458] = true, -- Greater Power Wuju — Witch Doctor - Class Buff
 			[680310] = true, -- Greater Primal Instinct — Primalist - Class Buff
 			[680315] = true, -- Greater Power Module - Tinker - Class Buff
+			[680294] = true, -- Greater Woodsman's Adaptation - Ranger - Class Buff
 		},
 		-- No Spell ID in spreadsheet:
 		--   Barbarian - Class Buff — Removed?
@@ -266,6 +267,7 @@ module.db.coaBuffs = {
 			[560593] = true, -- The BIG Guns! — Tinker - Demolition
 			[300871] = true, -- Strength of Da Loa — Witch Doctor - Shadowhunting
 			[524854] = true, -- Veiled in Darkness — Witch Hunter - Houndmaster
+			[560531] = true, -- Guile of the Cotthroat - Ranger
 		},
 		-- No Spell ID in spreadsheet:
 		--   Barbarian - Headhunting — Removed?

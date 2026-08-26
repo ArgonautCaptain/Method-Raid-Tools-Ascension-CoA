@@ -1,6 +1,9 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+v0.1.0-CoA-beta.6
+* Spell ID updates for CoA Raid Check module
+
 v0.1.0-CoA-beta.5
 * Spell ID updates for CoA Raid Check module
 
