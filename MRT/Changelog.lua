@@ -1,6 +1,10 @@
 local GlobalAddonName, ExRT = ...
 
 ExRT.Options.Changelog = [=[
+v0.1.1-CoA-beta.1
+* Added Project Ascension world markers to the Marks Bar
+* World markers are placed using Ascension's Raid Marker spells
+
 v0.1.0-CoA-beta.6
 * Spell ID updates for CoA Raid Check module
 

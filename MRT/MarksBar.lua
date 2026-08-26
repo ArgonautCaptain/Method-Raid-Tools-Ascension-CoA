@@ -11,6 +11,23 @@ module.db.perma = {}
 module.db.clearnum = -1
 module.db.worldMarksList = {6,4,3,7,1,2,5,8}
 
+-- [CoA] Project Ascension world markers are cast as spells rather than
+-- using the retail "worldmarker" secure action.  Keep MRT's existing
+-- world-marker order (Square, Triangle, Diamond, Cross, Star, Circle,
+-- Moon, Skull) and use the exact enUS spell names exposed by Ascension.
+-- The ninth button clears placed markers via the dedicated Removal spell.
+module.db.coaWorldMarkerSpells = {
+    "Raid Marker - Square",
+    "Raid Marker - Triangle",
+    "Raid Marker - Diamond",
+    "Raid Marker - Cross",
+    "Raid Marker - Star",
+    "Raid Marker - Circle",
+    "Raid Marker - Moon",
+    "Raid Marker - Skull",
+    "Raid Marker - Removal",
+}
+
 module.db.wm_color ={
 	{ r = 4/255, g = 149/255, b = 255/255},
 	{ r = 15/255, g = 155/255 , b = 12/255},
@@ -345,9 +362,15 @@ mainFrame.wmarksbuts = CreateFrame("Frame",nil,mainFrame)
 mainFrame.wmarksbuts:SetSize(14*5,26)
 local function MainFrameWMOnEnter(self)
 	self:SetBackdropBorderColor(0.7,0.7,0.7,1)
+	if self._coaSpellName then
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:SetText(self._coaSpellName)
+		GameTooltip:Show()
+	end
 end
 local function MainFrameWMOnLeave(self)
 	self:SetBackdropBorderColor(0.4,0.4,0.4,0)
+	GameTooltip:Hide()
 end
 local function MainFrameWMOnEvent(self, event, ...)
 	self[event](self, event, ...)
@@ -375,28 +398,11 @@ do
 		frame:SetScript("OnEnter",MainFrameWMOnEnter)
 		frame:SetScript("OnLeave",MainFrameWMOnLeave)
 
-		if i < MAX_WM_BUTTONS then
-			frame:RegisterForClicks("AnyDown", "AnyUp")
-			if true then
-				frame:SetAttribute("type", "worldmarker")
-				frame:SetAttribute("marker", tostring(i))
-				frame:SetAttribute("action1", "set")
-				frame:SetAttribute("action2", "clear")
-			else
-				frame:SetAttribute("type", "macro")
-				frame:SetAttribute("macrotext1", format("/wm %d", i))
-				frame:SetAttribute("macrotext2", format("/cwm %d", i))
-				if ExRT.locale == "ptBR" or ExRT.locale == "esES" or ExRT.locale == "esMX" or ExRT.locale == "ptPT" then
-					frame:SetAttribute("macrotext1", format(SLASH_WORLD_MARKER1.." %d", i))
-					frame:SetAttribute("macrotext2", format(SLASH_CLEAR_WORLD_MARKER1.." %d", i))
-				end
-			end
-			frame:SetScript('OnEvent', MainFrameWMOnEvent)
-		else
-			frame:SetScript("OnClick",  function()
-				ClearRaidMarker()
-			end)
-		end
+		local coaSpellName = module.db.coaWorldMarkerSpells[i]
+		frame._coaSpellName = coaSpellName
+		frame:RegisterForClicks("LeftButtonUp")
+		frame:SetAttribute("type", "spell")
+		frame:SetAttribute("spell", coaSpellName)
 
 		frame.t = frame:CreateTexture(nil, "BACKGROUND")
 		if i < MAX_WM_BUTTONS then
@@ -421,9 +427,15 @@ mainFrame.wmarksbuts.b.t:SetBackdropColor(0,0,0,0)
 mainFrame.wmarksbuts.b.t:SetBackdropBorderColor(0.6,0.6,0.6,1)
 local function MainFrameWMKind2OnEnter(self)
 	self.t:SetVertexColor(module.db.wm_color_hover[self._i].r,module.db.wm_color_hover[self._i].g,module.db.wm_color_hover[self._i].b,1)
+	if self._coaSpellName then
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
+		GameTooltip:SetText(self._coaSpellName)
+		GameTooltip:Show()
+	end
 end
 local function MainFrameWMKind2OnLeave(self)
 	self.t:SetVertexColor(module.db.wm_color[self._i].r,module.db.wm_color[self._i].g,module.db.wm_color[self._i].b,1)
+	GameTooltip:Hide()
 end
 
 mainFrame.wmarksbuts.b:SetScript("OnEnter",function()
@@ -451,28 +463,11 @@ for i=1,MAX_WM_BUTTONS do
 	frame:SetScript("OnEnter",MainFrameWMKind2OnEnter)
 	frame:SetScript("OnLeave", MainFrameWMKind2OnLeave)
 
-	if i < MAX_WM_BUTTONS then
-		frame:RegisterForClicks("AnyDown", "AnyUp")
-		if true then
-			frame:SetAttribute("type", "worldmarker")
-			frame:SetAttribute("marker", tostring(i))
-			frame:SetAttribute("action1", "set")
-			frame:SetAttribute("action2", "clear")
-		else
-			frame:SetAttribute("type", "macro")
-			frame:SetAttribute("macrotext1", format("/wm %d", i))
-			frame:SetAttribute("macrotext2", format("/cwm %d", i))
-			if ExRT.locale == "ptBR" or ExRT.locale == "esES" or ExRT.locale == "esMX" or ExRT.locale == "ptPT" then
-				frame:SetAttribute("macrotext1", format(SLASH_WORLD_MARKER1.." %d", i))
-				frame:SetAttribute("macrotext2", format(SLASH_CLEAR_WORLD_MARKER1.." %d", i))
-			end
-		end
-		frame:SetScript('OnEvent', MainFrameWMOnEvent)
-	else
-		frame:SetScript("OnClick", function()
-			ClearRaidMarker()
-		end)
-	end
+	local coaSpellName = module.db.coaWorldMarkerSpells[i]
+	frame._coaSpellName = coaSpellName
+	frame:RegisterForClicks("LeftButtonUp")
+	frame:SetAttribute("type", "spell")
+	frame:SetAttribute("spell", coaSpellName)
 end
 
 mainFrame.edges[4] = CreateEdge(4,325)
@@ -625,10 +620,9 @@ local function modifymarkbars()
 			totalWidth = totalWidth + 222 + (showExtraMarks and 224 or 0)
 		end
 
+		-- [CoA] Ascension exposes world markers on its 3.3.5-based client,
+		-- so do not suppress this section merely because ExRT.isClassic is true.
 		local worldMarksBool = VMRT.MarksBar.Show[3]
-		if ExRT.isClassic then
-			worldMarksBool = false
-		end
 
 		mainFrame.edges[3]:SetPoint("TOPLEFT",posX,0)
 		if not worldMarksBool or not VMRT.MarksBar.wmKind then
@@ -771,9 +765,6 @@ local function modifymarkbars()
 		end
 
 		local worldMarksBool = VMRT.MarksBar.Show[3]
-		if ExRT.isClassic then
-			worldMarksBool = false
-		end
 
 		mainFrame.edges[3]:SetPoint("TOPLEFT",0,-posX)
 		if not worldMarksBool or not VMRT.MarksBar.wmKind then
@@ -1133,11 +1124,6 @@ function module.options:Load()
 	self.shtml1 = ELib:Text(self,L.MarksBarHelp,12):Size(670,200):Point(15,-505):Top()
 
 	if ExRT.isClassic then
-		self.chkEnable3:Hide()
-		self.chkEnable3kindhtml:Hide()
-		self.chkEnable3kind1:Hide()
-		self.chkEnable3kind2:Hide()
-		self.reverseWMMarksOrderChk:Hide()
 		self.chkEnable6:Hide()
 	end
 end
